@@ -85,11 +85,11 @@
 
 **Files:** Create exploration_resolution.py, tests/test_exploration_resolution.py; extend discovery/state projection for V2 definitions without parsing them as ProfileSpec.
 **Interfaces:** resolve_exploration(ctx,action,request_key)->ExplorationOutcome; record_exploration_ability(session,actor,action,outcome,event)->HeroAbility|None; public_exploration_facts(outcome)->dict.
-- [ ] RED: automatic cheap cosmetic/cup spells spend and learn once; ordinary listening never learns; failed roll spends without effect/learning; rejected action creates no Event/definition; missing second component rolls back first; existing receipt replays without dice or changed actor resources; different semantic abilities with identical math are distinct; ordinary cup is not a duration buff.
-- [ ] Run resolution tests; expected missing executor.
-- [ ] Reuse pure dice/critical/derived math. In one transaction authorize, replay-check, validate, debit, apply effects/objects, finish one step, discover only complete realized supernatural definitions, save actual typed changes and Event. Scope every new reference; do not hold write transaction during model calls. Failed technical application rolls back debit/time/objects.
-- [ ] Run all exploration and universal resolution/discovery regressions; expected green.
-- [ ] Commit task5.
+- [x] RED: automatic cheap cosmetic/cup spells spend and learn once; ordinary listening never learns; failed roll spends without effect/learning; rejected action creates no Event/definition; missing second component rolls back first; existing receipt replays without dice or changed actor resources; different semantic abilities with identical math are distinct; ordinary cup is not a duration buff.
+- [x] Run resolution tests; expected missing executor.
+- [x] Reuse pure dice/critical/derived math. In one transaction authorize, replay-check, validate, debit, apply effects/objects, finish one step, discover only complete realized supernatural definitions, save actual typed changes and Event. Scope every new reference; do not hold write transaction during model calls. Failed technical application rolls back debit/time/objects.
+- [x] Run all exploration and universal resolution/discovery regressions; expected green.
+- [x] Commit task5.
 
 ### Task 6: Noncombat visibility and useful persistent effects
 

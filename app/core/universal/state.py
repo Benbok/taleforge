@@ -54,6 +54,23 @@ def game_card_of(hero) -> dict:
     learned = []
     for item in (hero.resources or {}).get("learned_abilities", []):
         view = dict(item)
+        if (item.get("profile") or {}).get("schema_version") == 2:
+            from app.rules.universal.exploration import AbilityDefinitionV2, exploration_cost
+
+            definition = AbilityDefinitionV2.model_validate(item["profile"])
+            view.update(
+                description=definition.name,
+                cost=str(exploration_cost(definition, sheet.level)),
+                resource_key=definition.attribute,
+                limits=dict(
+                    targets=str(definition.target_count),
+                    duration=str(definition.duration_seconds),
+                    intensity=definition.intensity,
+                    conditions=[],
+                ),
+            )
+            learned.append(view)
+            continue
         if item.get("profile"):
             from app.rules.universal.profiles import ProfileSpec, resource_cost
 

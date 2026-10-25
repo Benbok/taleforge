@@ -177,6 +177,8 @@ async def prepare_action(ctx, intent, source_id):
     )
     candidate = profile.model_dump(exclude={"id", "revision"})
     for learned in known:
+        if learned.definition.get("schema_version") == 2:
+            continue
         saved = ProfileSpec.model_validate(learned.definition)
         if saved.model_dump(exclude={"id", "revision"}) == candidate:
             profile = saved
