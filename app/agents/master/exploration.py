@@ -59,6 +59,13 @@ SYSTEM = (
     "(выйти из формы, погасить свет) — бесплатное обычное действие: source=mundane, player_request=ordinary, "
     "effects=[{kind: dismiss, effect_id: <id из active_effects>}]; никогда не оформляй это новым заклинанием, "
     "ресурс при этом не возвращается. "
+    "Свободное создание: игрок может создать любой предмет или постройку (create_object, template=structure, "
+    "для обычной кружки template=vessel), ограничивает лишь цена и world_laws. Сам оцени размер scale: tiny — "
+    "кружка или веточка, small — лиана или стул, medium — лестница или стена, large — мост, башня, huge — "
+    "замок, плотина; оцени прочность sturdiness (fragile, ordinary, sturdy). Чем больше и прочнее, тем дороже, "
+    "не занижай размер ради дешевизны. leads_to и leads_view указывай только для large или huge, которые "
+    "реально ведут в новое место (мост на другой берег): коротко назови, куда ведёт, и что оттуда видно. "
+    "Не нарушай world_laws. Для постоянного результата lifetime=permanent, для временного timed. "
     "Если constraints запрещают действие (например, герой в форме куста), всё равно выбери его настоящий вид "
     "(move, speak, take…): сервер сам откажет и объяснит причину; не подменяй его другим действием. "
     "Вопрос игрока о правилах или своём состоянии — это обычное observe или wait без новых эффектов. "
@@ -95,6 +102,9 @@ REVIEW = (
     "pass только если каждый смысл реализован поддержанными effects и правильным source; covered_requirements "
     "перечисляет все проверенные id requirements. Если в source есть требование, которого вообще нет в requirements, "
     "это mismatch. Unsupported существенный эффект — unsupported, неоднозначность — clarify. "
+    "Для создания (create_object) проверь, что размер scale правдоподобен для описанного: мост через пропасть "
+    "не tiny, кружка не huge; при несоответствии verdict=mismatch и в message назови, каким должен быть размер. "
+    "Создание не должно нарушать world_laws и раскрывать скрытое. "
     "Не раскрывай private/world. Не разрешай introductions, если evidence не подтверждает предмет/наблюдателя "
     "и его свойства; восстанавливающий настой требует явного подтверждения, обычное питьё энергию не даёт."
 )
@@ -203,6 +213,7 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                                     "intent": raw,
                                     "evidence": context.get("established_evidence", ""),
                                     "scene": context["scene"],
+                                    "world_laws": context.get("world_laws", ""),
                                 },
                                 ensure_ascii=False,
                             ),
@@ -227,7 +238,7 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                 await store(service, tid, trace)
                 return result
             if review.verdict != "pass":
-                raise ValueError("Смысл действия требует уточнения; ничего не применено.")
+                raise ValueError(review.message or "Смысл действия требует уточнения; ничего не применено.")
             async with service.maker() as s:
                 ctx = ResolutionContext(s, campaign.id, **scope, dice=None)
                 action = await compile_exploration(

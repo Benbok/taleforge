@@ -410,3 +410,70 @@ def test_the_energy_shortage_stays_the_answer_when_the_repair_attempt_fails_othe
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def bridge(scale="tiny"):
+    return dict(
+        schema_version=2,
+        name="Мост",
+        source="supernatural",
+        player_request="supernatural",
+        resolution="automatic",
+        effects=[
+            {
+                "kind": "create_object",
+                "template": "structure",
+                "scale": scale,
+                "lifetime": "permanent",
+                "label": "Мост",
+            }
+        ],
+    )
+
+
+def test_world_laws_reach_the_decision_and_the_review_but_never_the_private_notes(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)  # the studio is {"laws": "NO TIME TRAVEL", "private": "HIDDEN-SECRET"}
+        provider = Provider(
+            [
+                bridge("large"),
+                {"verdict": "pass", "covered_requirements": []},
+                "Мост перекидывается через пропасть.",
+                {"verdict": "pass"},
+            ]
+        )
+        await MasterService(maker, Bus(), provider).run_turn("c")
+        decide, review = provider.prompts[0][-1]["content"], provider.prompts[1][-1]["content"]
+        assert json.loads(decide)["world_laws"] == "NO TIME TRAVEL"
+        assert "NO TIME TRAVEL" in review and "HIDDEN-SECRET" not in review
+        assert "HIDDEN-SECRET" not in json.dumps(provider.prompts[2:])  # narration and its review
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_reviewer_who_finds_the_scale_implausible_stops_the_spell_and_tells_the_model_why(tmp_path):
+    from app.db.models import Character
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        why = "Мост через пропасть не может быть крошечным."
+        provider = Provider(
+            [
+                bridge("tiny"),
+                {"verdict": "mismatch", "message": why},
+                bridge("tiny"),
+                {"verdict": "mismatch", "message": why},
+            ]
+        )
+        tid = await MasterService(maker, Bus(), provider).run_turn("c")
+        assert why in json.loads(provider.prompts[2][-1]["content"])["repair"]
+        async with maker() as s:
+            assert list(await s.scalars(select(Event))) == []
+            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "24"
+            assert (await s.get(MasterTurn, tid)).status == "done"
+        await engine.dispose()
+
+    asyncio.run(run())

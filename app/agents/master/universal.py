@@ -274,6 +274,8 @@ async def run_universal_turn(service, cid, place=None):
                 allowed_targets.update(h.id for h in visible_heroes)
                 context = dict(
                     world=(secret.setting or {}).get("studio", {}) if secret else {},
+                    # Only the laws go to the review; private studio notes stay with the master.
+                    world_laws=str(((secret.setting or {}).get("studio") or {}).get("laws") or "") if secret else "",
                     hero=sh.model_dump(mode="json"),
                     resources=resources.model_dump(mode="json"),
                     scene=public_scene,
