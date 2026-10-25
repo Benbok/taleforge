@@ -233,6 +233,7 @@ class EffectChange(ClosedModel):
 
 class ExplorationOutcome(ActionOutcome):
     schema_version: Literal[2] = 2
+    realized: bool = True
     changes: list[EffectChange] = Field(default_factory=list)
     ability_ref: str | None = None
     elapsed_game_seconds: Count = 0

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
-
 from app.rules.base import (
     AttackResult,
     CheckResult,
@@ -209,20 +207,9 @@ class Dnd5eEngine:
         if not hp.dying:
             raise RulesError("спасбросок от смерти делает только умирающий")
         roll = self.roll_d20(dice, 0, mode)
-        ds = hp.death_saves
-        regained = 0
-        if roll.natural == 20:
-            hp.current = 1
-            hp.death_saves = DeathSaves()
-            regained = 1
-        elif roll.natural == 1:
-            hp.death_saves = replace(ds, failures=ds.failures + 2)
-        elif roll.natural >= 10:
-            hp.death_saves = replace(ds, successes=ds.successes + 1)
-        else:
-            hp.death_saves = replace(ds, failures=ds.failures + 1)
-        if hp.death_saves.dead:
-            hp.dead = True
+        from app.rules.death import apply_death_roll
+
+        regained = apply_death_roll(hp, roll.natural)
         return DeathSaveResult(roll, hp.death_saves, regained)
 
     # --- Производные величины ---

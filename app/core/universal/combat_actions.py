@@ -71,7 +71,12 @@ async def scoped_targets(ctx, action):
         if target.location_id != actor.location_id or (isinstance(target, Entity) and target.state.get("hidden")):
             raise ValueError("Цель недоступна")
         if isinstance(target, Character) or target.state.get("universal_sheet"):
-            await load_actor(ctx.session, ctx.campaign_id, target_id)
+            _, target_resources = await load_actor(ctx.session, ctx.campaign_id, target_id)
+            if target_resources.hp <= 0 and any(
+                op.kind in {"damage", "weapon_attack", "cannot_move", "cannot_act", "cannot_target"}
+                for op in action.operations
+            ):
+                raise ValueError("Недействующая цель не может быть атакована этим действием")
         elif target.kind != "creature":
             raise ValueError("Цель не является участником боя")
         targets[target_id] = target
@@ -163,6 +168,7 @@ async def combat_action(ctx, action, event, result, now):
                 own_sheet, own_resources = await load_actor(s, ctx.campaign_id, action.actor_id)
                 own_resources.hp = max(0, own_resources.hp - 1)
                 await save_actor(s, ctx.campaign_id, action.actor_id, own_sheet, own_resources)
+                await synchronize_vitality(ctx, action.actor_id, event.id)
                 result.changes.append(
                     EffectChange(
                         kind="damage",
@@ -205,6 +211,16 @@ async def combat_action(ctx, action, event, result, now):
                     if isinstance(target, Entity):
                         target.state = {**target.state, "hostile": True}
                 await save_actor(s, ctx.campaign_id, target_id, target_sheet, resources)
+                if resources.hp == before:
+                    result.realized = False
+                await synchronize_vitality(
+                    ctx,
+                    target_id,
+                    event.id,
+                    before_hp=before,
+                    incoming=amount if op.kind != "heal" else 0,
+                    critical=critical,
+                )
                 change_word = "восстановлено" if op.kind == "heal" else "потеряно"
                 result.changes.append(
                     EffectChange(
@@ -267,6 +283,7 @@ async def combat_action(ctx, action, event, result, now):
                             periodic=op.kind == "damage_over_time",
                             intensity=action.definition.intensity,
                             attribute=action.attribute,
+                            source_sheet=sheet.model_dump(mode="json"),
                         ),
                     )
                     result.changes.append(
@@ -278,5 +295,22 @@ async def combat_action(ctx, action, event, result, now):
                     )
     if all_hits:
         result.success = any(all_hits)
+        result.realized &= all(all_hits)
     result.rolls.extend(dice.rolls)
     result.draws.extend(dice.draws)
+
+
+async def synchronize_vitality(ctx, actor_id, source_key, *, before_hp=None, incoming=0, critical=False):
+    from app.core.universal.clock import clock_view
+    from app.core.universal.vitality import enter_zero_hp
+    from app.db.models import CombatExchange
+
+    exchange = await ctx.session.get(CombatExchange, ctx.exchange_id) if ctx.exchange_id else None
+    sequence = (
+        int(exchange.sequence) if exchange else int((await clock_view(ctx.session, ctx.campaign_id))["step_index"]) + 1
+    )
+    await enter_zero_hp(ctx.session, ctx.campaign_id, actor_id, source_key, sequence)
+    if before_hp == 0 and incoming > 0:
+        from app.core.universal.vitality import harm_unconscious
+
+        await harm_unconscious(ctx.session, ctx.campaign_id, actor_id, source_key, sequence, critical=critical)

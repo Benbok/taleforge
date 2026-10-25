@@ -31,6 +31,7 @@ def public_exploration_facts(outcome):
 async def record_exploration_ability(session, actor, action, outcome, event):
     if (
         not outcome.success
+        or not outcome.realized
         or action.definition.source != "supernatural"
         or any(not e.applied for e in outcome.effect_outcomes)
     ):
@@ -228,7 +229,7 @@ async def _execute(ctx, action, key):
             elif op.kind == "dismiss":
                 result.changes.extend(await dismiss_effect(s, ctx.campaign_id, action.actor_id, op.effect_id or ""))
     if not ctx.defer_step:
-        step = await complete_step(s, ctx.campaign_id, key, action.elapsed_game_seconds)
+        step = await complete_step(s, ctx.campaign_id, key, action.elapsed_game_seconds, dice=ctx.dice)
         result.game_seconds = int(step.ended_seconds)
         result.changes.extend(EffectChange.model_validate(c) for c in step.changes)
     else:

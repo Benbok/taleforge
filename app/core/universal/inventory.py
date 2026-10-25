@@ -218,6 +218,10 @@ async def consume(session, campaign_id, actor_id, item_id, target_id, request_ke
         else:
             resources.energies[state.profile.restore_pool] = after
         await save_actor(session, campaign_id, target_id, sheet, resources)
+        if state.profile.restore_pool == "hp":
+            from app.core.universal.vitality import enter_zero_hp
+
+            await enter_zero_hp(session, campaign_id, target_id, request_key, 0)
         state.quantity -= 1
         store(row, state)
         result = ExplorationOutcome(

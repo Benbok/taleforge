@@ -60,10 +60,10 @@
 
 **Files:** core/universal/vitality.py; combat effect completion; tests/test_universal_vitality.py and test_universal_effects.py.
 **Interfaces:** enter_zero_hp(...,source_key,exchange_sequence); advance_vitality(ctx,exchange_id); advance_exchange(...); public vitality is only conscious/unconscious/stable/dead, without counters.
-- [ ] RED: new0HP has no immediate save; subsequent completed step rolls once; ordinary foe dies, significant NPC may save; healing rescues living but not dead; all-incapacitated explicit world action progresses, offline does not. DOT ticks once, rolls back on failure, stops after expiration.
-- [ ] Run vitality/effects tests; expected missing lifecycle.
-- [ ] Persist private rescue state in actor resource extras with eligible sequence. Reuse existing death-save arithmetic. Tick DOT and rescues inside the same saved completion transaction, honor ongoing controls and remove only their own modifiers.
-- [ ] Run privacy/replay/concurrent tick regressions; commit.
+- [x] RED: new0HP has no immediate save; subsequent completed step rolls once; ordinary foe dies, significant NPC may save; healing rescues living but not dead; all-incapacitated explicit world action progresses, offline does not. DOT ticks once, rolls back on failure, stops after expiration.
+- [x] Run vitality/effects tests; expected missing lifecycle.
+- [x] Persist private rescue state in actor resource extras with eligible sequence. Reuse existing death-save arithmetic. Tick DOT and rescues inside the same saved completion transaction, honor ongoing controls and remove only their own modifiers.
+- [x] Run privacy/replay/concurrent tick regressions; commit.
 
 ### Task 5: Game integration, equipment/combat UI and acceptance
 

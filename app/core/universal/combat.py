@@ -259,8 +259,12 @@ async def run_exchange(ctx, action, choose_reply=None, request_key=None):
         candidates = await eligible_enemies(ctx, exchange)
         if scene is not None:
             scene.mode = "combat" if candidates else "free"
-        step = await complete_step(s, ctx.campaign_id, request_key, int(exchange.elapsed_seconds))
+        step = await complete_step(s, ctx.campaign_id, request_key, int(exchange.elapsed_seconds), dice=ctx.dice)
         exchange.changes = step.changes
+        from app.core.universal.vitality import progress_unconscious_party
+
+        continuation = await progress_unconscious_party(ctx, request_key)
+        exchange.changes = [*exchange.changes, *(c.model_dump(mode="json") for c in continuation)]
         exchange.status = "ticks_done"
         await s.commit()
     return _results(exchange)

@@ -1108,7 +1108,7 @@ class UniversalEffect(Base):
     __table_args__ = (UniqueConstraint("campaign_id", "source_event_id", "target_id", "component"),)
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("ue"))
     campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
-    source_actor_id: Mapped[str] = mapped_column(ForeignKey("characters.id", ondelete="CASCADE"))
+    source_actor_id: Mapped[str] = mapped_column(String(32))
     source_event_id: Mapped[str] = mapped_column(ForeignKey("events.id", ondelete="CASCADE"))
     target_id: Mapped[str] = mapped_column(String(32), index=True)
     component: Mapped[str] = mapped_column(String(64))

@@ -19,7 +19,12 @@ async def clock_view(session, campaign_id):
     return dict(game_seconds=clock.game_seconds if clock else "0", step_index=clock.step_index if clock else "0")
 
 
-async def complete_step(session, campaign_id, source_key, elapsed_seconds):
+async def complete_step(session, campaign_id, source_key, elapsed_seconds, *, dice=None):
+    async with session.begin_nested():
+        return await _complete_step(session, campaign_id, source_key, elapsed_seconds, dice=dice)
+
+
+async def _complete_step(session, campaign_id, source_key, elapsed_seconds, *, dice=None):
     if type(elapsed_seconds) is not int or elapsed_seconds < 0 or not source_key or len(source_key) > 128:
         raise ValueError("Invalid game step")
     await lock_campaign(session, campaign_id)
@@ -38,8 +43,12 @@ async def complete_step(session, campaign_id, source_key, elapsed_seconds):
     end = start + elapsed_seconds
     clock.game_seconds, clock.step_index = str(end), str(sequence)
     from app.core.universal.effects import expire_effects
+    from app.core.universal.periodic import advance_periodic
+    from app.core.universal.vitality import advance_vitality
 
-    changes = await expire_effects(session, campaign_id, end)
+    changes = await advance_periodic(session, campaign_id, start, end, sequence, dice)
+    changes.extend(await advance_vitality(session, campaign_id, sequence, dice))
+    changes.extend(await expire_effects(session, campaign_id, end))
     from app.core.universal.regeneration import regenerate_energy
 
     await regenerate_energy(session, campaign_id, elapsed_seconds)

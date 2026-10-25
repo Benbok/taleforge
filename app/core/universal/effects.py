@@ -30,7 +30,7 @@ async def start_effect(
         or duration_seconds < 1
     ):
         raise ValueError("Invalid effect time")
-    actor = await session.get(Character, actor_id)
+    actor = await session.get(Character, actor_id) or await session.get(Entity, actor_id)
     target = await session.get(Character, target_id) or await session.get(Entity, target_id)
     event = await session.get(Event, event_id)
     if (
@@ -177,16 +177,23 @@ async def scope_changes(ctx, changes):
     actor = await ctx.session.get(Character, ctx.actor_id)
     result = []
     for change in changes:
-        if change.kind in {"effect_ended", "object_expired"} and change.subject_id != ctx.actor_id:
+        if (
+            change.kind in {"effect_ended", "object_expired", "periodic_damage", "vitality"}
+            and change.subject_id != ctx.actor_id
+        ):
             row = await ctx.session.get(Entity, change.subject_id)
+            other = await ctx.session.get(Character, change.subject_id)
             state = row.state.get("exploration", {}) if row else {}
-            visible = (
-                actor is not None
-                and row is not None
-                and row.campaign_id == ctx.campaign_id
-                and not row.state.get("hidden")
-                and state.get("owner_id") in {None, ctx.actor_id}
-                and row.location_id == actor.location_id
+            visible = actor is not None and (
+                (other is not None and other.campaign_id == ctx.campaign_id and other.location_id == actor.location_id)
+                or (
+                    row is not None
+                    and row.campaign_id == ctx.campaign_id
+                    and not row.state.get("hidden")
+                    and row.state.get("visibility") not in {"hidden", "private"}
+                    and state.get("owner_id") in {None, ctx.actor_id}
+                    and row.location_id == actor.location_id
+                )
             )
             if not visible:
                 change = change.model_copy(update={"private": True})
