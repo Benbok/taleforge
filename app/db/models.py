@@ -1057,6 +1057,29 @@ class RuntimeProfile(Base):
     definition: Mapped[dict[str, Any]] = mapped_column(default=dict)
 
 
+class CombatExchange(Base):
+    __tablename__ = "universal_exchanges"
+    __table_args__ = (UniqueConstraint("campaign_id", "source_key"),)
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("ux"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    source_key: Mapped[str] = mapped_column(String(64))
+    actor_id: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(24), default="hero_pending")
+    proposal: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    hero_outcome: Mapped[dict[str, Any] | None] = mapped_column(nullable=True)
+    enemy_outcome: Mapped[dict[str, Any] | None] = mapped_column(nullable=True)
+    hero_event_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    enemy_actor_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    enemy_target_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    selection_attempted: Mapped[bool] = mapped_column(Boolean, default=False)
+    selection_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sequence: Mapped[str] = mapped_column(Text)
+    started_seconds: Mapped[str] = mapped_column(Text)
+    elapsed_seconds: Mapped[str] = mapped_column(Text)
+    changes: Mapped[list[Any]] = mapped_column(default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class UniversalClock(Base):
     """Exact game time; never wall time or client message count."""
 

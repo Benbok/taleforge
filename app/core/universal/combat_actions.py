@@ -108,7 +108,7 @@ async def combat_action(ctx, action, event, result, now):
     sheet, _ = await load_actor(s, ctx.campaign_id, action.actor_id)
     targets = await scoped_targets(ctx, action)
     dice = _RecordingDice(ctx.dice)
-    attacker_state = await effective_actor(s, ctx.campaign_id, action.actor_id)
+    attacker_state = await effective_actor(s, ctx.campaign_id, action.actor_id, pending_event_id=ctx.pending_event_id)
     all_hits = []
     for target_id, target in targets.items():
         await initialize_combatant(s, ctx.campaign_id, target_id)
@@ -127,7 +127,7 @@ async def combat_action(ctx, action, event, result, now):
         if damaging and action.resolution == "attack":
             if isinstance(target, Entity):
                 target.state = {**target.state, "hostile": True}
-            target_state = await effective_actor(s, ctx.campaign_id, target_id)
+            target_state = await effective_actor(s, ctx.campaign_id, target_id, pending_event_id=ctx.pending_event_id)
             difficulty = target_state["derived"].ac
             check = resolve_check(
                 dice,

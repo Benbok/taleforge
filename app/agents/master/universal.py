@@ -213,11 +213,18 @@ async def run_universal_turn(service, cid, place=None):
         await service._status(cid, "listening")
         for mid in ids:
             if mid in trace["outcomes"]:
+                from app.core.universal.combat import enemy_source_key
+
                 async with service.maker() as s:
                     card = await ensure_roll_message(s, cid, game.id, tid, mid, trace.get("audience"))
+                    enemy_card = await ensure_roll_message(
+                        s, cid, game.id, tid, enemy_source_key(mid), trace.get("audience")
+                    )
                     await s.commit()
                 if card:
                     await publish_message(service.bus, card)
+                if enemy_card:
+                    await publish_message(service.bus, enemy_card)
                 continue
             async with service.maker() as s:
                 msg = await s.get(Message, mid)
@@ -321,19 +328,45 @@ async def run_universal_turn(service, cid, place=None):
             if compiled.proposal is not None:
                 async with service.maker() as s:
                     await service._status(cid, "rolling")
-                    resolver = resolve_action
+                    enemy_card = None
                     if getattr(compiled, "schema_version", None) == 2:
-                        from app.core.universal.exploration_resolution import resolve_exploration
+                        from app.core.universal.combat import enemy_source_key, run_exchange
 
-                        resolver = resolve_exploration
-                    result = await resolver(
-                        ResolutionContext(s, cid, **scope, dice=service.dice_factory()), compiled.proposal, mid
-                    )
+                        ctx = ResolutionContext(s, cid, **scope, dice=service.dice_factory())
+                        results = await run_exchange(ctx, compiled.proposal, request_key=mid)
+                        result = results[0]
+                    else:
+                        results = []
+                        result = await resolve_action(
+                            ResolutionContext(s, cid, **scope, dice=service.dice_factory()), compiled.proposal, mid
+                        )
                     outcome = public_outcome(result, compiled.public_reason)
+                    if results:
+                        from app.core.universal.effects import scope_changes
+                        from app.db.models import CombatExchange
+                        from app.rules.universal.exploration import EffectChange
+
+                        exchange = await s.scalar(
+                            select(CombatExchange).where(
+                                CombatExchange.campaign_id == cid, CombatExchange.source_key == mid
+                            )
+                        )
+                        outcome["enemy_reply"] = [public_outcome(reply, "Ответ врага") for reply in results[1:]]
+                        changes = await scope_changes(
+                            ctx, [EffectChange.model_validate(change) for change in exchange.changes]
+                        )
+                        outcome["completion"] = [
+                            change.model_dump(mode="json") for change in changes if not change.private
+                        ]
+                        enemy_card = await ensure_roll_message(
+                            s, cid, game.id, tid, enemy_source_key(mid), trace.get("audience")
+                        )
                     card = await ensure_roll_message(s, cid, game.id, tid, mid, trace.get("audience"))
                     await s.commit()
                 if card:
                     await publish_message(service.bus, card)
+                if enemy_card:
+                    await publish_message(service.bus, enemy_card)
             trace["outcomes"][mid] = outcome
             async with service.maker() as s:
                 t = await s.get(MasterTurn, tid)

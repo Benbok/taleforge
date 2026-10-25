@@ -115,7 +115,7 @@ async def _execute(ctx, action, key):
         ):
             raise ValueError("Ключ квитанции уже занят")
         return ExplorationOutcome.model_validate(previous.payload["outcome"]).model_copy(update={"status": "repeated"})
-    source = await s.get(Message, action.source_message_id)
+    source = await s.get(Message, ctx.parent_source_id if ctx.npc_reply else action.source_message_id)
     if (
         source is None
         or source.campaign_id != ctx.campaign_id
@@ -227,9 +227,12 @@ async def _execute(ctx, action, key):
                 )
             elif op.kind == "dismiss":
                 result.changes.extend(await dismiss_effect(s, ctx.campaign_id, action.actor_id, op.effect_id or ""))
-    step = await complete_step(s, ctx.campaign_id, key, action.elapsed_game_seconds)
-    result.game_seconds = int(step.ended_seconds)
-    result.changes.extend(EffectChange.model_validate(c) for c in step.changes)
+    if not ctx.defer_step:
+        step = await complete_step(s, ctx.campaign_id, key, action.elapsed_game_seconds)
+        result.game_seconds = int(step.ended_seconds)
+        result.changes.extend(EffectChange.model_validate(c) for c in step.changes)
+    else:
+        result.game_seconds = now + action.elapsed_game_seconds
     from app.core.universal.perception import assess_detection, observe_known_scene
 
     if result.success:
@@ -274,7 +277,7 @@ async def _execute(ctx, action, key):
     event.payload = dict(
         schema_version=2, proposal=action.model_dump(mode="json"), outcome=result.model_dump(mode="json")
     )
-    learned = await record_exploration_ability(s, state.actor, action, result, event)
+    learned = None if ctx.npc_reply else await record_exploration_ability(s, state.actor, action, result, event)
     if learned:
         result.ability_ref = learned.profile_ref
         event.payload = {**event.payload, "outcome": result.model_dump(mode="json")}

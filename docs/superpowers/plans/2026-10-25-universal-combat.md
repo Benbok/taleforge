@@ -51,10 +51,10 @@
 
 **Files:** core/universal/combat.py; migration0006_universal_combat.py; models; agents/master/universal.py; tests/test_universal_exchange.py.
 **Interfaces:** CombatExchange unique(cid,source_key), checkpoints hero_applied/reply_pending/reply_applied/ticks_pending/ticks_done; run_exchange(ctx,action,choose_reply=None,request_key)->saved outcomes.
-- [ ] RED: attack/heal/guard/wait each allow at most one eligible reply; AoE still one; no enemy still closes once; completed replay and restart at every checkpoint do not duplicate anything; stale reply becomes saved pass.
-- [ ] Run exchange/migration tests; expected missing coordinator/storage.
-- [ ] Commit hero receipt before outside-lock selection. Default deterministic nearest eligible hostile NPC policy uses admitted saved weapon profile and target. A supplied selector runs outside transactions, then eligibility is rechecked. Enemy action cannot recursively open another exchange. Defer existing complete_step until reply/pass; new effects are available to that reply without losing their full post-exchange lifetime.
-- [ ] Run exchange/concurrent completion/migration preservation regressions; commit.
+- [x] RED: attack/heal/guard/wait each allow at most one eligible reply; AoE still one; no enemy still closes once; completed replay and restart at every checkpoint do not duplicate anything; stale reply becomes saved pass.
+- [x] Run exchange/migration tests; expected missing coordinator/storage.
+- [x] Commit hero receipt before outside-lock selection. Default deterministic nearest eligible hostile NPC policy uses admitted saved weapon profile and target. A supplied selector runs outside transactions, then eligibility is rechecked. Enemy action cannot recursively open another exchange. Defer existing complete_step until reply/pass; new effects are available to that reply without losing their full post-exchange lifetime.
+- [x] Run exchange/concurrent completion/migration preservation regressions; commit.
 
 ### Task 4: Periodic effects and private vitality
 

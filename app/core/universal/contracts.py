@@ -36,3 +36,8 @@ class ResolutionContext:
     actor_id: str
     dice: object
     allowed_target_ids: frozenset[str] | None = None
+    defer_step: bool = False
+    exchange_id: str | None = None
+    npc_reply: bool = False
+    parent_source_id: str | None = None
+    pending_event_id: str | None = None

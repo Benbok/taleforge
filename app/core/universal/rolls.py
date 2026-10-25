@@ -5,7 +5,7 @@ from sqlalchemy import select
 from app.core.chat import next_seq
 from app.core.rolls import ABILITY_RU
 from app.core.universal.contracts import ProposedAction
-from app.db.models import Character, Event, Message
+from app.db.models import Character, Entity, Event, Message
 from app.rules.universal.profiles import ActionOutcome
 
 
@@ -41,7 +41,7 @@ async def ensure_roll_message(session, campaign_id, session_id, turn_id, source_
         if check["kind"] == "attack" and (target is None or not target.seat_id):
             check["difficulty"] = None
         check["target_name"] = target.name if target else "Цель"
-    actor = await session.get(Character, event.actor_id)
+    actor = await session.get(Character, event.actor_id) or await session.get(Entity, event.actor_id)
     proof = dict(
         receipt_id=event.id,
         source_id=source_id,

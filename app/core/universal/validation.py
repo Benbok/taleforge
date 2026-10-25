@@ -40,6 +40,10 @@ def capabilities():
 
 
 async def authorize_actor(ctx, proposal, *, require_active=True):
+    if getattr(ctx, "npc_reply", False):
+        from app.core.universal.combat import authorize_enemy
+
+        return await authorize_enemy(ctx, proposal, require_active=require_active)
     try:
         row = await actor_row(ctx.session, ctx.campaign_id, proposal.actor_id, refresh=True)
     except NotFound:

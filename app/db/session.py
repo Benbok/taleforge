@@ -34,7 +34,7 @@ async def verify_universal_schema(engine: AsyncEngine) -> None:
             raise RuntimeError("Expected hero portrait storage; run alembic upgrade head")
         if not {"runtime_profiles", "hero_abilities"} <= tables:
             raise RuntimeError("Expected universal action storage; run alembic upgrade head")
-        if not {"universal_clocks", "universal_steps", "universal_effects"} <= tables:
+        if not {"universal_clocks", "universal_steps", "universal_effects", "universal_exchanges"} <= tables:
             raise RuntimeError("Expected universal exploration storage; run alembic upgrade head")
 
     async with engine.begin() as connection:

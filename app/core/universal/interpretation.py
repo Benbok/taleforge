@@ -150,7 +150,7 @@ async def validate_exploration(ctx, action):
     from app.core.universal.combat_actions import COMBAT_KINDS, effective_actor, scoped_targets
 
     combat = any(op.kind in COMBAT_KINDS for op in a.operations)
-    current = await effective_actor(ctx.session, ctx.campaign_id, a.actor_id)
+    current = await effective_actor(ctx.session, ctx.campaign_id, a.actor_id, pending_event_id=ctx.pending_event_id)
     if resources.hp <= 0 or current["cannot_act"]:
         raise ValueError("Герой сейчас не может действовать")
     if current["cannot_move"] and any(op.kind == "move" for op in a.operations):
