@@ -13,7 +13,7 @@ from app.core.universal.interpretation import validate_exploration
 from app.core.universal.objects import apply_object_operation, introduce_object
 from app.core.universal.profiles import save_actor
 from app.core.universal.validation import authorize_actor
-from app.db.models import Event, HeroAbility, Message
+from app.db.models import Entity, Event, HeroAbility, Message
 from app.rules.universal.exploration import TIMED_KINDS, EffectChange, ExplorationAction, ExplorationOutcome
 from app.rules.universal.failures import action_failure
 from app.rules.universal.profiles import CheckProof, DieProof, resolve_check
@@ -120,6 +120,12 @@ async def _execute(ctx, action, key):
     ):
         raise AccessDenied("Действие не связано с исходным сообщением")
     await validate_exploration(ctx, action)
+    if action.introductions:
+        from app.core.universal.perception import established_evidence
+
+        evidence = await established_evidence(s, ctx.campaign_id, ctx.actor_id)
+        if any(spec.evidence_quote not in evidence for spec in action.introductions):
+            raise ValueError("Основание предмета или наблюдателя больше не доступно")
     # Validate compound material/liquid operations before any die is consumed. The savepoint
     # simulates the complete object sequence and is always rolled back, including introductions.
     if action.introductions or any(op.kind in OBJECT_KINDS for op in action.operations):
@@ -213,6 +219,23 @@ async def _execute(ctx, action, key):
     step = await complete_step(s, ctx.campaign_id, key, action.elapsed_game_seconds)
     result.game_seconds = int(step.ended_seconds)
     result.changes.extend(EffectChange.model_validate(c) for c in step.changes)
+    from app.core.universal.effects import active_effects
+    from app.core.universal.perception import assess_detection, observe_known_scene
+
+    if result.success:
+        for op in action.operations:
+            if op.kind == "observe":
+                result.changes.extend(await observe_known_scene(ctx, op.aspect))
+    if any(e["kind"] == "camouflage" for e in await active_effects(s, ctx.campaign_id, action.actor_id)):
+        for observer in await s.scalars(
+            select(Entity).where(
+                Entity.campaign_id == ctx.campaign_id,
+                Entity.kind == "creature",
+                Entity.location_id == state.actor.location_id,
+            )
+        ):
+            if "exploration_observer" in observer.state:
+                result.changes.append(await assess_detection(ctx, observer.id, action.actor_id, key))
     result.description = " ".join(c.description for c in result.changes if not c.private) or (
         "Проверка успешна; новых подтверждённых наблюдений нет."
         if result.success

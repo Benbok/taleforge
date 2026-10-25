@@ -95,11 +95,11 @@
 
 **Files:** Create perception.py, tests/test_exploration_perception.py; integrate effects into execution validation and scene projection.
 **Interfaces:** actor_constraints(session,cid,actor_id)->dict; stealth_edge(effects,context)->edge; assess_detection(ctx,observer_id,actor_id,source_key)->EffectChange; illumination_view(...)->dict.
-- [ ] RED: camouflage grants a single advantage only in eligible context; direct witness retains identity; no observer means no invented guaranteed-hidden result; chosen natural20/1 honored; private perception DC not public; form prevents moving/speaking/manual actions until cancellation; light alters observation conditions but does not reveal secret objects automatically.
-- [ ] Run perception tests; expected missing behavior.
-- [ ] Plant form preserves base stats/HP/energy/senses and adds no immunity or air independence. Use passive observer perception10+M(WIS), fixed from saved data; track actual notice state. Existing scene details become observers/props only through validated introductions. Noncombat reactions do not attack. Future combat consumes the same effects/clock.
-- [ ] Run perception, actor scope and scene/privacy tests; expected green.
-- [ ] Commit task6.
+- [x] RED: camouflage grants a single advantage only in eligible context; direct witness retains identity; no observer means no invented guaranteed-hidden result; chosen natural20/1 honored; private perception DC not public; form prevents moving/speaking/manual actions until cancellation; light alters observation conditions but does not reveal secret objects automatically.
+- [x] Run perception tests; expected missing behavior.
+- [x] Plant form preserves base stats/HP/energy/senses and adds no immunity or air independence. Use passive observer perception10+M(WIS), fixed from saved data; track actual notice state. Existing scene details become observers/props only through validated introductions. Noncombat reactions do not attack. Future combat consumes the same effects/clock.
+- [x] Run perception, actor scope and scene/privacy tests; expected green.
+- [x] Commit task6.
 
 ### Task 7: Durable V2 master pipeline and grounded narrative
 
