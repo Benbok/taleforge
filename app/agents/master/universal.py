@@ -11,6 +11,8 @@ from app.agents.llm import decide_model_for, model_for
 from app.agents.master.action_admission import obtain_prepared_action
 from app.agents.master.action_results import mark_source, narration_parts, prepared_outcome, public_outcome
 from app.agents.master.helpers import _batches
+from app.agents.master.universal_narration import SYSTEM as NARRATION_SYSTEM
+from app.agents.master.universal_narration import recent_history
 from app.core.campaigns import Viewer, master_seat
 from app.core.chat import active_session, next_seq
 from app.core.universal.action_intents import LegacyAdmission
@@ -201,19 +203,7 @@ async def run_universal_turn(service, cid, place=None):
                 user = await s.get(User, seat.user_id)
                 public_scene = await universal_scene(s, c, Viewer(user, c, seat))
                 known = list(await s.scalars(select(HeroAbility).where(HeroAbility.character_id == hero.id)))
-                history = list(
-                    await s.scalars(
-                        select(Message)
-                        .where(
-                            Message.campaign_id == cid,
-                            Message.seq < msg.seq,
-                            Message.visible_to.is_(None),
-                            Message.kind == "narration",
-                        )
-                        .order_by(Message.seq.desc())
-                        .limit(8)
-                    )
-                )
+                history = await recent_history(s, c, msg.seq - 1, trace.get("audience"), public_scene)
                 allowed_targets = {e["id"] for e in public_scene.get("entities", [])}
                 allowed_targets.add(hero.id)
                 visible_heroes = await s.scalars(
@@ -230,7 +220,7 @@ async def run_universal_turn(service, cid, place=None):
                     hero=sh.model_dump(mode="json"),
                     resources=resources.model_dump(mode="json"),
                     scene=public_scene,
-                    history=[m.content for m in reversed(history)],
+                    history=history,
                     source=msg.content,
                     known_abilities=[
                         dict(name=a.name, profile_id=a.profile_ref, revision=a.profile_revision, profile=a.definition)
@@ -276,6 +266,7 @@ async def run_universal_turn(service, cid, place=None):
             saved_narration = (
                 await s.get(Message, saved_turn.narration_message_id) if saved_turn.narration_message_id else None
             )
+            history = await recent_history(s, c, saved_turn.upto_seq, trace.get("audience"), trace.get("scene", {}))
         await service._status(cid, "describing")
         story, notices = narration_parts(trace["outcomes"])
         if saved_narration:
@@ -291,23 +282,14 @@ async def run_universal_turn(service, cid, place=None):
                 [
                     {
                         "role": "system",
-                        "content": (
-                            "Narrate only these saved public outcomes in Russian. Preserve player agency. "
-                            "Never invent rolls, costs, healing, numeric changes or reasons for failure. "
-                            "A failed roll is a failed attempt, not a new world prohibition. "
-                            "Only world_denial can establish an action is impossible by world laws."
-                            " Dice are shown in separate server cards; do not repeat numbers or rolls in the prose."
-                            " Mark places and visible entities as [[id|name in the required grammatical case]]."
-                            " Use scene.location.id for the current place, including its descriptive names "
-                            "from the public description."
-                            " Never invent reference IDs or link hidden places."
-                            " Every check outcome.description is the actual resolved consequence: state it explicitly."
-                            " Never replace a successful result with another description of the hero trying."
-                        ),
+                        "content": NARRATION_SYSTEM,
                     },
                     {
                         "role": "user",
-                        "content": json.dumps({"outcomes": story, "scene": trace.get("scene", {})}, ensure_ascii=False),
+                        "content": json.dumps(
+                            {"outcomes": story, "scene": trace.get("scene", {}), "recent_history": history},
+                            ensure_ascii=False,
+                        ),
                     },
                 ],
             )

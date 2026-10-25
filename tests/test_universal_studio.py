@@ -229,5 +229,6 @@ def test_optional_generated_objects_do_not_replace_authored_entry_scene(client, 
             assert bundle["meta"]["studio_entry_ref"] == "studio_entry"
             assert len(bundle["entities"]) == 2
             assert next(e for e in bundle["entities"] if e["ref"] == "studio_entry")["description"] == FIELDS["start"]
+            assert next(e for e in bundle["entities"] if e["ref"] == "studio_entry")["name"] != FIELDS["title"]
 
     asyncio.run(check())

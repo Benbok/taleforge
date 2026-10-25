@@ -4,6 +4,7 @@ import json
 
 from app.core.campaigns import Viewer, master_seat
 from app.core.chat import next_seq
+from app.core.universal.places import public_location_name
 from app.core.universal.references import link_scene_text, location_reference
 from app.core.universal.scene import universal_scene
 from app.db.models import Campaign, Entity, Message, User
@@ -22,7 +23,7 @@ async def open_universal_session(service, cid, session_id):
             text = "\n\n".join(x for x in (c.public_intro, entry.description if entry else "") if x)
             if not text:
                 return True
-            framing = {"location": {"id": entry.id, "name": entry.name}} if entry else {}
+            framing = {"location": {"id": entry.id, "name": public_location_name(c, entry)}} if entry else {}
             msg = Message(
                 campaign_id=cid,
                 session_id=session_id,

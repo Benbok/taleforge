@@ -36,12 +36,13 @@ it("does not offer to retry someone else's reply", () => {
   expect(screen.queryByRole("button", { name: "Повторить" })).toBeNull();
 });
 
-it('opens the location from party narration even when its text has no place name', () => {
+it('keeps an inline location link without adding a second location heading', () => {
   const message = { ...failed, kind: 'narration', whisper: true, scope: 'party', state: null,
-    content: 'У тоннеля появился мост.', data: { location_ref: { id: 'gorge', name: 'Серая Глотка' } },
+    content: 'В [[gorge|Серой Глотке]] у тоннеля появился мост.', data: { location_ref: { id: 'gorge', name: 'Серая Глотка' } },
   } as ChatMessage;
   render(<MessageView m={message} who={{ seats: {}, heroBySeat: {}, mySeat: 'seat_me' }} />);
-  expect(screen.getByRole('button', { name: 'Серая Глотка' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Серая Глотка' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Серой Глотке' })).toBeTruthy();
 });
 
 it("explains a transient provider failure and keeps the retry button", () => {

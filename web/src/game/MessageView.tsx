@@ -56,7 +56,6 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
   if (m.kind === "narration" && (!m.whisper || m.scope === 'party')) {
     return (
       <div className={`tf-pop w-full min-w-0 break-words whitespace-pre-line font-narration text-[20px] leading-[1.65] sm:text-[22px] ${m.scope === "party" ? "tf-narration-party" : ""}`}>
-        {m.data?.location_ref && <p className="mb-2 font-sans text-xs text-patina"><RichText text={`[[${m.data.location_ref.id}|${m.data.location_ref.name}]]`} /></p>}
         {(m.data?.voice || m.data?.voice_parts) && (
           <VoiceClip clips={m.data.voices ?? (m.data.voice ? [m.data.voice] : [])} expected={m.data.voice_parts} autoPlay={m.fresh} />
         )}
@@ -82,7 +81,6 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
     const fromMaster = m.kind === "narration";
     return (
       <div className="tf-pop max-w-[76ch] rounded-[10px] border border-dashed border-accent/40 bg-surface/80 p-3 sm:p-4">
-        {m.data?.location_ref && <p className="mb-2 text-xs text-patina"><RichText text={`[[${m.data.location_ref.id}|${m.data.location_ref.name}]]`} /></p>}
         <p className="mb-1.5 text-xs text-muted">
           {fromMaster ? (m.data?.whisper_reply ? "Мастер отвечает на ваш шёпот" : "Шёпот мастера") : m.seat_id === who.mySeat ? "Ваш шёпот мастеру" : `Шёпот: ${heroName(m, who)}`} ·
           видите только вы{fromMaster ? "" : " и мастер"}

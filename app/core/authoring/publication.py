@@ -83,19 +83,20 @@ async def publish_project(
         raise PublishBlocked((ValidationIssue(code=exc.code, object_ref=exc.where),)) from exc
     if fields is not None:
         from app.core.authoring.contracts import BundleEntity, BundleGeographyNode
+        from app.core.universal.places import START_LOCATION_NAME
 
         # A concrete entry scene is enough to start exploration; optional generated content stays in the bundle.
         bundle.entities.append(
             BundleEntity(
                 ref="studio_entry",
                 kind="location",
-                name=fields.title,
+                name=START_LOCATION_NAME,
                 description=fields.start,
                 state={"studio_entry": True},
             )
         )
         bundle.geography_nodes.append(
-            BundleGeographyNode(ref="studio_entry", kind="location", name=fields.title, entity="studio_entry")
+            BundleGeographyNode(ref="studio_entry", kind="location", name=START_LOCATION_NAME, entity="studio_entry")
         )
         bundle.plot = {
             **bundle.plot,
@@ -103,7 +104,12 @@ async def publish_project(
             "public_intro": fields.public_text,
             "locations": [
                 *(bundle.plot.get("locations") or []),
-                {"id": "studio_entry", "name": fields.title, "description": fields.start, "entity_id": "studio_entry"},
+                {
+                    "id": "studio_entry",
+                    "name": START_LOCATION_NAME,
+                    "description": fields.start,
+                    "entity_id": "studio_entry",
+                },
             ],
         }
         bundle.meta["studio_entry_ref"] = "studio_entry"

@@ -321,6 +321,10 @@ async def entity_card(session: AsyncSession, viewer: Viewer, entity_id: str) -> 
             if adventure.room_of(e)
             else e.description or None
         )
+    if viewer.campaign.ruleset_id == "universal" and e.kind == "location":
+        from app.core.universal.places import public_location_name
+
+        name = public_location_name(viewer.campaign, e, name)
     card: dict[str, Any] = {
         "id": e.id,
         "type": entity_type(e),

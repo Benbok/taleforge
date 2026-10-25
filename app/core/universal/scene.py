@@ -5,6 +5,7 @@ from sqlalchemy import select
 from app.core.inspect import viewer_hero
 from app.core.object_policy import revealed_to
 from app.core.scene_view import visible_scene
+from app.core.universal.places import public_location_name
 from app.core.world import get_scene
 from app.db.models import Character, Entity
 from app.tools.runtime import scene_payload
@@ -23,5 +24,6 @@ async def universal_scene(session, campaign, viewer):
     payload = scene_payload(scene, entities, characters, view)
     location = entities.get(view.current_location_id or "")
     if location is not None:
+        payload["location"]["name"] = public_location_name(campaign, location)
         payload["location"]["description"] = location.description
     return payload
