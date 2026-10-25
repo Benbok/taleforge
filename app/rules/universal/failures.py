@@ -25,6 +25,10 @@ class ActionFailure(ClosedModel):
 
 
 _FAILURES = {
+    "missing_check_outcomes": (
+        "invalid_proposal",
+        "Мастер не определил конкретные последствия проверки. Бросок не выполнен; ресурсы не потрачены.",
+    ),
     "invalid_proposal": (
         "invalid_proposal",
         "Мастер предложил некорректные параметры действия. Ничего не применено; ресурсы не потрачены.",

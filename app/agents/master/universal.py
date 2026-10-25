@@ -301,6 +301,8 @@ async def run_universal_turn(service, cid, place=None):
                             " Use scene.location.id for the current place, including its descriptive names "
                             "from the public description."
                             " Never invent reference IDs or link hidden places."
+                            " Every check outcome.description is the actual resolved consequence: state it explicitly."
+                            " Never replace a successful result with another description of the hero trying."
                         ),
                     },
                     {

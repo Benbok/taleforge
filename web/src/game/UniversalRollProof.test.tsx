@@ -36,3 +36,13 @@ it('preserves exact large totals and does not invent a hidden defense value', ()
   expect(screen.getByText(/9007199254741002/)).toBeTruthy();
   expect(screen.queryByText(/Сложность/)).toBeNull();
 });
+
+it('shows what the hero actually learned from the successful check', () => {
+  const card = { tool: 'universal_action', title: 'Проверка: Мудрость', outcome: 'success', universal_proof: {
+    receipt_id: 'ev3', source_id: 'm3', revision: '1', cost: '0', damage: '0', draws: [], checks: [],
+    description: 'Из тоннеля впереди слышны приближающиеся костяные шаги.',
+  } } as RollCard;
+  render(<RollCardView card={card} />);
+  expect(screen.getByText('Результат действия')).toBeTruthy();
+  expect(screen.getByText('Из тоннеля впереди слышны приближающиеся костяные шаги.')).toBeTruthy();
+});

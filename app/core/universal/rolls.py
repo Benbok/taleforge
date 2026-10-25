@@ -45,6 +45,7 @@ async def ensure_roll_message(session, campaign_id, session_id, turn_id, source_
         damage=str(result.damage),
         resource_key=proposal.profile.resource_key,
         legacy=not bool(result.draws),
+        description=result.description,
     )
     # Old receipts keep their original flat draws; never invent missing die sizes or per-target checks.
     if proof["legacy"]:

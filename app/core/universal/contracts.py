@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import Field
 
 from app.rules.universal.contracts import ClosedModel, Count
-from app.rules.universal.profiles import EffectSpec, ProfileSpec
+from app.rules.universal.profiles import CheckNarration, EffectSpec, ProfileSpec
 
 
 class ActionRef(ClosedModel):
@@ -24,6 +24,7 @@ class ProposedAction(ClosedModel):
     difficulty: int = Field(default=12, ge=1, le=40, strict=True)
     edge: Literal["normal", "advantage", "disadvantage"] = "normal"
     critical_failure_consequence: Literal["self_damage_1"] = "self_damage_1"
+    check_outcomes: CheckNarration | None = None
 
 
 @dataclass

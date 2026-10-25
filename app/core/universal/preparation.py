@@ -189,6 +189,7 @@ async def prepare_action(ctx, intent, source_id):
         operations=profile.effects,
         reason=public_reason or (intent.name if isinstance(intent, ActionIntent) else "") or source_id,
         difficulty=intent.difficulty,
+        check_outcomes=intent.check_outcomes if isinstance(intent, ActionIntent) else None,
     )
     await validate_action(ctx, proposal, require_saved_profile=False)
     await put_profile(s, ctx.campaign_id, profile)

@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import Field, model_validator
 
 from app.rules.universal.contracts import AbilityKey, ClosedModel
-from app.rules.universal.profiles import ProfileSpec
+from app.rules.universal.profiles import CheckNarration, ProfileSpec
 
 ActionCategory = Literal["narrative", "ordinary_check", "ability", "weapon_attack", "world_denial", "unsupported"]
 IntentEffect = Literal[
@@ -36,6 +36,10 @@ class ActionIntent(ClosedModel):
     targets: list[str] = Field(default_factory=list, max_length=100)
     known_profile_id: str | None = Field(default=None, min_length=1, max_length=128)
     known_revision: int = Field(default=1, ge=1, strict=True)
+    check_outcomes: CheckNarration | None = Field(
+        default=None,
+        description="Required for a numerical check: freeze observable success and failure consequences before dice.",
+    )
 
 
 class LegacyAdmission(ClosedModel):

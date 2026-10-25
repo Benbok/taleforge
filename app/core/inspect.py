@@ -229,6 +229,7 @@ async def _location_observations(session, viewer, subject_id):
                 if failure.get("category") != "roll_failed" and failure.get("message"):
                     content = content.replace(failure["message"], "")
             sentences = SENTENCE.split(content)
+            sentences = [_plain(o["description"]) for o in outcomes if o.get("description")] + sentences
         else:
             sentences = [
                 _plain(sentence) for sentence in SENTENCE.split(message.content) if f"[[{subject_id}|" in sentence

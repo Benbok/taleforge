@@ -43,7 +43,16 @@ def test_recovered_narration_clears_transient_notice_without_repeating_action(tm
     async def run():
         engine, maker = await setup(tmp_path)
         await prepare(maker)
-        first = Provider([dict(kind="ordinary_check", difficulty=1), RuntimeError("narrator offline")])
+        first = Provider(
+            [
+                dict(
+                    kind="ordinary_check",
+                    difficulty=1,
+                    check_outcomes=dict(success="Получается высечь искру.", failure="Искра не появляется."),
+                ),
+                RuntimeError("narrator offline"),
+            ]
+        )
         tid = await MasterService(maker, Bus(), first, dice_factory=lambda: FixedDice([20])).run_turn("c")
         async with maker() as s:
             assert (await s.get(Message, "source")).data["action_failure"]["code"] == "narration_unavailable"
@@ -66,7 +75,13 @@ def test_invalid_target_is_repaired_once_before_profile_is_saved(tmp_path):
         provider = Provider(
             [
                 dict(kind="ordinary_check", name="Факел", targets=["environment"]),
-                dict(kind="ordinary_check", name="Факел", attribute="dex", difficulty=10),
+                dict(
+                    kind="ordinary_check",
+                    name="Факел",
+                    attribute="dex",
+                    difficulty=10,
+                    check_outcomes=dict(success="Получается высечь искру.", failure="Искра не появляется."),
+                ),
                 "Вы пытаетесь высечь искру.",
             ]
         )

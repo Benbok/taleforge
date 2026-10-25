@@ -169,6 +169,7 @@ export interface RollCard {
 }
 
 export interface UniversalRollEvidence {
+  description?: string | null;
   receipt_id: string;
   source_id: string;
   revision: string;

@@ -214,6 +214,8 @@ async def _execute(ctx, p, key):
         await save_actor(s, ctx.campaign_id, target, target_sheet, target_resources)
     result.rolls = dice.rolls
     result.draws = dice.draws
+    if profile.kind == 'check' and p.check_outcomes is not None:
+        result.description = p.check_outcomes.success if result.success else p.check_outcomes.failure
     event = Event(
         campaign_id=ctx.campaign_id,
         tool="universal_action",

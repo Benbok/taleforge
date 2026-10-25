@@ -155,6 +155,20 @@ class CheckProof(ClosedModel):
     kind: Literal["check", "attack", "resistance"] = "check"
 
 
+class CheckNarration(ClosedModel):
+    success: str = Field(min_length=1, max_length=4000, description="Concrete observable success result, not trying.")
+    failure: str = Field(
+        min_length=1, max_length=4000, description="Concrete failure result, no invented world prohibition."
+    )
+
+    @model_validator(mode="after")
+    def distinct_results(self):
+        self.success, self.failure = self.success.strip(), self.failure.strip()
+        if not self.success or not self.failure or self.success == self.failure:
+            raise ValueError("A check needs distinct, nonempty success and failure results")
+        return self
+
+
 class ActionOutcome(ClosedModel):
     status: Literal["applied", "denied", "repeated", "failed"] = "applied"
     success: bool = False
@@ -171,6 +185,7 @@ class ActionOutcome(ClosedModel):
     failure: ActionFailure | None = None
     checks: list[CheckProof] = Field(default_factory=list)
     draws: list[DieProof] = Field(default_factory=list)
+    description: str | None = Field(default=None, max_length=4000)
 
 
 def validate_profile(profile: ProfileSpec | dict) -> ProfileSpec:

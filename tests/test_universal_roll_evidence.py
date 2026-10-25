@@ -17,7 +17,17 @@ def test_roll_card_is_actual_saved_evidence_and_survives_narrator_restart(tmp_pa
     async def run():
         engine, maker = await setup(tmp_path)
         await prepare(maker)
-        provider = Provider([dict(kind="ordinary_check", attribute="wis", difficulty=12), RuntimeError("offline")])
+        provider = Provider(
+            [
+                dict(
+                    kind="ordinary_check",
+                    attribute="wis",
+                    difficulty=12,
+                    check_outcomes=dict(success="Различимы шаги.", failure="Звуки неразличимы."),
+                ),
+                RuntimeError("offline"),
+            ]
+        )
         tid = await MasterService(maker, Bus(), provider, dice_factory=lambda: FixedDice([9])).run_turn("c")
         async with maker() as s:
             cards = list(await s.scalars(select(Message).where(Message.kind == "roll")))
