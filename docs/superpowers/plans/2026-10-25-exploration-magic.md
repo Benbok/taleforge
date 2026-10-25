@@ -75,11 +75,11 @@
 
 **Files:** Create interpretation.py, tests/test_exploration_interpretation.py; extend capability registry through versioned V2 entrypoint.
 **Interfaces:** compile_exploration(ctx,intent,requirements_review,public_context)->ExplorationAction; validate_exploration(ctx,action)->ValidatedExploration; needs_intent_review(source,intent,known)->bool.
-- [ ] RED: exact bush source cannot compile to mundane hiding; «делаю вид, что колдую» is not forced into real magic; missing requested light/duration/form rejected; current actor and target/object scope rechecked; saved known ref cannot change effects/parameters; all four consequence branches remain bounded editorial hints, not free world operations.
-- [ ] Run interpretation tests; expected missing compiler.
-- [ ] Compile definitions from supported primitives. Reject uncovered requirements and free supernatural effects. Source-text triggers only request review, never replace semantic interpretation. Validate price, form restrictions, materials, target visibility, energy, timing and effect capability before write and again during execution.
-- [ ] Run interpretation/contracts/shared-validation regressions; expected green.
-- [ ] Commit task4.
+- [x] RED: exact bush source cannot compile to mundane hiding; «делаю вид, что колдую» is not forced into real magic; missing requested light/duration/form rejected; current actor and target/object scope rechecked; saved known ref cannot change effects/parameters; all four consequence branches remain bounded editorial hints, not free world operations.
+- [x] Run interpretation tests; expected missing compiler.
+- [x] Compile definitions from supported primitives. Reject uncovered requirements and free supernatural effects. Source-text triggers only request review, never replace semantic interpretation. Validate price, form restrictions, materials, target visibility, energy, timing and effect capability before write and again during execution.
+- [x] Run interpretation/contracts/shared-validation regressions; expected green.
+- [x] Commit task4.
 
 ### Task 5: Atomic application, facts and successful learning
 

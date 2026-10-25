@@ -208,7 +208,22 @@ def definition_key(definition: AbilityDefinitionV2) -> str:
         "appearance",
         "required_by",
     }
-    data["effects"] = [effect.model_dump(mode="json", exclude=bindings) for effect in definition.effects]
+    meaningful = {
+        "create_object": {"template", "material", "capacity_ml", "lifetime", "quantity"},
+        "change_form": {"form", "quantity"},
+        "observe": {"aspect"},
+        "fill": {"amount"},
+        "pour": {"amount"},
+        "consume": {"amount"},
+    }
+    data["effects"] = [
+        effect.model_dump(
+            mode="json", include={"kind"} | meaningful.get(effect.kind, {"lifetime", "quantity"}), exclude=bindings
+        )
+        for effect in definition.effects
+    ]
+    if not any(e.kind in TIMED_KINDS or e.lifetime == "timed" for e in definition.effects):
+        data.pop("duration_seconds")
     return "ability2-" + hashlib.sha256(json.dumps(data, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:24]
 
 
