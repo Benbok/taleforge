@@ -65,11 +65,11 @@
 
 **Files:** Create objects.py, tests/test_exploration_objects.py; use Entity kind=object with closed V2 state and existing actor storage.
 **Interfaces:** introduce_object(session,cid,spec,evidence)->Entity; apply_object_operation(ctx,operation,source_event)->EffectChange; visible_objects(session,cid,actor_id)->list; ordinary_object_view(entity)->dict.
-- [ ] RED: cup capacity300ml, fill200 from accessible water source reduces source by200, persists; pour/empty/take/place/give respect quantities/location/ownership; foreign/hidden material rejected; physical cup remains after creating magic; temporary cup expiry releases contents once; energy tonic restores only its pool and consumes once; generated ordinary cup cannot inherit restorative properties.
-- [ ] Run object tests; expected missing operations.
-- [ ] Implement bounded handheld vessel/material/water-source/energy-tonic states and public-evidence introduction. No free actor/loot creation from arbitrary player strings. Use stable source event IDs and ordinary-object constraints, positive quantities/capacity and exact counts. No trading value, armor or weapon modifiers are introduced here.
-- [ ] Run object and legacy object-policy/privacy regressions; expected green.
-- [ ] Commit task3.
+- [x] RED: cup capacity300ml, fill200 from accessible water source reduces source by200, persists; pour/empty/take/place/give respect quantities/location/ownership; foreign/hidden material rejected; physical cup remains after creating magic; temporary cup expiry releases contents once; energy tonic restores only its pool and consumes once; generated ordinary cup cannot inherit restorative properties.
+- [x] Run object tests; expected missing operations.
+- [x] Implement bounded handheld vessel/material/water-source/energy-tonic states and public-evidence introduction. No free actor/loot creation from arbitrary player strings. Use stable source event IDs and ordinary-object constraints, positive quantities/capacity and exact counts. No trading value, armor or weapon modifiers are introduced here.
+- [x] Run object and legacy object-policy/privacy regressions; expected green.
+- [x] Commit task3.
 
 ### Task 4: Semantic coverage and shared compilation
 
