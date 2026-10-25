@@ -397,6 +397,7 @@ def clean_model_intent(raw):
         cleaned.get("source") == "mundane"
         and effects
         and all(isinstance(e, dict) and e.get("kind") in _NO_RISK for e in effects)
+        and not any(isinstance(e, dict) and e.get("kind") == "move" and e.get("object_id") for e in effects)
     ):
         cleaned["resolution"] = "automatic"  # walking, speaking or waiting has no uncertain outcome to roll for
     for key in ("elapsed_game_seconds", "duration_seconds"):

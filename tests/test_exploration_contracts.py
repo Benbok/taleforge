@@ -275,3 +275,15 @@ def test_the_tolerant_parser_keeps_the_scale_and_drops_a_destination_a_small_cre
     assert effect["scale"] == "small" and "leads_to" not in effect and "form" not in effect
     big = clean_model_intent({**raw, "effects": [{**raw["effects"][0], "scale": "huge"}]})["effects"][0]
     assert big["leads_to"] == "Берег"
+
+
+def test_a_walk_over_a_remembered_structure_keeps_its_check_while_plain_walking_does_not():
+    from app.rules.universal.exploration import clean_model_intent
+
+    def walking(**effect):
+        return clean_model_intent(
+            {"schema_version": 2, "source": "mundane", "resolution": "check", "effects": [{"kind": "move", **effect}]}
+        )
+
+    assert walking()["resolution"] == "automatic"
+    assert walking(object_id="en_bridge")["resolution"] == "check"

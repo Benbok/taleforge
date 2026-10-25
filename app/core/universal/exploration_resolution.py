@@ -18,7 +18,12 @@ from app.rules.universal.exploration import TIMED_KINDS, EffectChange, Explorati
 from app.rules.universal.failures import action_failure
 from app.rules.universal.profiles import CheckProof, DieProof, resolve_check
 
-OBJECT_KINDS = {"create_object", "take", "place", "give", "fill", "pour", "empty", "consume"}
+OBJECT_KINDS = {"create_object", "take", "place", "give", "fill", "pour", "empty", "consume", "move"}
+
+
+def _touches_objects(op):
+    """Plain walking moves only the hero; walking over a remembered structure is an object operation."""
+    return op.kind in OBJECT_KINDS and (op.kind != "move" or bool(op.object_id))
 
 
 def public_exploration_facts(outcome):
@@ -73,7 +78,7 @@ async def _objects(ctx, action, event):
         bindings[f"intro:{spec.ref}"] = row.id
     changes = []
     for index, op in enumerate(action.operations):
-        if op.kind not in OBJECT_KINDS:
+        if not _touches_objects(op):
             continue
         updates = {
             field: bindings.get(getattr(op, field), getattr(op, field))
@@ -128,7 +133,7 @@ async def _execute(ctx, action, key):
             raise ValueError("Основание предмета или наблюдателя больше не доступно")
     # Validate compound material/liquid operations before any die is consumed. The savepoint
     # simulates the complete object sequence and is always rolled back, including introductions.
-    if action.introductions or any(op.kind in OBJECT_KINDS for op in action.operations):
+    if action.introductions or any(_touches_objects(op) for op in action.operations):
         preview = await s.begin_nested()
         try:
             trial = Event(campaign_id=ctx.campaign_id, actor_id=action.actor_id, tool="universal_action", payload={})

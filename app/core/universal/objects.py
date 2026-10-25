@@ -207,6 +207,10 @@ async def apply_object_operation(ctx, operation, source_event, *, component="0")
             description=f"Создан предмет: {row.name}.",
             data=ordinary_object_view(row),
         )
+    if op.kind == "move":
+        from app.core.universal.crossing import cross_structure
+
+        return await cross_structure(ctx, op, source_event)
     row = await s.get(Entity, op.object_id or "")
     state = accessible(row, actor, held=op.kind in {"give", "place", "fill", "pour", "empty", "consume"})
     data = {}
