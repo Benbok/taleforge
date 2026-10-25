@@ -45,11 +45,11 @@
 
 **Files:** Create rules/universal/exploration.py and tests/test_exploration_contracts.py.
 **Interfaces:** IntentV2(schema_version=2,requirements,source,resolution,effects,parameters,...); AbilityDefinitionV2; ExplorationAction; EffectChange; ExplorationOutcome(ActionOutcome); definition_key(definition)->str; exploration_cost(definition,level)->int.
-- [ ] RED: assert supernatural cosmetic L1/light=1, ordinary check=0; unsupported effect/extra key rejected; form and light with equal numbers have different keys, cosmetic renaming has same key; permanent ordinary creation uses duration1, timed18s uses3 units; no float/negative/unbounded arbitrary bonus.
-- [ ] Run `python -m pytest tests/test_exploration_contracts.py -q -n 0`; expected missing module/contracts.
-- [ ] Implement closed primitives and bounded parameters, source vs resolution separation, requirements→effects coverage and exact budgets. Numeric damage/heal primitives consume existing pure rules, not arbitrary ready amounts. Every effect declares lifecycle, scope, cost units and acquisition participation.
-- [ ] Run contract tests plus existing universal pure-math tests; expected green.
-- [ ] Commit task1.
+- [x] RED: assert supernatural cosmetic L1/light=1, ordinary check=0; unsupported effect/extra key rejected; form and light with equal numbers have different keys, cosmetic renaming has same key; permanent ordinary creation uses duration1, timed18s uses3 units; no float/negative/unbounded arbitrary bonus.
+- [x] Run `python -m pytest tests/test_exploration_contracts.py -q -n 0`; expected missing module/contracts.
+- [x] Implement closed primitives and bounded parameters, source vs resolution separation, requirements→effects coverage and exact budgets. Numeric damage/heal primitives consume existing pure rules, not arbitrary ready amounts. Every effect declares lifecycle, scope, cost units and acquisition participation.
+- [x] Run contract tests plus existing universal pure-math tests; expected green.
+- [x] Commit task1.
 
 ### Task 2: Storage and one saved clock/effect lifecycle
 
