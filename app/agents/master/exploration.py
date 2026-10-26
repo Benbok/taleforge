@@ -41,6 +41,9 @@ class NarrationReview(ClosedModel):
 
 
 SYSTEM = (
+    "Для перехода в известное соседнее место используй move с destination_id из known_exits. "
+    "Клетки не нужны. Закрытый/тайный/неизвестный путь не обходится выбором ID; "
+    "обычное движение внутри сцены может быть без destination_id. "
     "За реальное новое достижение можно предложить reward: "
     "category=victory/exploration/quest, subject_id известного объекта, "
     "difficulty=easy/medium/hard/epic, reason по-русски. Награда только после "

@@ -208,6 +208,11 @@ async def _execute(ctx, action, key):
             if op.kind in COMBAT_KINDS:
                 continue
             target = action.actor_id
+            if op.kind == "move" and op.destination_id:
+                from app.core.universal.travel import move_hero
+
+                result.changes.append(await move_hero(ctx, op.destination_id))
+                continue
             if op.kind == "create_object":
                 target = next(created).subject_id
             if op.kind in TIMED_KINDS or op.lifetime == "timed":
@@ -261,6 +266,9 @@ async def _execute(ctx, action, key):
     if result.success:
         for op in action.operations:
             if op.kind == "observe":
+                from app.core.universal.travel import remember_place
+
+                await remember_place(ctx, state.actor)
                 result.changes.extend(await observe_known_scene(ctx, op.aspect))
     for observer in await s.scalars(
         select(Entity).where(

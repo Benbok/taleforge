@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import {MapButton} from './MapWindow';
 import ConnectionBanner from '../components/ConnectionBanner';
 import Header from '../components/Header';
 import UniversalHeroCard from '../builder/UniversalHeroCard';
@@ -73,6 +74,7 @@ export default function UniversalAdventure({
         </div>
         <div className='flex flex-wrap items-center gap-2'>
           <SoundControl />
+          <MapButton />
           <CabinetLink campaignId={campaignId} canManage={canManage} />
           <SessionControls campaignId={campaignId} compact />
         </div>

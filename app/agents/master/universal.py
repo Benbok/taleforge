@@ -253,6 +253,9 @@ async def run_universal_turn(service, cid, place=None):
                 await s.commit()
                 user = await s.get(User, seat.user_id)
                 public_scene = await universal_scene(s, c, Viewer(user, c, seat))
+                from app.core.map import party_map
+
+                known_exits = (await party_map(s, Viewer(user, c, seat)))["exits"]
                 known = list(await s.scalars(select(HeroAbility).where(HeroAbility.character_id == hero.id)))
                 history = await recent_history(s, c, msg.seq - 1, trace.get("audience"), public_scene)
                 from app.core.universal.objects import visible_objects
@@ -296,6 +299,7 @@ async def run_universal_turn(service, cid, place=None):
                     established_evidence=evidence,
                     objects=objects,
                     inventory=inventory,
+                    known_exits=known_exits,
                     constraints=constraints,
                     active_effects=running,
                     known_abilities=[
