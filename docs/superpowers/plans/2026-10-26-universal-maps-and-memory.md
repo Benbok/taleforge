@@ -25,4 +25,4 @@ Keep feature/universal-creative-studio and the existing worktree/database. Prese
 - [x] RED accepted author world → two launches → independent library copy → invented ability → combat/effect/potion → equal XP/growth → read-only map → reconnect. Assert original/other launch unchanged and no private player/voice leakage.
 - [x] Compose existing services with actual migrations/lifespan in at least one path. Fix demonstrated integration gaps in owning modules; no new feature set or general editor.
 - [x] GREEN complete Universal/exploration suites plus affected map/memory/socket tests, frontend/tests/types/build, own-contract verification where applicable. Independent final review and one Important fix pass; graphify update after final code.
-- [ ] Restart same Docker app and read-only browser/API smoke, write verification report and commit. Retain branch. User playtest remains before cleanup stage.
+- [x] Delivery recorded: the user chose to retain the combined runtime. Implementation, verification report and commits remain on this branch. Node5 deployment/browser demonstration is deferred by that choice; user playtest remains before cleanup.

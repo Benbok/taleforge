@@ -61,4 +61,6 @@ The existing `taleforge-app-1` container is currently mounted from the parallel
 `.worktrees/combined` tree. Its API/library smoke passed after restart. The browser
 confirmed the existing game, combat panel and XP indicator, but correctly found no
 Node5 map entry in that different frontend. No switch of mounts or edits to combined
-were performed. User selection is pending before changing this runtime.
+were performed. The user explicitly chose to retain the combined runtime and leave
+the completed implementation on feature/universal-creative-studio. Deployment and
+browser demonstration of Node5 are deferred; they were not claimed as verified.

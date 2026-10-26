@@ -74,4 +74,4 @@ Task22 (полная карта), оставшаяся часть Task23 и по
 
 Implementation and verification: [Node5 report](../../universal-maps-and-memory.md). Active-module task mapping: [execution plan](2026-10-26-universal-maps-and-memory.md). Local runtime selection remains a separate delivery preference because the running container was moved to a parallel combined worktree.
 
-Task24 Step4 automated checks are GREEN (310 backend /385 frontend); browser demonstration of this branch awaits runtime selection. No gameplay actions were sent to the existing combined runtime.
+Task24 Step4 automated checks are GREEN (310 backend /385 frontend); the user chose to retain combined and defer browser demonstration of this branch. No gameplay actions were sent to the existing combined runtime.
