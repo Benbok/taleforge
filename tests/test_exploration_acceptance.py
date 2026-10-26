@@ -104,3 +104,30 @@ def test_cup_light_form_and_reconnect_are_real_scoped_state(tmp_path):
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_a_hero_makes_a_clay_puppet_orders_it_about_and_nothing_remains_afterwards(tmp_path):
+    from app.core.universal.clock import complete_step
+    from app.core.universal.effects import active_effects
+    from app.core.universal.objects import object_state
+    from tests.test_exploration_creatures import order, puppet, the_puppet, wis
+    from tests.test_exploration_resolution import build
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
+            _, made = await build(ctx, s, puppet())
+            assert made.cost == 12 and await wis(s) == "14"  # medium, 18 s: 4 x 3 units, 2 back from the step
+            row = await the_puppet(s)
+            _, ordered = await build(ctx, s, order(row.id), "m2", 2)
+            assert ordered.cost == 0 and await wis(s) == "16"  # giving orders costs nothing
+            await complete_step(s, "c", "waiting", 24)  # the eighteen seconds are over
+            await s.refresh(row)
+            assert object_state(row).expired
+            assert not await active_effects(s, "c", "hero")
+            card = await exploration_game_card(s, await s.get(Character, "hero"))
+            assert not any(o["id"] == row.id for o in card["exploration"]["objects"])
+        await engine.dispose()
+
+    asyncio.run(run())

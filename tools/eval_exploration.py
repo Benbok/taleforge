@@ -74,11 +74,22 @@ BRIDGE = {
     "leads_to": "Дальний край пропасти",
     "leads_view": "Тёмный уступ за туманом.",
 }
+PUPPET = {
+    "id": "ob_puppet",
+    "name": "Глиняный человечек",
+    "template": "creature",
+    "owner_id": None,
+    "scale": "small",
+    "sturdiness": "ordinary",
+    "controller_id": ACTOR,
+    "abilities": "Ходит, носит лёгкое, понимает простые приказы.",
+}
 STATES = {
     "base": dict(constraints=FREE, active_effects=[], objects=[]),
     "cup": dict(constraints=FREE, active_effects=[], objects=[CUP, SPRING]),
     "form": dict(constraints=IN_FORM, active_effects=EFFECTS, objects=[]),
     "bridge": dict(constraints=FREE, active_effects=[], objects=[BRIDGE]),
+    "puppet": dict(constraints=FREE, active_effects=[], objects=[PUPPET]),
 }
 
 
@@ -97,6 +108,9 @@ def case(
     scale_in=None,
     leads=False,
     over=None,
+    creature=False,
+    ordered=None,
+    term=None,
 ):
     return dict(
         state=state,
@@ -112,6 +126,9 @@ def case(
         scale_in=scale_in,
         leads=leads,
         over=over,
+        creature=creature,
+        ordered=ordered,
+        term=term,
     )
 
 
@@ -172,6 +189,37 @@ CASES = [
     case("bridge", "перехожу по мосту на ту сторону", source="mundane", any_of={"move"}, over="ob_bridge"),
     case("base", "создаю огромный замок за одну секунду", gap=True),
     case("base", "создаю машину времени, чтобы вернуться в прошлое", gap=True),
+    # Beings, orders and effects the engine has no ready kind for: the world's text decides, the tools count.
+    case(
+        "base",
+        "леплю из глины маленького человечка и вдыхаю в него магию, чтобы он стал моей марионеткой",
+        source="supernatural",
+        any_of={"create_object"},
+        creature=True,
+    ),
+    case(
+        "puppet",
+        "приказываю марионетке принести ключ со стола",
+        source="mundane",
+        any_of={"command"},
+        ordered="ob_puppet",
+    ),
+    case("base", "останавливаю скелетов приказом на минуту", source="supernatural", any_of={"free_effect"}, term=60),
+    case(
+        "base",
+        "чувствую шаги в земле через корень, который пустил в пол",
+        source="supernatural",
+        any_of={"free_effect", "observe"},
+    ),
+    case(
+        "base",
+        "создаю каменный мост через пропасть на час",
+        source="supernatural",
+        any_of={"create_object"},
+        scale_in={"large", "huge"},
+        term=3600,
+    ),
+    case("base", "воскрешаю мёртвого скелета", gap=True),
     # Objects.
     case("cup", "наливаю воду из родника в кружку", source="mundane", any_of={"fill"}),
     case("cup", "беру кружку", source="mundane", any_of={"take"}),
@@ -210,7 +258,11 @@ def context_of(c):
     state = STATES[c["state"]]
     return {
         "world": {},
-        "world_laws": "Нет путешествий во времени и воскрешения из мёртвых.",
+        "world_rules": {
+            "laws": "Нет путешествий во времени и воскрешения из мёртвых.",
+            "powers": "Существует магия природы: корни, глина, камень.",
+            "world": "Подземный провал.",
+        },
         "hero": {"id": ACTOR, "name": "Пупкинатор", "level": 1},
         "resources": {"energies": {"wis": "24", "int": "18"}},
         "scene": SCENE,
@@ -285,6 +337,12 @@ def meaning_problems(intent, c):
         out.append("постройка должна вести в новое место (leads_to пуст)")
     if c["over"] and not any(e.kind == "move" and e.object_id == c["over"] for e in intent.effects):
         out.append(f"нужен переход по {c['over']}")
+    if c["creature"] and not any(e.template == "creature" and e.abilities for e in made):
+        out.append("нужно существо (template=creature) с описанием abilities")
+    if c["ordered"] and not any(e.kind == "command" and e.object_id == c["ordered"] for e in intent.effects):
+        out.append(f"нужен приказ (command) существу {c['ordered']}")
+    if c["term"] and intent.duration_seconds != c["term"]:
+        out.append(f"срок {intent.duration_seconds} с, игрок назвал {c['term']} с")
     if c["dismiss"]:
         shown = {e.effect_id for e in intent.effects if e.kind == "dismiss"}
         if not c["dismiss"] <= shown:
