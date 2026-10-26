@@ -95,6 +95,11 @@ async def answer_dialogue(
     session, dialogue_id: str, owner_id: str, expected_revision: int, answer: str, *, llm
 ) -> HeroDialogue:
     draft = await load_dialogue(session, owner_id, dialogue_id)
+    if draft.campaign_id:
+        from app.core.universal.clock import lock_campaign
+
+        await lock_campaign(session, draft.campaign_id)
+        draft = await load_dialogue(session, owner_id, dialogue_id)
     if draft.status == "confirmed" or draft.revision != expected_revision:
         raise Conflict("версия черновика изменилась; обновите предложение")
     history = list(draft.transcript)
@@ -147,7 +152,13 @@ async def answer_dialogue(
 
 async def confirm_hero(session, dialogue_id: str, owner_id: str, expected_revision: int) -> str:
     draft = await load_dialogue(session, owner_id, dialogue_id)
+    if draft.campaign_id:
+        from app.core.universal.clock import lock_campaign
+
+        await lock_campaign(session, draft.campaign_id)
+        draft = await load_dialogue(session, owner_id, dialogue_id)
     if draft.status == "confirmed" and draft.revision == expected_revision + 1:
+        await _finish_admission(session, draft.campaign_id, draft.hero_id)
         return draft.hero_id
     if draft.status != "ready" or draft.revision != expected_revision:
         raise Conflict("подтвердите актуальное готовое предложение")
@@ -213,17 +224,37 @@ async def confirm_hero(session, dialogue_id: str, owner_id: str, expected_revisi
         )
     else:
         session.add(LibraryCharacter(**data))
-    await session.commit()
+    await session.commit()  # L1 is durable before the separate admission event.
+    await _finish_admission(session, draft.campaign_id, hero_id)
     return hero_id
+
+
+async def _finish_admission(session, campaign_id, hero_id):
+    hero = await session.get(Character, hero_id) if campaign_id else None
+    if hero is not None and hero.status in {"active", "approved"}:
+        from app.core.universal.progression import catch_up_copy
+
+        await catch_up_copy(session, campaign_id, hero_id)
+        await session.commit()
 
 
 async def copy_library_hero(session, viewer, original):
     from app.core.universal.admission import world_context
+    from app.core.universal.clock import lock_campaign
     from app.core.universal.editing import editable_sheet
     from app.rules.universal.mechanics import derive
 
+    await lock_campaign(session, viewer.campaign.id)
+    if original.owner_user_id != viewer.user.id:
+        raise AccessDenied("Можно добавить только своего библиотечного героя")
     if await world_context(session, viewer.campaign.id):
         raise Conflict("Review and explicitly confirm the world adaptation before joining.")
+    if viewer.seat:
+        existing = await session.scalar(
+            select(Character).where(Character.campaign_id == viewer.campaign.id, Character.seat_id == viewer.seat.id)
+        )
+        if existing and existing.sheet.get("source_library_id") == original.id:
+            return existing
     seat_id = await _campaign_target(session, viewer.user.id, viewer.campaign.id, None)
     # Re-validate the base, then serialize a separate object; no mutable JSON is shared.
     sheet = editable_sheet(original)

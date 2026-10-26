@@ -459,6 +459,10 @@ async def from_library(
         from app.core.universal.creation import copy_library_hero
 
         ch = await copy_library_hero(session, v, lc)
+        await session.commit()  # Creation is always L1, independently of admission.
+        from app.core.universal.progression import catch_up_copy
+
+        await catch_up_copy(session, campaign_id, ch.id)
         await session.commit()
         return game_card_of(ch)
     source = await lib.Worlds(session).of(lc)

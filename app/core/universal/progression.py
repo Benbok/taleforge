@@ -126,3 +126,69 @@ async def spend_points(session, campaign_id, character_id, expected_revision, al
         )
         await session.flush()
     return after
+
+
+async def party_level(session, campaign_id, *, exclude_id=None):
+    from app.rules.universal.contracts import UniversalSheet
+
+    levels = [1]
+    for hero in await session.scalars(
+        select(Character).where(
+            Character.campaign_id == campaign_id,
+            Character.status.in_(["active", "approved"]),
+            Character.seat_id.is_not(None),
+        )
+    ):
+        if hero.id == exclude_id or hero.resources.get("vitality", {}).get("state") == "dead":
+            continue
+        data = dict(hero.sheet)
+        data.pop("source_library_id", None)
+        if data.get("rules_version") == "universal.v1":
+            levels.append(UniversalSheet.model_validate(data).level)
+    return max(levels)
+
+
+async def catch_up_copy(session, campaign_id, character_id):
+    from app.rules.universal.progression import level_threshold
+
+    key = receipt_key("admit", character_id)
+    async with session.begin_nested():
+        await lock_campaign(session, campaign_id)
+        hero = await session.get(Character, character_id, populate_existing=True)
+        if hero is None or hero.campaign_id != campaign_id or hero.status not in {"active", "approved"}:
+            raise AccessDenied("Копия недоступна для вступления")
+        before, _ = await load_actor(session, campaign_id, hero.id)
+        previous = await session.scalar(
+            select(Event).where(Event.campaign_id == campaign_id, Event.idempotency_key == key)
+        )
+        if previous:
+            if previous.tool != "universal_catchup" or previous.actor_id != hero.id:
+                raise Conflict("Событие вступления уже сохранено")
+            return before
+        if (
+            before.level != 1
+            or before.xp != 0
+            or before.unspent_points != 0
+            or hero.resources.get("vitality", {}).get("state") == "dead"
+        ):
+            raise Conflict("Повышение при вступлении доступно новой живой копии первого уровня")
+        target = await party_level(session, campaign_id, exclude_id=hero.id)
+        after = grant_xp(before, level_threshold(target))
+        if target > 1:
+            await persist_growth(session, hero, before, after)
+        session.add(
+            Event(
+                campaign_id=campaign_id,
+                actor_id=hero.id,
+                tool="universal_catchup",
+                idempotency_key=key,
+                payload=dict(
+                    created_sheet=before.model_dump(mode="json"),
+                    target_level=str(target),
+                    granted_points=str(after.unspent_points),
+                    source_library_id=hero.sheet.get("source_library_id"),
+                ),
+            )
+        )
+        await session.flush()
+    return after
