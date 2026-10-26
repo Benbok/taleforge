@@ -265,7 +265,7 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
     raw = trace.get("admissions", {}).get(mid)
     hint = None
     shortfall = None
-    leaning = None  # what the model took the request for, so the floor under a failure matches it
+    leaning = None  # what the model took the request for (magic on any attempt), so the floor matches it
     # A budget slot is persisted before every external call. A crashed call cannot earn a free retry.
     while raw is not None or attempts.get(mid, 0) < 2:
         if raw is None:
@@ -301,7 +301,7 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                 await store(service, tid, trace)
                 raise ActionModelError() from exc
         if isinstance(raw, dict) and raw.get("source") in {"supernatural", "mundane"}:
-            leaning = raw["source"]
+            leaning = "supernatural" if "supernatural" in {leaning, raw["source"]} else "mundane"  # magic is sticky
         try:
             intent = IntentV2.model_validate(raw)
             review_key = hashlib.sha256((binding + json.dumps(raw, sort_keys=True)).encode()).hexdigest()

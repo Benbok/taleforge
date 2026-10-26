@@ -777,3 +777,27 @@ def test_the_not_realised_fact_does_not_blame_magic_for_an_ordinary_deed():
     from app.agents.master.exploration import not_realised_fact
 
     assert "магия" not in not_realised_fact().message.casefold()
+
+
+def test_a_request_that_was_magic_on_any_attempt_stays_magic_when_the_model_backs_down(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        first, second = unrealisable("supernatural"), unrealisable("mundane")
+        provider = Provider(
+            [
+                first,
+                {"verdict": "pass", "covered_requirements": ["r"]},
+                second,
+                {"verdict": "pass", "covered_requirements": ["r"]},
+                "Светлячки вспыхивают.",
+                {"verdict": "pass"},
+            ]
+        )
+        await MasterService(maker, Bus(), provider).run_turn("c")
+        async with maker() as s:
+            events = list(await s.scalars(select(Event)))
+            assert [op["kind"] for e in events for op in e.payload["proposal"]["operations"]] == ["free_effect"]
+        await engine.dispose()
+
+    asyncio.run(run())
