@@ -169,8 +169,8 @@ async def validate_exploration(ctx, action):
             raise ValueError("Боевой компонент относится к следующему этапу")
         if op.target_id and op.kind != "pour" and op.target_id != a.actor_id:
             raise ValueError("Недоступная цель компонента")
-        if op.kind == "create_object" and (op.template not in {"vessel", "structure"} or op.quantity != 1):
-            raise ValueError("Создаётся один предмет или одна постройка")
+        if op.kind == "create_object" and (op.template not in {"vessel", "structure", "creature"} or op.quantity != 1):
+            raise ValueError("Создаётся один предмет, одна постройка или одно существо")
         for field in ("source_id", "object_id") + (("target_id",) if op.kind == "pour" else ()):
             ref = getattr(op, field)
             if not ref:

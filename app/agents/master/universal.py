@@ -255,6 +255,7 @@ async def run_universal_turn(service, cid, place=None):
                         id=e["id"],
                         kind=e["kind"],
                         label=e["definition"].get("label") or e["kind"],
+                        description=e["definition"].get("appearance") or "",
                         remaining_seconds=e["remaining_seconds"],
                     )
                     for e in await active_effects(s, cid, hero.id)

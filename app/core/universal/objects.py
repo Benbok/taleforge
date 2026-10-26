@@ -16,7 +16,7 @@ from app.rules.universal.mechanics import derive, starting_defense_bonuses
 
 class ObjectState(ClosedModel):
     schema_version: Literal[2] = 2
-    template: Literal["vessel", "wood_source", "water_source", "energy_tonic", "structure"]
+    template: Literal["vessel", "wood_source", "water_source", "energy_tonic", "structure", "creature"]
     owner_id: str | None = None
     material: Literal["wood", "plant", "stone"] = "wood"
     amount: Count = 1
@@ -33,6 +33,8 @@ class ObjectState(ClosedModel):
     leads_to: str = Field(default="", max_length=128)
     leads_view: str = Field(default="", max_length=300)
     leads_to_location_id: str | None = None
+    controller_id: str | None = None  # who gives a created being its orders
+    abilities: str = Field(default="", max_length=500)
 
 
 def object_state(row):
@@ -138,15 +140,15 @@ async def apply_object_operation(ctx, operation, source_event, *, component="0")
     ):
         raise AccessDenied("Неверная область операции")
     if op.kind == "create_object":
-        if op.template not in {"vessel", "structure"} or op.quantity != 1:
+        if op.template not in {"vessel", "structure", "creature"} or op.quantity != 1:
             raise ValueError("Создаётся один предмет или одна постройка")
         key = "en_" + hashlib.sha256(f"{source_event.id}:{component}".encode()).hexdigest()[:24]
         row = await s.get(Entity, key)
         if row is None:
-            if op.template == "structure":
+            if op.template in {"structure", "creature"}:
                 # Anything the world's laws and the hero's strength allow; the place owns it, so others may use it.
                 state = ObjectState(
-                    template="structure",
+                    template=op.template,
                     owner_id=None,
                     material=op.material,
                     temporary=True,  # whatever is made lasts only its term
@@ -155,12 +157,14 @@ async def apply_object_operation(ctx, operation, source_event, *, component="0")
                     sturdiness=op.sturdiness,
                     leads_to=op.leads_to,
                     leads_view=op.leads_view,
+                    controller_id=actor.id if op.template == "creature" else None,
+                    abilities=op.abilities,
                 )
                 row = Entity(
                     id=key,
                     campaign_id=ctx.campaign_id,
                     kind="object",
-                    name=op.label or "Постройка",
+                    name=op.label or ("Существо" if op.template == "creature" else "Постройка"),
                     description=op.appearance,
                     location_id=actor.location_id,
                     state={},
@@ -211,11 +215,15 @@ async def apply_object_operation(ctx, operation, source_event, *, component="0")
         from app.core.universal.crossing import cross_structure
 
         return await cross_structure(ctx, op, source_event)
+    if op.kind == "command":
+        from app.core.universal.commands import command_creature
+
+        return await command_creature(ctx, op, source_event)
     row = await s.get(Entity, op.object_id or "")
     state = accessible(row, actor, held=op.kind in {"give", "place", "fill", "pour", "empty", "consume"})
     data = {}
-    if state.template == "structure" and op.kind in {"take", "give", "place", "fill", "pour", "empty"}:
-        raise ValueError("Постройку нельзя переносить, передавать или наполнять")
+    if state.template in {"structure", "creature"} and op.kind in {"take", "give", "place", "fill", "pour", "empty"}:
+        raise ValueError("Постройку или существо нельзя переносить, передавать или наполнять")
     if op.kind == "take":
         state.owner_id = actor.id
     elif op.kind == "place":
@@ -306,7 +314,11 @@ async def expire_temporary_object(session, campaign_id, object_id):
         EffectChange(
             kind="object_expired",
             subject_id=row.id,
-            description=f"{row.name} исчезает; содержимое остаётся.",
+            description=(
+                f"{row.name} рассыпается: срок вышел."
+                if state.template == "creature"
+                else f"{row.name} исчезает; содержимое остаётся."
+            ),
             data={"released_ml": str(released)},
         )
     ]

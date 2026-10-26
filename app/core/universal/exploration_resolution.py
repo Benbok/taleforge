@@ -18,7 +18,7 @@ from app.rules.universal.exploration import TIMED_KINDS, EffectChange, Explorati
 from app.rules.universal.failures import action_failure
 from app.rules.universal.profiles import CheckProof, DieProof, resolve_check
 
-OBJECT_KINDS = {"create_object", "take", "place", "give", "fill", "pour", "empty", "consume", "move"}
+OBJECT_KINDS = {"create_object", "take", "place", "give", "fill", "pour", "empty", "consume", "move", "command"}
 
 
 def _touches_objects(op):
@@ -203,6 +203,8 @@ async def _execute(ctx, action, key):
                     "illumination": "Освещение",
                     "hold_breath": "Задержка дыхания",
                 }.get(op.kind, "Временный эффект")
+                if op.kind == "free_effect":
+                    label = op.label or "Эффект"
                 result.changes.append(
                     EffectChange(
                         kind=op.kind,

@@ -38,8 +38,10 @@ EffectKind = Literal[
     "cannot_target",
     "check_bonus",
     "defense_bonus",
+    "free_effect",
+    "command",
 ]
-ObjectTemplate = Literal["vessel", "wood_source", "water_source", "energy_tonic", "observer", "structure"]
+ObjectTemplate = Literal["vessel", "wood_source", "water_source", "energy_tonic", "observer", "structure", "creature"]
 Scale = Literal["tiny", "small", "medium", "large", "huge"]
 Sturdiness = Literal["fragile", "ordinary", "sturdy"]
 # Energy per hero level and per six-second unit for something of this size; the model judges the size.
@@ -60,6 +62,7 @@ class FormBlocked(ValueError):
 TIMED_KINDS = frozenset(
     {
         "create_object",
+        "free_effect",
         "illumination",
         "camouflage",
         "change_form",
@@ -86,6 +89,7 @@ ORDINARY_KINDS = frozenset(
         "empty",
         "consume",
         "dismiss",
+        "command",
     }
 )
 MAGIC_KINDS = frozenset(
@@ -95,6 +99,7 @@ MAGIC_KINDS = frozenset(
         "camouflage",
         "change_form",
         "create_object",
+        "free_effect",
         "damage",
         "heal",
         "cannot_move",
@@ -135,6 +140,7 @@ class EffectIntentV2(ClosedModel):
     sturdiness: Sturdiness = "ordinary"
     leads_to: str = Field(default="", max_length=128)
     leads_view: str = Field(default="", max_length=300)
+    abilities: str = Field(default="", max_length=500)
 
     @model_validator(mode="after")
     def lifetime_supported(self):
@@ -259,6 +265,7 @@ def definition_key(definition: AbilityDefinitionV2) -> str:
             "sturdiness",
             "leads_to",
         },
+        "free_effect": {"scale", "sturdiness", "label"},  # the words are all the meaning it has
         "change_form": {"form", "quantity"},
         "observe": {"aspect"},
         "fill": {"amount"},
@@ -270,7 +277,9 @@ def definition_key(definition: AbilityDefinitionV2) -> str:
         {
             k: v
             for k, v in effect.model_dump(
-                mode="json", include={"kind"} | meaningful.get(effect.kind, {"lifetime", "quantity"}), exclude=bindings
+                mode="json",
+                include={"kind"} | meaningful.get(effect.kind, {"lifetime", "quantity"}),
+                exclude=bindings - ({"label"} if effect.kind == "free_effect" else set()),
             ).items()
             if defaults.get(k, object()) != v
         }
@@ -284,7 +293,7 @@ def definition_key(definition: AbilityDefinitionV2) -> str:
 def effect_price(effect: EffectIntentV2, definition: AbilityDefinitionV2, level: int) -> int:
     """Energy for one start of this effect, before duration units: a creation costs by its size and strength,
     anything else by the spell's intensity."""
-    if effect.kind == "create_object":
+    if effect.kind in {"create_object", "free_effect"}:
         return SCALE_PRICE[effect.scale] * (2 if effect.sturdiness == "sturdy" else 1) * level
     return {"light": 1, "normal": 3, "strong": 12}[definition.intensity] * level
 
@@ -324,7 +333,9 @@ _RELEVANT = {
         "sturdiness",
         "leads_to",
         "leads_view",
+        "abilities",
     },
+    "free_effect": {"scale", "sturdiness", "lifetime"},
     "change_form": {"form", "lifetime", "quantity"},
     "observe": {"aspect", "lifetime"},
     "fill": {"amount"},

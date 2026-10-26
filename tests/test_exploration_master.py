@@ -494,3 +494,49 @@ def test_a_walk_that_names_no_structure_is_reviewed_where_a_crossable_one_stands
     assert is_plain_action(walk())  # no bridge around: plain walking
     assert not is_plain_action(walk(), crossable=True)  # a bridge stands here and the walk names none: ask the reviewer
     assert is_plain_action(walk(object_id="en_bridge"), crossable=True)
+
+
+def test_the_master_is_shown_what_each_running_effect_says_and_what_each_created_being_can_do(tmp_path):
+    from app.core.universal.effects import start_effect
+    from app.core.universal.objects import ObjectState, store
+    from app.db.models import Entity
+    from app.rules.universal.exploration import EffectIntentV2
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        async with maker() as s:
+            s.add(Event(id="fx", campaign_id="c", actor_id="hero", tool="universal_action", payload={}))
+            doll = Entity(id="en_doll", campaign_id="c", kind="object", name="Глиняный человечек", state={})
+            store(doll, ObjectState(template="creature", controller_id="hero", abilities="Ходит и носит лёгкое."))
+            s.add(doll)
+            await s.flush()
+            await start_effect(
+                s,
+                "c",
+                "hero",
+                "hero",
+                "fx",
+                "0",
+                EffectIntentV2(
+                    kind="free_effect",
+                    label="Скелеты остановлены",
+                    appearance="Костяные силуэты замерли.",
+                    lifetime="timed",
+                ),
+                0,
+                60,
+            )
+            await s.commit()
+        provider = Provider(
+            [proposal(), {"verdict": "pass", "covered_requirements": []}, "Искры.", {"verdict": "pass"}]
+        )
+        await MasterService(maker, Bus(), provider).run_turn("c")
+        context = json.loads(provider.prompts[0][-1]["content"])
+        effect = context["active_effects"][0]
+        assert effect["label"] == "Скелеты остановлены" and effect["description"] == "Костяные силуэты замерли."
+        being = next(o for o in context["objects"] if o["id"] == "en_doll")
+        assert being["template"] == "creature" and being["abilities"] == "Ходит и носит лёгкое."
+        await engine.dispose()
+
+    asyncio.run(run())
