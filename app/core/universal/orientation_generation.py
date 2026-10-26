@@ -1,0 +1,100 @@
+"""One saved cosmetic sketch per location; no game step, loot or model calls."""
+
+import zlib
+
+from sqlalchemy import select
+
+from app.core.campaigns import AccessDenied
+from app.core.inspect import viewer_hero
+from app.core.layout.geometry import build_area
+from app.core.layout.intent import LayoutIntent, PartIntent
+from app.core.layout.provider import DeterministicLayoutProvider
+from app.core.object_policy import concealed
+from app.core.sketch import check, floor_cells
+from app.core.universal.clock import lock_campaign
+from app.db.models import Campaign, Character, Entity, Scene
+
+
+def build_sketch(campaign_id, location, entities):
+    # A coarse outline is presentation, never an asserted measurement or obstacle.
+    text = (location.name + " " + location.description).casefold()
+    shape = "cave" if any(w in text for w in ("пещер", "ущель", "провал", "cave", "gorge")) else "open"
+    if any(w in text for w in ("комнат", "зал", "таверн", "room", "hall", "tavern")):
+        shape = "rect"
+    intent = LayoutIntent(entry="here", parts=[PartIntent(
+        part_ref="here", name="Место", public_name="Место", shape=shape,
+        environment="indoor" if shape != "open" else "outdoor", size="medium",
+    )])
+    seed = zlib.crc32(f"{campaign_id}:{location.id}:orientation-v1".encode())
+    blueprint = DeterministicLayoutProvider().propose(intent, seed=seed, root_id=location.id)
+    sketch = build_area(blueprint, blueprint.areas[0])
+    cells = sorted(floor_cells(sketch) - {tuple(sketch["party"])}, key=lambda c: (c[1], c[0]))
+    markers = []
+    for row in sorted(entities.values(), key=lambda e: e.id):
+        if row.kind != "object" or row.location_id != location.id or concealed(row, entities):
+            continue
+        state = row.state or {}
+        if state.get("visibility") in {"hidden", "private"} or state.get("universal_item"):
+            continue
+        prop = state.get("exploration") or {}
+        if prop and (prop.get("owner_id") or prop.get("expired")):
+            continue
+        markers.append(row)
+    for i, row in enumerate(markers[:16]):
+        c, r = cells[(i + 1) * len(cells) // (min(len(markers), 16) + 1)]
+        sketch["features"].append(dict(
+            id=f"sf_{row.id}"[:32], entity_id=row.id, name=row.name[:60],
+            kind="object", cells=[[c, r, c, r]], cover="none", hidden=False, solid=False,
+        ))
+    if errors := check(sketch, set(entities)):
+        raise ValueError("; ".join(errors))
+    return sketch
+
+
+async def ensure_map(session, campaign_id, location_id):
+    if not location_id:
+        return False
+    await session.flush()
+    await lock_campaign(session, campaign_id)
+    campaign = await session.get(Campaign, campaign_id)
+    location = await session.get(Entity, location_id, populate_existing=True)
+    if campaign.ruleset_id != "universal" or location is None or location.campaign_id != campaign_id:
+        raise ValueError("Локация недоступна в этом прохождении")
+    if location.kind != "location":
+        raise ValueError("Выберите локацию")
+    state = location.state or {}
+    if state.get("sketch") or state.get("complex") or state.get("blueprint"):
+        return False
+    entities = {e.id: e for e in await session.scalars(select(Entity).where(Entity.campaign_id == campaign_id))}
+    location.state = {**state, "sketch": build_sketch(campaign_id, location, entities),
+                      "orientation_map": {"version": 1, "approximate": True}}
+    await session.flush()
+    return True
+
+
+async def generate_for_viewer(session, viewer, location_id):
+    cid = viewer.campaign.id
+    await lock_campaign(session, cid)
+    hero = await viewer_hero(session, viewer) if not viewer.is_master else None
+    if hero:
+        await session.refresh(hero)
+        here = hero.location_id
+    elif viewer.is_master:
+        scene = await session.get(Scene, cid)
+        here = scene.location_id if scene else None
+    else:
+        raise AccessDenied("Создать схему может игрок своего героя или мастер")
+    if here != location_id:
+        raise ValueError("Местоположение изменилось. Обновите карту и попробуйте снова.")
+    return dict(created=await ensure_map(session, cid, location_id), location_id=location_id)
+
+
+async def prepare_party_maps(session, campaign):
+    if campaign.ruleset_id != "universal":
+        return
+    locations = set(await session.scalars(select(Character.location_id).where(
+        Character.campaign_id == campaign.id, Character.status.in_(["active", "approved"]),
+        Character.seat_id.is_not(None), Character.location_id.is_not(None),
+    )))
+    for location_id in sorted(locations):
+        await ensure_map(session, campaign.id, location_id)

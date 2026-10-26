@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import Literal
 
 from fastapi import APIRouter, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.api.deps import SessionDep, UserDep
 from app.core import campaigns as svc
@@ -35,6 +35,34 @@ class GenerationStatusOut(BaseModel):
 
 class NarrationRetryOut(BaseModel):
     accepted: bool
+
+
+class OrientationMapIn(BaseModel):
+    location_id: str = Field(min_length=1, max_length=32)
+
+
+class OrientationMapOut(BaseModel):
+    created: bool
+    location_id: str
+
+
+@router.post("/campaigns/{campaign_id}/orientation-map", response_model=OrientationMapOut)
+async def orientation_map(
+    campaign_id: str, body: OrientationMapIn, user: UserDep, session: SessionDep,
+    request: Request, as_seat: str | None = None,
+) -> dict:
+    from app.core.universal.orientation_generation import generate_for_viewer
+    from app.gateway.events import envelope
+
+    viewer = await svc.get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
+    try:
+        result = await generate_for_viewer(session, viewer, body.location_id)
+    except ValueError as exc:
+        raise Conflict(str(exc)) from exc
+    await session.commit()
+    if result["created"]:
+        await request.app.state.bus.publish(campaign_id, envelope("map.changed", campaign_id, {}), None)
+    return result
 
 
 @router.get("/campaigns/{campaign_id}/generation/{operation_ref}", response_model=GenerationStatusOut)

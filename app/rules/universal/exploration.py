@@ -126,6 +126,9 @@ MAGIC_KINDS = frozenset(
         "defense_bonus",
     }
 )
+# An ordinary deed may leave a remembered note (a torch made of a board): it is a fact for the writer, costs no
+# energy, and is not magic. The review still reads it, because it is never a plain action.
+FREE_FOR_ORDINARY = frozenset({"free_effect"})
 MATERIALS = Literal["wood", "plant", "stone"]
 
 
@@ -447,7 +450,11 @@ def clean_model_intent(raw):
         cleaned["source"] = "mundane"  # pretending to cast is acting, whatever the model labelled it
     if cleaned.get("source") == "mundane" and claim in {"pretend", "ordinary"}:
         # Pretending or an ordinary act is not magic; a claimed spell keeps its magic for the review to weigh.
-        effects = [e for e in effects if not (isinstance(e, dict) and e.get("kind") in MAGIC_KINDS)] or (
+        effects = [
+            e
+            for e in effects
+            if not (isinstance(e, dict) and e.get("kind") in MAGIC_KINDS - FREE_FOR_ORDINARY)
+        ] or (
             [{"kind": "wait"}] if effects else []
         )
     if not effects and cleaned.get("source") == "mundane":
@@ -496,7 +503,7 @@ def clean_model_intent(raw):
 def exploration_capabilities():
     return dict(
         schema_version=2,
-        ordinary_effects=sorted(ORDINARY_KINDS),
+        ordinary_effects=sorted(ORDINARY_KINDS | FREE_FOR_ORDINARY),
         supernatural_effects=sorted(MAGIC_KINDS),
         default_action_seconds="6",
         default_effect_seconds=str(DEFAULT_EFFECT_SECONDS),

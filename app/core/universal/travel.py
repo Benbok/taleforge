@@ -69,6 +69,9 @@ async def move_hero(ctx, destination_id):
     source_id = (view.get("here") or {}).get("id")
     actor.location_id = place.id
     place.state = {**place.state, "visited_by": sorted(set(place.state.get("visited_by") or []) | {actor.id})}
+    from app.core.universal.orientation_generation import ensure_map
+
+    await ensure_map(ctx.session, ctx.campaign_id, place.id)
     await remember_place(ctx, actor)
     fact = await ctx.session.scalar(
         select(KnownFact).where(

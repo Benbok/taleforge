@@ -54,6 +54,10 @@ async def cross_structure(ctx, op, source_event):
     target_id = origin_id if actor.location_id == far_id else far_id
     actor.location_id = target_id
     await s.flush()
+    if target_id:
+        from app.core.universal.orientation_generation import ensure_map
+
+        await ensure_map(s, ctx.campaign_id, target_id)
     place = await s.get(Entity, target_id) if target_id else None
     where = place.name if place is not None else "прежнее место"
     return EffectChange(

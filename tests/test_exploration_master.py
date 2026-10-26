@@ -767,6 +767,8 @@ def test_an_ordinary_request_the_model_cannot_shape_is_a_plain_turn_that_costs_n
             events = list(await s.scalars(select(Event)))
             assert len(events) == 1
             assert events[0].payload["proposal"]["definition"]["source"] == "mundane"
+            # The deed leaves a remembered note, and costs nothing: it is not magic.
+            assert [op["kind"] for op in events[0].payload["proposal"]["operations"]] == ["free_effect"]
             assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "24"
         await engine.dispose()
 
@@ -809,3 +811,68 @@ def test_the_review_is_told_that_past_story_text_never_forbids_a_spell():
     # Only the world's own text decides what is allowed; the narrator's earlier flourishes are background.
     assert "Рассказ прошлых ходов не закон" in REVIEW
     assert "world_rules" in REVIEW.split("Рассказ прошлых ходов не закон")[1]
+
+
+def test_an_ordinary_deed_keeps_its_remembered_note_when_the_model_intent_is_cleaned():
+    from app.rules.universal.exploration import clean_model_intent
+
+    cleaned = clean_model_intent(
+        {
+            "source": "mundane",
+            "player_request": "ordinary",
+            "effects": [{"kind": "take"}, {"kind": "free_effect", "label": "Горящая доска"}],
+        }
+    )
+    assert [e["kind"] for e in cleaned["effects"]] == ["take", "free_effect"]
+
+
+def test_the_review_does_not_demand_a_note_for_every_step_of_an_ordinary_deed():
+    from app.agents.master.exploration import REVIEW
+
+    assert "Обычному действию free_effect не нужен для каждого шага" in REVIEW
+
+
+def test_the_decision_prompt_asks_for_a_short_general_ability_name():
+    from app.agents.master.exploration import SYSTEM
+
+    assert "name — короткое общее название способности" in SYSTEM
+
+
+def test_the_floor_names_the_ability_generally_not_with_the_whole_request(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        unnamed = unrealisable("supernatural")
+        named = dict(unrealisable("supernatural"), name="Светлячки (освещение)")
+        provider = Provider(
+            [
+                unnamed,
+                {"verdict": "pass", "covered_requirements": ["r"]},
+                named,
+                {"verdict": "pass", "covered_requirements": ["r"]},
+                "Светлячки.",
+                {"verdict": "pass"},
+            ]
+        )
+        await MasterService(maker, Bus(), provider).run_turn("c")
+        async with maker() as s:
+            event = (await s.scalars(select(Event))).one()
+            assert event.payload["proposal"]["definition"]["name"] == "Светлячки (освещение)"
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_the_floor_without_any_model_name_uses_a_generic_one(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        broken = unrealisable("supernatural")
+        provider = Provider([broken, {"verdict": "pass", "covered_requirements": ["r"]}, broken, "Ок.", {"verdict": "pass"}])
+        await MasterService(maker, Bus(), provider).run_turn("c")
+        async with maker() as s:
+            event = (await s.scalars(select(Event))).one()
+            assert event.payload["proposal"]["definition"]["name"] == "Свободное заклинание"
+        await engine.dispose()
+
+    asyncio.run(run())

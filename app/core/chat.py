@@ -239,6 +239,10 @@ async def start_session(session: AsyncSession, viewer: Viewer) -> tuple[GameSess
     session.add(game)
     c.status = "active"
     await session.flush()
+    if c.ruleset_id == "universal":
+        from app.core.universal.orientation_generation import prepare_party_maps
+
+        await prepare_party_maps(session, c)
     return game, await system_message(session, c, "Сессия началась.", game)
 
 

@@ -12,6 +12,7 @@ from app.core.universal.profiles import load_actor
 from app.core.universal.validation import authorize_actor
 from app.db.models import Entity, HeroAbility
 from app.rules.universal.exploration import (
+    FREE_FOR_ORDINARY,
     MAGIC_KINDS,
     ORDINARY_KINDS,
     AbilityDefinitionV2,
@@ -213,7 +214,7 @@ async def validate_exploration(ctx, action):
             raise ValueError("Сверхъестественное действие должно иметь положительную цену")
         if have < a.cost:
             raise InsufficientEnergy(a.cost, have)
-    elif any(op.kind in MAGIC_KINDS for op in a.operations):
+    elif any(op.kind in MAGIC_KINDS - FREE_FOR_ORDINARY for op in a.operations):
         raise ValueError("Сверхъестественное действие не может быть бесплатным")
     if a.elapsed_game_seconds > 3600 or a.elapsed_game_seconds < 1:
         raise ValueError("Игровое действие требует положительного времени")
