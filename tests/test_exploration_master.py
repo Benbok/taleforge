@@ -431,10 +431,25 @@ def bridge(scale="tiny"):
     )
 
 
-def test_world_laws_reach_the_decision_and_the_review_but_never_the_private_notes(tmp_path):
+def test_laws_powers_and_world_reach_the_decision_and_the_meaning_review_but_never_the_narration_or_the_secret_notes(
+    tmp_path,
+):
+    from app.db.models import CampaignSecret
+
     async def run():
         engine, maker = await setup(tmp_path)
-        await prepare(maker)  # the studio is {"laws": "NO TIME TRAVEL", "private": "HIDDEN-SECRET"}
+        await prepare(maker)
+        async with maker() as s:
+            secret = await s.get(CampaignSecret, "c")
+            secret.setting = {
+                "studio": {
+                    "laws": "NO TIME TRAVEL",
+                    "powers": "Магия природы живёт в корнях.",
+                    "world": "Подземное царство теней.",
+                    "private": "HIDDEN-SECRET",
+                }
+            }
+            await s.commit()
         provider = Provider(
             [
                 bridge("large"),
@@ -444,10 +459,53 @@ def test_world_laws_reach_the_decision_and_the_review_but_never_the_private_note
             ]
         )
         await MasterService(maker, Bus(), provider).run_turn("c")
-        decide, review = provider.prompts[0][-1]["content"], provider.prompts[1][-1]["content"]
-        assert json.loads(decide)["world_laws"] == "NO TIME TRAVEL"
-        assert "NO TIME TRAVEL" in review and "HIDDEN-SECRET" not in review
-        assert "HIDDEN-SECRET" not in json.dumps(provider.prompts[2:])  # narration and its review
+        rules = {
+            "laws": "NO TIME TRAVEL",
+            "powers": "Магия природы живёт в корнях.",
+            "world": "Подземное царство теней.",
+        }
+        assert json.loads(provider.prompts[0][-1]["content"])["world_rules"] == rules
+        review = provider.prompts[1][-1]["content"]
+        assert "NO TIME TRAVEL" in review and "Магия природы живёт в корнях." in review
+        assert "HIDDEN-SECRET" not in review
+        # the narration and its review work from saved facts: the laws can hold an author's secrets
+        assert "NO TIME TRAVEL" not in json.dumps(provider.prompts[2:])
+        assert "HIDDEN-SECRET" not in json.dumps(provider.prompts[2:])
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_forbidden_verdict_spends_nothing_and_is_not_a_repair_loop(tmp_path):
+    from app.db.models import Character
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        why = "В этом мире мёртвых не воскрешают."
+        provider = Provider(
+            [bridge("large"), {"verdict": "forbidden", "message": why}, "Так не бывает.", {"verdict": "pass"}]
+        )
+        tid = await MasterService(maker, Bus(), provider).run_turn("c")
+        decisions = [p for p in provider.prompts if p[0]["content"].startswith("Интерпретируй")]
+        assert len(decisions) == 1  # no second attempt: the world simply does not allow it
+        async with maker() as s:
+            assert list(await s.scalars(select(Event))) == []
+            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "24"
+            assert (await s.get(MasterTurn, tid)).trace["intent_reviews"]
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_an_unsupported_verdict_asks_the_model_to_use_a_free_effect(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        review = {"verdict": "unsupported", "message": "Нет вида для остановки существ."}
+        provider = Provider([bridge("large"), review, bridge("large"), review, "Не вышло.", {"verdict": "pass"}])
+        await MasterService(maker, Bus(), provider).run_turn("c")
+        assert "free_effect" in json.loads(provider.prompts[2][-1]["content"])["repair"]
         await engine.dispose()
 
     asyncio.run(run())

@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 from sqlalchemy import select
 
@@ -130,7 +131,7 @@ def test_invalid_proposal_is_repaired_once_before_profile_is_saved(tmp_path):
     asyncio.run(run())
 
 
-def test_unsupported_combat_effect_is_not_a_fictional_magic_failure(tmp_path):
+def test_a_combat_kind_is_restated_as_a_free_effect_and_never_refused_by_the_engine(tmp_path):
     async def run():
         engine, maker = await setup(tmp_path)
         await prepare(maker)
@@ -141,10 +142,29 @@ def test_unsupported_combat_effect_is_not_a_fictional_magic_failure(tmp_path):
                     source="supernatural",
                     resolution="automatic",
                     effects=[dict(kind="cannot_move")],
-                    name="Светлячки",
+                    name="Остановить",
                     attribute="wis",
                 ),
                 dict(verdict="unsupported"),
+                dict(
+                    schema_version=2,
+                    source="supernatural",
+                    player_request="supernatural",
+                    resolution="automatic",
+                    name="Остановить",
+                    attribute="wis",
+                    effects=[
+                        dict(
+                            kind="free_effect",
+                            scale="small",
+                            label="Скелеты остановлены",
+                            appearance="Костяные силуэты замерли.",
+                        )
+                    ],
+                ),
+                dict(verdict="pass"),
+                "Скелеты замирают на месте.",
+                dict(verdict="pass"),
             ]
         )
         tid = await MasterService(maker, Bus(), provider, dice_factory=lambda: FixedDice([])).run_turn("c")
@@ -152,13 +172,12 @@ def test_unsupported_combat_effect_is_not_a_fictional_magic_failure(tmp_path):
             turn = await s.get(MasterTurn, tid)
             assert turn.status == "done", turn.trace.get("error")
             message = await s.get(Message, turn.narration_message_id)
-            assert "не поддерживается движком" in message.content
-            assert "пульсац" not in message.content
-            assert (await s.get(Message, "source")).data["action_failure"]["category"] == "unsupported_capability"
-            assert not list(await s.scalars(select(RuntimeProfile)))
-            assert not list(await s.scalars(select(Event)))
-            assert (await load_actor(s, "c", "hero"))[1].energies["wis"] == 24
-        assert len(provider.prompts) == 2  # No fictional narrator call for technical refusal.
+            assert message.content == "Скелеты замирают на месте."
+            assert "движком" not in message.content
+            assert len(list(await s.scalars(select(Event)))) == 1
+            assert (await load_actor(s, "c", "hero"))[1].energies["wis"] == 20  # 24 - 6 + 2 of the step
+        repair = json.loads(provider.prompts[2][-1]["content"])["repair"]
+        assert "free_effect" in repair
         await engine.dispose()
 
     asyncio.run(run())

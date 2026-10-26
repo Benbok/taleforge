@@ -62,8 +62,16 @@ SYSTEM = (
     "ресурс при этом не возвращается. "
     "dismiss — только когда игрок прямо просит снять, погасить или выйти из эффекта; «иду», «говорю» "
     "в форме куста — это move или speak, а не снятие формы. "
+    "Можно ли действие, решает текст мира world_rules: laws и powers описывают, что герои физически могут "
+    "сделать в этом мире. Если действие им не противоречит, оформи его; код только считает цену и исполняет, "
+    "он не вправе ограничивать игрока, поэтому для любого допустимого запроса найди способ его выразить: "
+    "если ни один вид эффекта не подходит, используй free_effect (label — что произошло, appearance — как "
+    "это выглядит и на кого действует, scale и срок) и не оформляй отказ. "
+    "Существо (марионетка, голем, призванный помощник) — create_object, template=creature, в abilities одной "
+    "фразой напиши, что оно умеет и какой силы; приказ герою-создателю оформляй как command с object_id "
+    "существа и label с приказом (бесплатно; сможет ли оно, решит мастер по abilities и world_rules). "
     "Свободное создание: игрок может создать любой предмет или постройку (create_object, template=structure, "
-    "для обычной кружки template=vessel), ограничивает лишь цена и world_laws. Сам оцени размер scale: tiny — "
+    "для обычной кружки template=vessel), ограничивает лишь цена и world_rules. Сам оцени размер scale: tiny — "
     "кружка или веточка, small — лиана или стул, medium — лестница или стена, large — мост, башня, huge — "
     "замок, плотина; оцени прочность sturdiness (fragile, ordinary, sturdy). Чем больше и прочнее, тем дороже, "
     "не занижай размер ради дешевизны. leads_to и leads_view указывай только для large или huge, которые "
@@ -71,7 +79,7 @@ SYSTEM = (
     "Если герой идёт по запомненной постройке из objects (template=structure), оформи move с object_id этой "
     "постройки; если она может подвести (fragile, временная, перегруженная), resolution=check и сам назначь "
     "difficulty по её прочности, а прочную можно пройти без проверки. "
-    "Не нарушай world_laws. "
+    "Не нарушай world_rules. "
     "Если constraints запрещают действие (например, герой в форме куста), всё равно выбери его настоящий вид "
     "(move, speak, take…): сервер сам откажет и объяснит причину; не подменяй его другим действием. "
     "Вопрос игрока о правилах или своём состоянии — это обычное observe или wait без новых эффектов. "
@@ -107,12 +115,15 @@ REVIEW = (
     "создание предмета, срок, материал. Не путай отрицание или притворство с реальной магией. "
     "pass только если каждый смысл реализован поддержанными effects и правильным source; covered_requirements "
     "перечисляет все проверенные id requirements. Если в source есть требование, которого вообще нет в requirements, "
-    "это mismatch. Unsupported существенный эффект — unsupported, неоднозначность — clarify. "
+    "это mismatch. Неоднозначность — clarify. "
     "Для создания (create_object) проверь, что размер scale правдоподобен для описанного: мост через пропасть "
     "не tiny, кружка не huge; при несоответствии verdict=mismatch и в message назови, каким должен быть размер. "
     "Если создание по смыслу ведёт в другое место (мост, лестница наверх, тоннель), у него должен быть leads_to, "
     "иначе mismatch. Если source говорит о переходе по постройке из objects, а в move нет её object_id, это mismatch. "
-    "Создание не должно нарушать world_laws и раскрывать скрытое. "
+    "Допустимость решает текст мира world_rules (laws, powers, world): verdict=forbidden только если этот текст "
+    "прямо исключает действие, в message объясни причину в терминах мира; если действие допустимо, но для него "
+    "нет подходящего вида эффекта, это не запрет и не unsupported, а mismatch с подсказкой использовать "
+    "free_effect. Создание не должно раскрывать скрытое. "
     "Не раскрывай private/world. Не разрешай introductions, если evidence не подтверждает предмет/наблюдателя "
     "и его свойства; восстанавливающий настой требует явного подтверждения, обычное питьё энергию не даёт."
 )
@@ -224,7 +235,7 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                                     "intent": raw,
                                     "evidence": context.get("established_evidence", ""),
                                     "scene": context["scene"],
-                                    "world_laws": context.get("world_laws", ""),
+                                    "world_rules": context.get("world_rules", {}),
                                 },
                                 ensure_ascii=False,
                             ),
@@ -234,10 +245,14 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                 reviews[review_key] = IntentReview.model_validate(json.loads(review_raw)).model_dump(mode="json")
                 await store(service, tid, trace)
             review = IntentReview.model_validate(reviews[review_key])
-            if review.verdict in {"unsupported", "clarify"}:
+            if review.verdict in {"forbidden", "clarify"}:
                 failure = (
-                    action_failure("unsupported_profile")
-                    if review.verdict == "unsupported"
+                    ActionFailure(
+                        category="world_denial",
+                        code="forbidden_by_world",
+                        message=review.message or "Законы этого мира этого не допускают.",
+                    )
+                    if review.verdict == "forbidden"
                     else ActionFailure(
                         category="invalid_proposal",
                         code="clarification_needed",
@@ -248,6 +263,9 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                 prepared[mid] = result.model_dump(mode="json")
                 await store(service, tid, trace)
                 return result
+            if review.verdict == "unsupported":
+                # No engine kind for it is never a refusal: say it again as a free effect or a creation.
+                raise ValueError("Нужного вида эффекта нет: оформи это как free_effect или create_object")
             if review.verdict != "pass":
                 raise ValueError(review.message or "Смысл действия требует уточнения; ничего не применено.")
             async with service.maker() as s:
@@ -321,7 +339,10 @@ async def reviewed_narration(service, campaign, tid, trace, facts, scene, histor
                     "narration_review",
                     [
                         {"role": "system", "content": PROSE_REVIEW},
-                        {"role": "user", "content": json.dumps({**public, "text": text}, ensure_ascii=False)},
+                        {
+                            "role": "user",
+                            "content": json.dumps({**public, "text": text}, ensure_ascii=False),
+                        },
                     ],
                 )
             )

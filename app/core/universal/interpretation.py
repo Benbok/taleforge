@@ -166,7 +166,9 @@ async def validate_exploration(ctx, action):
         raise ValueError("Повтор ссылки на предмет")
     for index, op in enumerate(a.operations):
         if op.kind in {"cannot_move", "cannot_act", "cannot_target", "check_bonus", "defense_bonus", "damage", "heal"}:
-            raise ValueError("Боевой компонент относится к следующему этапу")
+            raise ValueError(
+                "Боевых видов эффекта пока нет: оформи это как free_effect (label и appearance) нужного размера"
+            )
         if op.target_id and op.kind != "pour" and op.target_id != a.actor_id:
             raise ValueError("Недоступная цель компонента")
         if op.kind == "create_object" and (op.template not in {"vessel", "structure", "creature"} or op.quantity != 1):

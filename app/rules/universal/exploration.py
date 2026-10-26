@@ -202,7 +202,7 @@ class IntentV2(ClosedModel):
 
 
 class IntentReview(ClosedModel):
-    verdict: Literal["pass", "mismatch", "clarify", "unsupported"]
+    verdict: Literal["pass", "mismatch", "clarify", "unsupported", "forbidden"]
     message: str = Field(default="", max_length=1000)
     covered_requirements: list[str] = Field(default_factory=list, max_length=16)
 

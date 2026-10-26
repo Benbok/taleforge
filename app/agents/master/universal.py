@@ -60,6 +60,12 @@ def provider_schema(model) -> dict:
     return strip(model.model_json_schema())
 
 
+def world_rules(secret):
+    """What the world says about itself, for deciding what is possible. Never the private notes."""
+    studio = ((secret.setting or {}).get("studio") or {}) if secret else {}
+    return {key: str(studio.get(key) or "") for key in ("laws", "powers", "world")}
+
+
 async def _call(service, campaign, turn, purpose, payload):
     async with service.maker() as s:
         spent = await s.scalar(select(func.sum(LlmCall.cost)).where(LlmCall.campaign_id == campaign.id)) or 0
@@ -275,8 +281,8 @@ async def run_universal_turn(service, cid, place=None):
                 allowed_targets.update(h.id for h in visible_heroes)
                 context = dict(
                     world=(secret.setting or {}).get("studio", {}) if secret else {},
-                    # Only the laws go to the review; private studio notes stay with the master.
-                    world_laws=str(((secret.setting or {}).get("studio") or {}).get("laws") or "") if secret else "",
+                    # The text of the world decides what is allowed; the private notes stay with the master.
+                    world_rules=world_rules(secret),
                     hero=sh.model_dump(mode="json"),
                     resources=resources.model_dump(mode="json"),
                     scene=public_scene,
@@ -366,7 +372,15 @@ async def run_universal_turn(service, cid, place=None):
                     return await _call(service, c, tid, purpose, payload)
 
                 text = await reviewed_narration(
-                    service, c, tid, trace, story, trace.get("scene", {}), history, ask_narration, tone
+                    service,
+                    c,
+                    tid,
+                    trace,
+                    story,
+                    trace.get("scene", {}),
+                    history,
+                    ask_narration,
+                    tone,
                 )
             else:
                 text = await _call(
