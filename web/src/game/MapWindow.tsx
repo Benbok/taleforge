@@ -1,5 +1,6 @@
 import { useEffect, useState, type MouseEvent } from "react";
 import BookMap from "./BookMap";
+import OrientationMap from "./OrientationMap";
 import { LocationMap } from "./LocationMap";
 import { entityVisual, EXIT_VISUALS, FEATURE_VISUALS, MAP_PRESETS } from "./mapPresets";
 import { MapGlyph } from "./MapGlyph";
@@ -903,7 +904,7 @@ function Places({ m }: { m: MapState }) {
 }
 
 /** Окно карты: что вокруг героя и какие места отряд уже открыл. */
-export default function MapWindow() {
+export default function MapWindow({orientationOnly=false}:{orientationOnly?:boolean}={}) {
   const { open, tab, data, loading, error, hide, setTab } = useMapWindow();
 
   useEffect(() => {
@@ -955,7 +956,7 @@ export default function MapWindow() {
             <BookMap book={data.book} where={whereTrail(data)} />
           ) : tab === "around" || tab === "book" ? (
             data.here ? (
-              data.location_map ? <LocationMap key={data.location_map.root_id} map={data.location_map} m={data} /> : <Around m={data} />
+              orientationOnly ? <OrientationMap map={data} /> : data.location_map ? <LocationMap key={data.location_map.root_id} map={data.location_map} m={data} /> : <Around m={data} />
             ) : (
               <p className="text-center font-mono text-xs text-muted">Мастер ещё не объявил, где находится отряд.</p>
             )

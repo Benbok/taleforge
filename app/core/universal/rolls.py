@@ -60,10 +60,17 @@ async def ensure_roll_message(session, campaign_id, session_id, turn_id, source_
         if result.natural is not None:
             proof["legacy_total"] = str(result.total)
     if v2:
+        from app.core.universal.visibility import shared_observations
+
+        changes = await shared_observations(
+            session, campaign_id, audience, [c.model_dump(mode="json") for c in result.changes if not c.private]
+        )
+        if len(changes) != len([c for c in result.changes if not c.private]):
+            proof["description"] = " ".join(c["description"] for c in changes) or "Действие обработано."
         proof.update(
             source_kind=proposal.definition.source,
             automatic=proposal.resolution == "automatic",
-            changes=[c.model_dump(mode="json") for c in result.changes if not c.private],
+            changes=changes,
             ability_ref=result.ability_ref,
             game_seconds=str(result.game_seconds),
         )

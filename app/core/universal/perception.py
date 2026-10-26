@@ -197,10 +197,14 @@ async def observe_known_scene(ctx, aspect):
     if actor.location_id is None:
         return changes
     light = await illumination_view(ctx.session, ctx.campaign_id, actor.id)
+    from app.core.universal.visibility import visible_entity
+
     for row in await ctx.session.scalars(select(Entity).where(Entity.campaign_id == ctx.campaign_id)):
         if row.id != actor.location_id and row.location_id != actor.location_id:
             continue
         if row.state.get("hidden") or row.state.get("visibility") in {"hidden", "private"}:
+            continue
+        if not await visible_entity(ctx.session, ctx.campaign_id, actor.id, row):
             continue
         if "exploration" in row.state and row.state["exploration"].get("owner_id") not in {None, actor.id}:
             continue

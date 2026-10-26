@@ -141,6 +141,7 @@ class EffectIntentV2(ClosedModel):
     target_id: str | None = Field(default=None, max_length=64)
     source_id: str | None = Field(default=None, max_length=64)
     object_id: str | None = Field(default=None, max_length=64)
+    destination_id: str | None = Field(default=None, max_length=32)
     recipient_id: str | None = Field(default=None, max_length=64)
     effect_id: str | None = Field(default=None, max_length=64)
     label: str = Field(default="", max_length=128)
@@ -348,6 +349,7 @@ _BINDINGS = frozenset(
     {"kind", "required_by", "target_id", "source_id", "object_id", "recipient_id", "effect_id", "label", "appearance"}
 )
 _RELEVANT = {
+    "move": {"destination_id"},
     "cannot_move": {"lifetime", "quantity", "resistance_attribute"},
     "cannot_act": {"lifetime", "quantity", "resistance_attribute"},
     "cannot_target": {"lifetime", "quantity", "resistance_attribute"},

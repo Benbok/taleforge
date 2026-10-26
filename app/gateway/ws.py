@@ -727,6 +727,20 @@ async def _map(maker, user: User, conn: Connection, payload: dict) -> None:
     await conn.send(envelope("map.state", conn.campaign_id, out))
 
 
+async def _orientation_only(viewer, answer):
+    if viewer.campaign.ruleset_id != "universal":
+        return False
+    await answer(
+        {
+            "ok": False,
+            "moved": False,
+            "reason": "orientation_only",
+            "error": "Карта служит для осмотра. Опишите перемещение или действие в чате.",
+        }
+    )
+    return True
+
+
 async def _step(app, user: User, conn: Connection, payload: dict) -> None:
     """Игрок нажал клетку схемы: его герой идёт туда (app/tools/movement.py). Ответ ``map.step.result`` — только
     этому сокету; схема у всех обновляется по ``map.changed``."""
@@ -755,6 +769,8 @@ async def _step(app, user: User, conn: Connection, payload: dict) -> None:
     async with app.state.sessionmaker() as session:
         try:
             viewer = await get_viewer(session, user, conn.campaign_id, payload.get("as_seat") or None)
+            if await _orientation_only(viewer, answer):
+                return
         except NotFound as e:
             await answer({"ok": False, "error": str(e)})
             return
@@ -817,6 +833,8 @@ async def _traverse(app, user: User, conn: Connection, payload: dict) -> None:
     try:
         async with app.state.sessionmaker() as session:
             viewer = await get_viewer(session, user, conn.campaign_id, payload.get("as_seat") or None)
+            if await _orientation_only(viewer, answer):
+                return
             hero = await viewer_hero(session, viewer)
             hero_id = hero.id if hero is not None else None
         if hero_id is None:
@@ -897,6 +915,8 @@ async def _route(app, user: User, conn: Connection, payload: dict) -> None:
     try:
         async with app.state.sessionmaker() as session:
             viewer = await get_viewer(session, user, conn.campaign_id, payload.get("as_seat") or None)
+            if await _orientation_only(viewer, answer):
+                return
             hero = await viewer_hero(session, viewer)
             if hero is None:
                 await answer({"ok": False, "error": "у тебя нет героя в этой кампании"})

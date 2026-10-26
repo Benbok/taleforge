@@ -221,6 +221,12 @@ async def validate_exploration(ctx, action):
     if len(refs) != len(a.introductions):
         raise ValueError("Повтор ссылки на предмет")
     for index, op in enumerate(a.operations):
+        if op.destination_id:
+            if op.kind != "move":
+                raise ValueError("Место назначения допустимо только для перехода")
+            from app.core.universal.travel import destination_view
+
+            await destination_view(ctx, op.destination_id)
         if op.target_id and op.kind != "pour" and op.target_id not in a.targets:
             raise ValueError("Недоступная цель компонента")
         if op.kind == "create_object" and (op.template not in {"vessel", "structure", "creature"} or op.quantity != 1):

@@ -87,9 +87,10 @@ export interface LocationMapProps {
   m?: MapState;
   activeLevel?: number;
   idPrefix?: string;
+  orientationOnly?: boolean;
 }
 
-export function LocationMap({ map, m, activeLevel, idPrefix = "location-map" }: LocationMapProps) {
+export function LocationMap({ map, m, activeLevel, idPrefix = "location-map", orientationOnly = false }: LocationMapProps) {
   const levels = useMemo(() => [...new Set(map.areas.map((area) => area.level))].sort((a, b) => a - b), [map.areas]);
   const initial = activeLevel ?? map.areas.find((area) => area.status === "here")?.level ?? levels[0] ?? 0;
   const [level, setLevel] = useState(initial);
@@ -136,16 +137,16 @@ export function LocationMap({ map, m, activeLevel, idPrefix = "location-map" }: 
           <div style={{ width: `${z.zoom * 100}%`, minWidth: "100%" }}>
             <LocationMapSvg map={map} liveSketch={m?.sketch} tokens={m ? locationTokens(m) : []} activeLevel={level} idPrefix={idPrefix}
               pickedExit={picked} pickedPassageRef={picked?.passage_ref}
-              onCell={m && current ? (_, cell) => stepTo({ cell: planToMechanical(current, party, cell) }) : undefined}
+              onCell={!orientationOnly && m && current ? (_, cell) => stepTo({ cell: planToMechanical(current, party, cell) }) : undefined}
               onEntity={m ? (id, name, anchor) => inspect(id, name, anchor) : undefined}
               onPassage={(exit) => setPicked(exit)} />
           </div>
         </div>
       </div>
-      <p className="text-xs leading-relaxed text-muted">Медная отметка — ваш герой или отряд. Приглушённые участки — ранее исследованные. Нажмите на проход, чтобы выбрать действие.</p>
+      <p className="text-xs leading-relaxed text-muted">Медная отметка — ваш герой или отряд. Приглушённые участки — ранее исследованные. Нажмите на проход, чтобы рассмотреть его.</p>
       {picked && current && (
         <div ref={passageBarRef}>
-          <PassageBar exit={picked} pending={traverse.busy} canAct={!step.busy}
+          <PassageBar exit={picked} pending={traverse.busy} canAct={!step.busy} readOnly={orientationOnly}
             onClose={() => setPicked(null)}
             destination={map.areas.find((area) => area.id === picked.to)?.name}
             onApproach={() => stepTo({ near: (picked.cells ?? []).map(([x, y]) => [x - party[0], y - party[1]]) })}
@@ -153,7 +154,7 @@ export function LocationMap({ map, m, activeLevel, idPrefix = "location-map" }: 
             onInteract={() => insert(`Взаимодействую с «${picked.name}».`)} />
         </div>
       )}
-      {(traverse.error || traverse.reason || step.error || step.note) && <p className="rounded-lg border border-warn/40 bg-warn/10 p-3 text-sm text-ink" role={traverse.error || step.error ? "alert" : "status"}>{traverse.error ?? traverse.reason ?? step.error ?? step.note}</p>}
+      {!orientationOnly && (traverse.error || traverse.reason || step.error || step.note) && <p className="rounded-lg border border-warn/40 bg-warn/10 p-3 text-sm text-ink" role={traverse.error || step.error ? "alert" : "status"}>{traverse.error ?? traverse.reason ?? step.error ?? step.note}</p>}
     </section>
   );
 }

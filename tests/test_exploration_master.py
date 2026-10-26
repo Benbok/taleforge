@@ -801,3 +801,11 @@ def test_a_request_that_was_magic_on_any_attempt_stays_magic_when_the_model_back
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_the_review_is_told_that_past_story_text_never_forbids_a_spell():
+    from app.agents.master.exploration import REVIEW
+
+    # Only the world's own text decides what is allowed; the narrator's earlier flourishes are background.
+    assert "Рассказ прошлых ходов не закон" in REVIEW
+    assert "world_rules" in REVIEW.split("Рассказ прошлых ходов не закон")[1]

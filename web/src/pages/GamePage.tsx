@@ -109,7 +109,7 @@ export default function GamePage() {
   const lighting = sceneLighting(scene?.presentation, mode, scene?.mode === "combat");
   const manage = !!card?.is_owner || master;
 
-  if (snapshot?.campaign.ruleset_id === "universal") return <><UniversalAdventure campaignId={id} exploration={exploration} canManage={manage} /><EntityPopover /></>;
+  if (snapshot?.campaign.ruleset_id === "universal") return <><UniversalAdventure campaignId={id} exploration={exploration} canManage={manage} /><MapWindow orientationOnly /><EntityPopover /></>;
 
   const side = (
     <>

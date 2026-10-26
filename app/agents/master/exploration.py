@@ -63,6 +63,9 @@ def not_realised_fact():
 
 
 SYSTEM = (
+    "Для перехода в известное соседнее место используй move с destination_id из known_exits. "
+    "Клетки не нужны. Закрытый/тайный/неизвестный путь не обходится выбором ID; "
+    "обычное движение внутри сцены может быть без destination_id. "
     "За реальное новое достижение можно предложить reward: "
     "category=victory/exploration/quest, subject_id известного объекта, "
     "difficulty=easy/medium/hard/epic, reason по-русски. Награда только после "
@@ -162,6 +165,9 @@ REVIEW = (
     "не tiny, кружка не huge; при несоответствии verdict=mismatch и в message назови, каким должен быть размер. "
     "Если создание по смыслу ведёт в другое место (мост, лестница наверх, тоннель), у него должен быть leads_to, "
     "иначе mismatch. Если source говорит о переходе по постройке из objects, а в move нет её object_id, это mismatch. "
+    "Рассказ прошлых ходов не закон: образные слова рассказчика («магия отзывается болезненной пульсацией», "
+    "«не удалось») и прежний провал ничего не запрещают. Нельзя отклонять заклинание (mismatch, unsupported, "
+    "forbidden) из-за evidence: допустимость решает только world_rules. "
     "Допустимость решает текст мира world_rules (laws, powers, world): verdict=forbidden только если этот текст "
     "прямо исключает действие, в message объясни причину в терминах мира; если действие допустимо, но для него "
     "нет подходящего вида эффекта, это не запрет и не unsupported, а mismatch с подсказкой использовать "
@@ -434,11 +440,11 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
     return result
 
 
-async def reviewed_narration(service, campaign, tid, trace, facts, scene, history, ask, tone=""):
+async def reviewed_narration(service, campaign, tid, trace, facts, scene, history, ask, tone="", *, context=None):
     state = trace.setdefault("exploration_narration", {"attempts": 0})
     from app.agents.master.universal_narration import SYSTEM as NARRATION_SYSTEM
 
-    public = dict(outcomes=facts, scene=scene, recent_history=history)
+    public = context if context is not None else dict(outcomes=facts, scene=scene, recent_history=history)
     while state["attempts"] < 2:
         state["attempts"] += 1
         await store(service, tid, trace)

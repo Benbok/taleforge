@@ -33,9 +33,9 @@ from app.core.positions import bearing_of_cell, zone_of_cell
 from app.core.preparation import container_rows, container_view
 from app.core.scene_view import visible_scene
 from app.core.topology import location_exits
-from app.core.world import PLAYABLE, ZONE_NAMES, get_scene
+from app.core.world import PLAYABLE, ZONE_NAMES
 from app.core.world_objects import is_nested
-from app.db.models import Character, Entity, Knowledge, Message
+from app.db.models import Character, Entity, Knowledge, Message, Scene
 
 BEARINGS = ("n", "ne", "e", "se", "s", "sw", "w", "nw")
 BEARING_NAMES = {
@@ -114,12 +114,19 @@ def _in_complex(place: Entity, blueprint_cache: dict) -> bool:
 
 async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
     cid = viewer.campaign.id
-    scene = await get_scene(session, cid)
+    scene = await session.get(Scene, cid)
+    if scene is None:
+        scene = Scene(campaign_id=cid, mode="free", round=0, turn_order=[], game_time=0, state={})
     ents = (await session.scalars(select(Entity).where(Entity.campaign_id == cid))).all()
-    places = {e.id: e for e in ents if e.kind == "location"}
-    blueprint_cache = {}
     master = viewer.seat is not None and viewer.seat.role == "master"
     hero = None if master else await viewer_hero(session, viewer)
+    universal = viewer.campaign.ruleset_id == "universal"
+    if universal:
+        from app.core.universal.map import map_entities
+
+        ents = await map_entities(session, cid, hero.id if hero else None, master, ents)
+    places = {e.id: e for e in ents if e.kind == "location"}
+    blueprint_cache = {}
 
     q = select(Character).where(Character.campaign_id == cid)
     all_chars = {ch.id: ch for ch in (await session.scalars(q)).all()}
@@ -281,7 +288,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                     "elevation": pos.get("elevation") or "ground",
                     "cover": pos.get("cover") or "none",
                     "cell": pos.get("cell"),
-                    "down": (ch.resources or {}).get("hp") == 0,
+                    "down": str((ch.resources or {}).get("hp")) == "0",
                 }
             )
         for p in out_places:
@@ -465,12 +472,31 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         if passage_exits:
             exits = [x for x in exits if not x.get("id") or not layout_store.complex_of(places[x["id"]])]
             exits.extend(passage_exits)
+    mode = scene.mode
+    if universal:
+        from app.core.universal.places import public_location_name
+
+        mode = (
+            "combat"
+            if here
+            and any(
+                e.id in allowed_entities
+                and e.location_id == here.id
+                and e.kind == "creature"
+                and e.state.get("hostile")
+                and int(e.state.get("resources", {}).get("hp", "1")) > 0
+                for e in ents
+            )
+            else "free"
+        )
+        for place in out_places:
+            place["name"] = public_location_name(viewer.campaign, places[place["id"]], place["name"])
     return {
         "book": book,
         "sketch": projected_sketch,
         "here": {
             "id": here.id,
-            "name": here.name,
+            "name": public_location_name(viewer.campaign, here) if universal else here.name,
             "description": adventure.public_description(here, catalog)
             if adventure.room_of(here)
             else here.description or None,
@@ -481,7 +507,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         "scene_view": scene_view,
         "party": party,
         "areas": areas,
-        "mode": scene.mode,
+        "mode": mode,
         "exits": exits,
         "places": out_places,
         "links": links,
