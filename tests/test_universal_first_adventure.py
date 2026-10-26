@@ -195,7 +195,19 @@ def test_universal_turn_uses_campaign_selected_model_and_endpoint(tmp_path):
 
     class RecordingProvider(Provider):
         def __init__(self):
-            super().__init__([{"kind": "narrative", "reason": "Greet the harbor guard"}, "The guard nods."])
+            super().__init__(
+                [
+                    dict(
+                        schema_version=2,
+                        source="mundane",
+                        player_request="ordinary",
+                        resolution="automatic",
+                        effects=[dict(kind="speak")],
+                    ),
+                    "The guard nods.",
+                    dict(verdict="pass"),
+                ]
+            )
             self.options = []
 
         async def complete(self, messages, **kwargs):
@@ -222,7 +234,7 @@ def test_universal_turn_uses_campaign_selected_model_and_endpoint(tmp_path):
         tid = await service.run_turn("c")
         async with maker() as session:
             assert (await session.get(MasterTurn, tid)).status == "done"
-        assert len(provider.options) == 2
+        assert len(provider.options) == 3  # the decision, the story and its check
         for options in provider.options:
             from app.agents.llm import model_for
 

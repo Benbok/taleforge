@@ -79,25 +79,29 @@ def test_closed_compiler_requires_real_targets_energy_and_complete_check_hints(t
     asyncio.run(run())
 
 
-def test_timed_effect_always_lasts_the_fixed_default_whatever_the_model_asks(tmp_path):
+def test_a_term_is_eighteen_seconds_unless_the_player_names_another(tmp_path):
     async def run():
         engine, maker = await setup(tmp_path)
         async with maker() as s:
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
-            source = dict(source_message_id="m", source_text="превращаюсь в куст на час", evidence="")
-            magic = IntentV2(
-                name="Куст",
-                source="supernatural",
-                resolution="automatic",
-                intensity="light",
-                duration_seconds=600,
-                requirements=[RequirementV2(id="form", quote="превращаюсь в куст", effect="change_form")],
-                effects=[EffectIntentV2(kind="change_form", required_by=["form"])],
-            )
-            action = await compile_exploration(
-                ctx, magic, IntentReview(verdict="pass", covered_requirements=["form"]), source
-            )
-            assert action.definition.duration_seconds == 18 and action.cost == 3
+            source = dict(source_message_id="m", source_text="превращаюсь в куст", evidence="")
+            review = IntentReview(verdict="pass", covered_requirements=["form"])
+
+            def magic(**extra):
+                return IntentV2(
+                    name="Куст",
+                    source="supernatural",
+                    resolution="automatic",
+                    intensity="light",
+                    requirements=[RequirementV2(id="form", quote="превращаюсь в куст", effect="change_form")],
+                    effects=[EffectIntentV2(kind="change_form", required_by=["form"])],
+                    **extra,
+                )
+
+            plain = await compile_exploration(ctx, magic(), review, source)
+            assert plain.definition.duration_seconds == 18 and plain.cost == 3
+            named = await compile_exploration(ctx, magic(duration_seconds=36), review, source)
+            assert named.definition.duration_seconds == 36 and named.cost == 6  # six units instead of three
         await engine.dispose()
 
     asyncio.run(run())

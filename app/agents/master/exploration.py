@@ -40,6 +40,26 @@ class NarrationReview(ClosedModel):
     message: str = Field(default="", max_length=1000)
 
 
+def shortfall_fact(need, have):
+    """A fact for the writer to tell in the story, never a message to the player as it stands."""
+    return ActionFailure(
+        category="insufficient_resources",
+        code="insufficient_energy",
+        message=(
+            f"Герою не хватило энергии: нужно {need}, есть {have}, не хватает {need - have}. "
+            "Ничего не создано и не потрачено."
+        ),
+    )
+
+
+def not_realised_fact():
+    return ActionFailure(
+        category="invalid_proposal",
+        code="not_realised",
+        message="Замысел не удалось воплотить: магия не слушается. Ничего не создано и не потрачено.",
+    )
+
+
 SYSTEM = (
     "За реальное новое достижение можно предложить reward: "
     "category=victory/exploration/quest, subject_id известного объекта, "
@@ -59,13 +79,34 @@ SYSTEM = (
     "Каждое требование имеет свой уникальный короткий id (req_1, req_2…), не id героя или объекта. "
     "Куст: change_form plant_bush и camouflage, если нужна маскировка; не заменяй превращение иллюзией. "
     "Светлячки: illumination. Простая магия/cosmetic и кружка/create_object могут быть automatic. "
-    "Любая магия платная, минимальное воздействие intensity=light. Нормальная кружка lifetime=permanent; "
+    "Любая магия платная, минимальное воздействие intensity=light. Обычная кружка — create_object, template=vessel; "
     "это обычный сосуд без целебных или боевых свойств. "
-    "Временный эффект всегда длится ровно 18 секунд, срок не задавай и не обещай другой: "
-    "игрок может повторить заклинание, чтобы продлить его. Снять действующий эффект раньше срока "
+    "Всё созданное и наложенное временное, постоянного результата нет: по умолчанию 18 секунд; если игрок "
+    "назвал срок («на минуту», «на час»), укажи duration_seconds в секундах, цена растёт со сроком. "
+    "Игрок может повторить заклинание, чтобы продлить его. Снять действующий эффект раньше срока "
     "(выйти из формы, погасить свет) — бесплатное обычное действие: source=mundane, player_request=ordinary, "
     "effects=[{kind: dismiss, effect_id: <id из active_effects>}]; никогда не оформляй это новым заклинанием, "
     "ресурс при этом не возвращается. "
+    "dismiss — только когда игрок прямо просит снять, погасить или выйти из эффекта; «иду», «говорю» "
+    "в форме куста — это move или speak, а не снятие формы. "
+    "Можно ли действие, решает текст мира world_rules: laws и powers описывают, что герои физически могут "
+    "сделать в этом мире. Если действие им не противоречит, оформи его; код только считает цену и исполняет, "
+    "он не вправе ограничивать игрока, поэтому для любого допустимого запроса найди способ его выразить: "
+    "если ни один вид эффекта не подходит, используй free_effect (label — что произошло, appearance — как "
+    "это выглядит и на кого действует, scale и срок) и не оформляй отказ. "
+    "Существо (марионетка, голем, призванный помощник) — create_object, template=creature, в abilities одной "
+    "фразой напиши, что оно умеет и какой силы; приказ герою-создателю оформляй как command с object_id "
+    "существа и label с приказом (бесплатно; сможет ли оно, решит мастер по abilities и world_rules). "
+    "Свободное создание: игрок может создать любой предмет или постройку (create_object, template=structure, "
+    "для обычной кружки template=vessel), ограничивает лишь цена и world_rules. Сам оцени размер scale: tiny — "
+    "кружка или веточка, small — лиана или стул, medium — лестница или стена, large — мост, башня, huge — "
+    "замок, плотина; оцени прочность sturdiness (fragile, ordinary, sturdy). Чем больше и прочнее, тем дороже, "
+    "не занижай размер ради дешевизны. leads_to и leads_view указывай только для large или huge, которые "
+    "реально ведут в новое место (мост на другой берег): коротко назови, куда ведёт, и что оттуда видно. "
+    "Если герой идёт по запомненной постройке из objects (template=structure), оформи move с object_id этой "
+    "постройки; если она может подвести (fragile, временная, перегруженная), resolution=check и сам назначь "
+    "difficulty по её прочности, а прочную можно пройти без проверки. "
+    "Не нарушай world_rules. "
     "Если constraints запрещают действие (например, герой в форме куста), всё равно выбери его настоящий вид "
     "(move, speak, take…): сервер сам откажет и объяснит причину; не подменяй его другим действием. "
     "Вопрос игрока о правилах или своём состоянии — это обычное observe или wait без новых эффектов. "
@@ -114,7 +155,15 @@ REVIEW = (
     "создание предмета, срок, материал. Не путай отрицание или притворство с реальной магией. "
     "pass только если каждый смысл реализован поддержанными effects и правильным source; covered_requirements "
     "перечисляет все проверенные id requirements. Если в source есть требование, которого вообще нет в requirements, "
-    "это mismatch. Unsupported существенный эффект — unsupported, неоднозначность — clarify. "
+    "это mismatch. Неоднозначность — clarify. "
+    "Для создания (create_object) проверь, что размер scale правдоподобен для описанного: мост через пропасть "
+    "не tiny, кружка не huge; при несоответствии verdict=mismatch и в message назови, каким должен быть размер. "
+    "Если создание по смыслу ведёт в другое место (мост, лестница наверх, тоннель), у него должен быть leads_to, "
+    "иначе mismatch. Если source говорит о переходе по постройке из objects, а в move нет её object_id, это mismatch. "
+    "Допустимость решает текст мира world_rules (laws, powers, world): verdict=forbidden только если этот текст "
+    "прямо исключает действие, в message объясни причину в терминах мира; если действие допустимо, но для него "
+    "нет подходящего вида эффекта, это не запрет и не unsupported, а mismatch с подсказкой использовать "
+    "free_effect. Создание не должно раскрывать скрытое. "
     "Не раскрывай private/world. Не разрешай introductions, если evidence не подтверждает предмет/наблюдателя "
     "и его свойства; восстанавливающий настой требует явного подтверждения, обычное питьё энергию не даёт."
 )
@@ -132,6 +181,18 @@ async def store(service, tid, trace):
         turn = await s.get(MasterTurn, tid)
         turn.trace = dict(trace)
         await s.commit()
+
+
+async def journal(service, campaign, kind, mid, context, detail):
+    """Note an unusual request in the journal; it is evidence for the owner, never a reason to stop the turn."""
+    from app.core.universal.journal import record_journal
+
+    try:
+        async with service.maker() as s:
+            await record_journal(s, campaign.id, kind, mid, context.get("source", ""), detail)
+            await s.commit()
+    except Exception:  # noqa: BLE001
+        log.exception("journal entry failed")
 
 
 async def obtain_exploration_action(service, campaign, tid, mid, trace, context, scope, ask):
@@ -155,12 +216,10 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
     attempts = trace.setdefault("proposal_attempts", {})
     failures = trace.setdefault("proposal_failures", {})
     reviews = trace.setdefault("intent_reviews", {})
-    last_failure = (
-        ActionFailure.model_validate(failures[mid]) if mid in failures else action_failure("invalid_proposal")
-    )
+    last_failure = ActionFailure.model_validate(failures[mid]) if mid in failures else not_realised_fact()
     raw = trace.get("admissions", {}).get(mid)
     hint = None
-    short = False
+    shortfall = None
     # A budget slot is persisted before every external call. A crashed call cannot earn a free retry.
     while raw is not None or attempts.get(mid, 0) < 2:
         if raw is None:
@@ -198,7 +257,10 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
         try:
             intent = IntentV2.model_validate(raw)
             review_key = hashlib.sha256((binding + json.dumps(raw, sort_keys=True)).encode()).hexdigest()
-            if review_key not in reviews and is_plain_action(intent):
+            crossable = any(
+                o.get("template") == "structure" and o.get("leads_to") for o in context.get("objects") or []
+            )
+            if review_key not in reviews and is_plain_action(intent, crossable=crossable):
                 reviews[review_key] = IntentReview(
                     verdict="pass", covered_requirements=[r.id for r in intent.requirements]
                 ).model_dump(mode="json")
@@ -223,6 +285,7 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                                     "intent": raw,
                                     "evidence": context.get("established_evidence", ""),
                                     "scene": context["scene"],
+                                    "world_rules": context.get("world_rules", {}),
                                 },
                                 ensure_ascii=False,
                             ),
@@ -232,22 +295,36 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                 reviews[review_key] = IntentReview.model_validate(json.loads(review_raw)).model_dump(mode="json")
                 await store(service, tid, trace)
             review = IntentReview.model_validate(reviews[review_key])
-            if review.verdict in {"unsupported", "clarify"}:
+            if review.verdict in {"forbidden", "clarify"}:
                 failure = (
-                    action_failure("unsupported_profile")
-                    if review.verdict == "unsupported"
+                    ActionFailure(
+                        category="world_denial",
+                        code="forbidden_by_world",
+                        message="Законы этого мира этого не допускают"
+                        + (f": {review.message}" if review.message else "")
+                        + ". Ничего не создано и не потрачено.",
+                    )
+                    if review.verdict == "forbidden"
                     else ActionFailure(
                         category="invalid_proposal",
                         code="clarification_needed",
-                        message="Уточните желаемый эффект, цель или срок действия. Ничего не применено.",
+                        message=(
+                            "Мастеру нужно уточнить замысел: эффект, цель или срок неясны. "
+                            "Ничего не создано и не потрачено."
+                        ),
                     )
                 )
+                if review.verdict == "forbidden":
+                    await journal(service, campaign, "forbidden", mid, context, {"reason": review.message})
                 result = PreparedExploration(failure=failure)
                 prepared[mid] = result.model_dump(mode="json")
                 await store(service, tid, trace)
                 return result
+            if review.verdict == "unsupported":
+                # No engine kind for it is never a refusal: say it again as a free effect or a creation.
+                raise ValueError("Нужного вида эффекта нет: оформи это как free_effect или create_object")
             if review.verdict != "pass":
-                raise ValueError("Смысл действия требует уточнения; ничего не применено.")
+                raise ValueError(review.message or "Смысл действия требует уточнения; ничего не применено.")
             async with service.maker() as s:
                 ctx = ResolutionContext(s, campaign.id, **scope, dice=None)
                 action = await compile_exploration(
@@ -276,8 +353,9 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
             log.warning("exploration proposal rejected: %s | raw=%s", exc, json.dumps(raw, ensure_ascii=False)[:3000])
             # An unaffordable spell is the player's real answer, and a later slip of the model's repair attempt
             # does not take it back; other rejections stay the model's mistake.
-            short = short or isinstance(exc, InsufficientEnergy)
-            last_failure = action_failure("insufficient_resources" if short else "invalid_proposal")
+            if isinstance(exc, InsufficientEnergy):
+                shortfall = exc
+            last_failure = shortfall_fact(shortfall.need, shortfall.have) if shortfall else not_realised_fact()
             hint = str(exc)[:500]
         except Exception as exc:
             log.exception("exploration review or compilation failed")
@@ -289,6 +367,8 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
         raw = None
         trace.get("admissions", {}).pop(mid, None)
         await store(service, tid, trace)
+    if last_failure.code == "not_realised":
+        await journal(service, campaign, "exhausted", mid, context, {"hint": hint or ""})
     result = PreparedExploration(failure=last_failure)
     prepared[mid] = result.model_dump(mode="json")
     await store(service, tid, trace)
@@ -319,7 +399,10 @@ async def reviewed_narration(service, campaign, tid, trace, facts, scene, histor
                     "narration_review",
                     [
                         {"role": "system", "content": PROSE_REVIEW},
-                        {"role": "user", "content": json.dumps({**public, "text": text}, ensure_ascii=False)},
+                        {
+                            "role": "user",
+                            "content": json.dumps({**public, "text": text}, ensure_ascii=False),
+                        },
                     ],
                 )
             )
@@ -329,5 +412,6 @@ async def reviewed_narration(service, campaign, tid, trace, facts, scene, histor
         if review.verdict == "pass":
             return text
     return "\n\n".join(
-        o.get("description") or "Действие обработано; дополнительных наблюдений нет." for o in facts.values()
+        o.get("description") or o.get("reason") or "Действие обработано; дополнительных наблюдений нет."
+        for o in facts.values()
     )

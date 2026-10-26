@@ -44,13 +44,25 @@ EffectKind = Literal[
     "cannot_target",
     "check_bonus",
     "defense_bonus",
+    "free_effect",
+    "command",
 ]
-ObjectTemplate = Literal["vessel", "wood_source", "water_source", "energy_tonic", "observer"]
+ObjectTemplate = Literal["vessel", "wood_source", "water_source", "energy_tonic", "observer", "structure", "creature"]
+Scale = Literal["tiny", "small", "medium", "large", "huge"]
+Sturdiness = Literal["fragile", "ordinary", "sturdy"]
+# Energy per hero level and per six-second unit for something of this size; the model judges the size.
+SCALE_PRICE = {"tiny": 1, "small": 2, "medium": 4, "large": 8, "huge": 16}
+LEADS_SCALES = frozenset({"large", "huge"})
 DEFAULT_EFFECT_SECONDS = 18
+MAX_EFFECT_SECONDS = 604800  # a week: only keeps the whole numbers sane, the price is the real limit
 
 
 class InsufficientEnergy(ValueError):
-    """The hero cannot pay for this spell; the numbers help the model choose less and explain the refusal."""
+    """The hero cannot pay for this spell; the numbers help the model choose less and tell what was missing."""
+
+    def __init__(self, need, have):
+        self.need, self.have = need, have
+        super().__init__(f"Недостаточно энергии: нужно {need}, есть {have}")
 
 
 class FormBlocked(ValueError):
@@ -61,6 +73,8 @@ TIMED_KINDS = frozenset(
     {
         "guard",
         "damage_over_time",
+        "create_object",
+        "free_effect",
         "illumination",
         "camouflage",
         "change_form",
@@ -91,6 +105,7 @@ ORDINARY_KINDS = frozenset(
         "empty",
         "consume",
         "dismiss",
+        "command",
     }
 )
 MAGIC_KINDS = frozenset(
@@ -101,6 +116,7 @@ MAGIC_KINDS = frozenset(
         "camouflage",
         "change_form",
         "create_object",
+        "free_effect",
         "damage",
         "heal",
         "cannot_move",
@@ -129,7 +145,7 @@ class EffectIntentV2(ClosedModel):
     effect_id: str | None = Field(default=None, max_length=64)
     label: str = Field(default="", max_length=128)
     appearance: str = Field(default="", max_length=500)
-    lifetime: Literal["instant", "timed", "permanent"] = "instant"
+    lifetime: Literal["instant", "timed"] = "instant"
     template: ObjectTemplate = "vessel"
     material: MATERIALS = "wood"
     form: Literal["plant_bush"] = "plant_bush"
@@ -138,11 +154,16 @@ class EffectIntentV2(ClosedModel):
     amount: Count = Field(default=300, ge=1, le=1_000_000)
     quantity: int = Field(default=1, ge=1, le=10, strict=True)
     resistance_attribute: AbilityKey | None = None
+    scale: Scale = "tiny"
+    sturdiness: Sturdiness = "ordinary"
+    leads_to: str = Field(default="", max_length=128)
+    leads_view: str = Field(default="", max_length=300)
+    abilities: str = Field(default="", max_length=500)
 
     @model_validator(mode="after")
     def lifetime_supported(self):
-        if self.lifetime == "permanent" and self.kind != "create_object":
-            raise ValueError("Only a created ordinary object may be a permanent result")
+        if self.leads_to and self.scale not in LEADS_SCALES:
+            raise ValueError("Only a large or huge creation can lead to another place")
         return self
 
 
@@ -165,7 +186,7 @@ class AbilityDefinitionV2(ClosedModel):
     attribute: AbilityKey = "wis"
     intensity: Literal["light", "normal", "strong"] = "light"
     target_count: int = Field(default=1, ge=1, le=100, strict=True)
-    duration_seconds: Count = Field(default=18, ge=1, le=600)
+    duration_seconds: Count = Field(default=18, ge=1, le=MAX_EFFECT_SECONDS)
     effects: list[EffectIntentV2] = Field(min_length=1, max_length=16)
 
     @model_validator(mode="after")
@@ -191,7 +212,7 @@ class IntentV2(ClosedModel):
     requirements: list[RequirementV2] = Field(default_factory=list, max_length=16)
     effects: list[EffectIntentV2] = Field(min_length=1, max_length=16)
     introductions: list[IntroductionV2] = Field(default_factory=list, max_length=8)
-    duration_seconds: Count = Field(default=18, ge=1, le=600)
+    duration_seconds: Count = Field(default=18, ge=1, le=MAX_EFFECT_SECONDS)
     elapsed_game_seconds: Count = Field(default=6, ge=0, le=3600)
     public_reason: str = Field(default="", max_length=4000)
     reward: RewardIntent | None = None
@@ -201,7 +222,7 @@ class IntentV2(ClosedModel):
 
 
 class IntentReview(ClosedModel):
-    verdict: Literal["pass", "mismatch", "clarify", "unsupported"]
+    verdict: Literal["pass", "mismatch", "clarify", "unsupported", "forbidden"]
     message: str = Field(default="", max_length=1000)
     covered_requirements: list[str] = Field(default_factory=list, max_length=16)
 
@@ -259,17 +280,34 @@ def definition_key(definition: AbilityDefinitionV2) -> str:
         "cannot_move": {"lifetime", "quantity", "resistance_attribute"},
         "cannot_act": {"lifetime", "quantity", "resistance_attribute"},
         "cannot_target": {"lifetime", "quantity", "resistance_attribute"},
-        "create_object": {"template", "material", "capacity_ml", "lifetime", "quantity"},
+        "create_object": {
+            "template",
+            "material",
+            "capacity_ml",
+            "lifetime",
+            "quantity",
+            "scale",
+            "sturdiness",
+            "leads_to",
+        },
+        "free_effect": {"scale", "sturdiness", "label"},  # the words are all the meaning it has
         "change_form": {"form", "quantity"},
         "observe": {"aspect"},
         "fill": {"amount"},
         "pour": {"amount"},
         "consume": {"amount"},
     }
+    defaults = {"scale": "tiny", "sturdiness": "ordinary", "leads_to": ""}
     data["effects"] = [
-        effect.model_dump(
-            mode="json", include={"kind"} | meaningful.get(effect.kind, {"lifetime", "quantity"}), exclude=bindings
-        )
+        {
+            k: v
+            for k, v in effect.model_dump(
+                mode="json",
+                include={"kind"} | meaningful.get(effect.kind, {"lifetime", "quantity"}),
+                exclude=bindings - ({"label"} if effect.kind == "free_effect" else set()),
+            ).items()
+            if defaults.get(k, object()) != v
+        }
         for effect in definition.effects
     ]
     if not any(e.kind in TIMED_KINDS or e.lifetime == "timed" for e in definition.effects):
@@ -277,13 +315,20 @@ def definition_key(definition: AbilityDefinitionV2) -> str:
     return "ability2-" + hashlib.sha256(json.dumps(data, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:24]
 
 
+def effect_price(effect: EffectIntentV2, definition: AbilityDefinitionV2, level: int) -> int:
+    """Energy for one start of this effect, before duration units: a creation costs by its size and strength,
+    anything else by the spell's intensity."""
+    if effect.kind in {"create_object", "free_effect"}:
+        return SCALE_PRICE[effect.scale] * (2 if effect.sturdiness == "sturdy" else 1) * level
+    return {"light": 1, "normal": 3, "strong": 12}[definition.intensity] * level
+
+
 def exploration_cost(definition: AbilityDefinitionV2, level: int) -> int:
     if type(level) is not int or level < 1:
         raise ValueError("Level must be a positive exact integer")
     if definition.source != "supernatural":
         return 0
-    base = {"light": 1, "normal": 3, "strong": 12}[definition.intensity] * level
-    units = 0
+    total = 0
     has_form = any(effect.kind == "change_form" for effect in definition.effects)
     for effect in definition.effects:
         if effect.kind == "hold_breath":
@@ -292,8 +337,10 @@ def exploration_cost(definition: AbilityDefinitionV2, level: int) -> int:
             continue  # Camouflage of a changed form belongs to that form and is not paid twice.
         timed = effect.kind in TIMED_KINDS or effect.lifetime == "timed"
         duration = (definition.duration_seconds + 5) // 6 if timed else 1
-        units += duration * effect.quantity
-    return base * max(1, units) * definition.target_count
+        total += effect_price(effect, definition, level) * duration * effect.quantity
+    if not total:  # only auxiliary effects: the spell still costs one start at its intensity
+        total = {"light": 1, "normal": 3, "strong": 12}[definition.intensity] * level
+    return total * definition.target_count
 
 
 # Fields of an effect that mean something for each kind; the model fills the rest with plausible filler.
@@ -304,7 +351,19 @@ _RELEVANT = {
     "cannot_move": {"lifetime", "quantity", "resistance_attribute"},
     "cannot_act": {"lifetime", "quantity", "resistance_attribute"},
     "cannot_target": {"lifetime", "quantity", "resistance_attribute"},
-    "create_object": {"template", "material", "capacity_ml", "lifetime", "quantity"},
+    "create_object": {
+        "template",
+        "material",
+        "capacity_ml",
+        "lifetime",
+        "quantity",
+        "scale",
+        "sturdiness",
+        "leads_to",
+        "leads_view",
+        "abilities",
+    },
+    "free_effect": {"scale", "sturdiness", "lifetime"},
     "change_form": {"form", "lifetime", "quantity"},
     "observe": {"aspect", "lifetime"},
     "fill": {"amount"},
@@ -369,6 +428,10 @@ def clean_model_intent(raw):
         known = set(EffectIntentV2.model_fields)
         if kind == "create_object":
             keep = keep - {"object_id"}  # the new object is this effect's result, not something to point at
+            if effect.get("scale") not in LEADS_SCALES:
+                keep = keep - {"leads_to", "leads_view"}  # only a large creation can lead somewhere
+        if effect.get("lifetime") == "permanent":
+            effect = {**effect, "lifetime": "timed"}  # nothing the engine keeps is eternal
         mended = {k: v for k, v in effect.items() if not _empty(v) and (k in keep or k not in known)}
         if str(mended.get("amount", "1")).strip() in {"0", "-0"}:
             mended.pop("amount")  # "nothing" is how a model says it was not given an amount
@@ -378,6 +441,8 @@ def clean_model_intent(raw):
         if isinstance(effect, dict) and effect.get("kind") in _SELF_ACTS:
             effect.pop("target_id", None)
     claim = cleaned.get("player_request")
+    if claim == "pretend":
+        cleaned["source"] = "mundane"  # pretending to cast is acting, whatever the model labelled it
     if cleaned.get("source") == "mundane" and claim in {"pretend", "ordinary"}:
         # Pretending or an ordinary act is not magic; a claimed spell keeps its magic for the review to weigh.
         effects = [e for e in effects if not (isinstance(e, dict) and e.get("kind") in MAGIC_KINDS)] or (
@@ -389,6 +454,7 @@ def clean_model_intent(raw):
         cleaned.get("source") == "mundane"
         and effects
         and all(isinstance(e, dict) and e.get("kind") in _NO_RISK for e in effects)
+        and not any(isinstance(e, dict) and e.get("kind") == "move" and e.get("object_id") for e in effects)
     ):
         cleaned["resolution"] = "automatic"  # walking, speaking or waiting has no uncertain outcome to roll for
     for key in ("elapsed_game_seconds", "duration_seconds"):

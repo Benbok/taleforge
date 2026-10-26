@@ -11,7 +11,11 @@ def prepared_outcome(prepared):
 
 
 def failed_outcome(failure):
-    return {**ActionOutcome(status="denied", failure=failure).model_dump(mode="json"), "reason": failure.message}
+    return {
+        **ActionOutcome(status="denied", failure=failure).model_dump(mode="json"),
+        "reason": failure.message,
+        "schema_version": 2,
+    }
 
 
 def public_outcome(result, reason):
@@ -30,11 +34,23 @@ def public_outcome(result, reason):
     return outcome
 
 
+# What went wrong is a fact for the master to tell in the story; only technical failures are plain notices.
+NARRATED_FAILURES = {
+    "roll_failed",
+    "insufficient_resources",
+    "world_denial",
+    "invalid_proposal",
+    "unsupported_capability",
+    "target_unavailable",
+    "stale_profile",
+}
+
+
 def narration_parts(outcomes):
     story, notices = {}, []
     for source, outcome in outcomes.items():
         failure = outcome.get("failure")
-        if failure and failure["category"] != "roll_failed":
+        if failure and failure["category"] not in NARRATED_FAILURES:
             notices.append(failure["message"])
         else:
             story[source] = outcome

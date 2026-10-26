@@ -10,6 +10,7 @@ from app.core.universal.definitions import admit_definition
 from app.core.universal.discovery import learned_abilities
 from app.core.universal.effects import dismiss_effect, start_effect
 from app.core.universal.interpretation import validate_exploration
+from app.core.universal.journal import record_journal
 from app.core.universal.objects import apply_object_operation, introduce_object
 from app.core.universal.profiles import save_actor
 from app.core.universal.validation import authorize_actor
@@ -18,7 +19,12 @@ from app.rules.universal.exploration import TIMED_KINDS, EffectChange, Explorati
 from app.rules.universal.failures import action_failure
 from app.rules.universal.profiles import CheckProof, DieProof, resolve_check
 
-OBJECT_KINDS = {"create_object", "take", "place", "give", "fill", "pour", "empty", "consume"}
+OBJECT_KINDS = {"create_object", "take", "place", "give", "fill", "pour", "empty", "consume", "move", "command"}
+
+
+def _touches_objects(op):
+    """Plain walking moves only the hero; walking over a remembered structure is an object operation."""
+    return op.kind in OBJECT_KINDS and (op.kind != "move" or bool(op.object_id))
 
 
 def public_exploration_facts(outcome):
@@ -83,7 +89,7 @@ async def _objects(ctx, action, event):
     bindings = await _introductions(ctx, action)
     changes = []
     for index, op in enumerate(action.operations):
-        if op.kind not in OBJECT_KINDS:
+        if not _touches_objects(op):
             continue
         updates = {
             field: bindings.get(getattr(op, field), getattr(op, field))
@@ -154,7 +160,7 @@ async def _execute(ctx, action, key):
             raise ValueError("Основание предмета или наблюдателя больше не доступно")
     # Validate compound material/liquid operations before any die is consumed. The savepoint
     # simulates the complete object sequence and is always rolled back, including introductions.
-    if action.introductions or any(op.kind in OBJECT_KINDS for op in action.operations):
+    if action.introductions or any(_touches_objects(op) for op in action.operations):
         preview = await s.begin_nested()
         try:
             trial = Event(campaign_id=ctx.campaign_id, actor_id=action.actor_id, tool="universal_action", payload={})
@@ -232,6 +238,8 @@ async def _execute(ctx, action, key):
                     "illumination": "Освещение",
                     "hold_breath": "Задержка дыхания",
                 }.get(op.kind, "Временный эффект")
+                if op.kind == "free_effect":
+                    label = op.label or "Эффект"
                 result.changes.append(
                     EffectChange(
                         kind=op.kind,
@@ -297,6 +305,8 @@ async def _execute(ctx, action, key):
     result.description = " ".join(c.description for c in result.changes if not c.private) or _outcome_hint(
         action, result
     )
+    if result.success:
+        await _journal_unusual(ctx, action)
     event.payload = dict(
         schema_version=2, proposal=action.model_dump(mode="json"), outcome=result.model_dump(mode="json")
     )
@@ -323,3 +333,18 @@ def _outcome_hint(action, result):
         if result.success
         else "Попытка не удалась; задуманные эффекты не возникли."
     )
+
+
+async def _journal_unusual(ctx, action):
+    """Free effects and created beings are what the ready mechanics do not cover: note them with the words used."""
+    source = await ctx.session.get(Message, action.source_message_id)
+    for op in action.operations:
+        if op.kind == "free_effect" or (op.kind == "create_object" and op.template == "creature"):
+            await record_journal(
+                ctx.session,
+                ctx.campaign_id,
+                "free_effect" if op.kind == "free_effect" else "creature",
+                action.source_message_id,
+                source.content if source is not None else "",
+                {"label": op.label, "scale": op.scale, "abilities": op.abilities, "appearance": op.appearance},
+            )

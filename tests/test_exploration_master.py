@@ -213,14 +213,15 @@ def test_walking_in_bush_form_gets_the_form_reason_without_extra_model_calls(tmp
             resolution="automatic",
             effects=[{"kind": "move"}],
         )
-        provider = Provider([walking])
+        provider = Provider([walking, "Куст шелестит, но с места не сдвигается.", {"verdict": "pass"}])
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
         async with maker() as s:
             turn = await s.get(MasterTurn, tid)
             message = await s.get(Message, turn.narration_message_id)
-            assert "форме куста" in message.content
+            assert message.content == "Куст шелестит, но с места не сдвигается."
+            assert "форме куста" in narrate_prompt(provider)  # the reason is a fact for the story
             assert list(await s.scalars(select(Event).where(Event.id != "form"))) == []
-        assert len(provider.prompts) == 1  # a plain action needs neither a repair nor a meaning review
+        assert len(provider.prompts) == 3  # the decision, the story and its check: no repair, no meaning review
         await engine.dispose()
 
     asyncio.run(run())
@@ -260,13 +261,14 @@ def test_lack_of_energy_is_explained_to_the_player_after_one_repair_attempt(tmp_
             effects=[{"kind": "cosmetic"}],
         )
         review = {"verdict": "pass", "covered_requirements": []}
-        provider = Provider([costly, review, costly, review])
+        provider = Provider([costly, review, costly, "Сил не хватило.", {"verdict": "pass"}])
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
         repair = json.loads(provider.prompts[2][-1]["content"])["repair"]
         assert "нужно 3" in repair and "есть 2" in repair  # the model is told the real numbers and may choose less
         async with maker() as s:
             message = await s.get(Message, (await s.get(MasterTurn, tid)).narration_message_id)
-            assert "недостаточно энергии" in message.content
+            assert message.content == "Сил не хватило."
+            assert "не хватает 1" in narrate_prompt(provider)
             assert list(await s.scalars(select(Event))) == []
         await engine.dispose()
 
@@ -402,11 +404,307 @@ def test_the_energy_shortage_stays_the_answer_when_the_repair_attempt_fails_othe
             "requirements": [{"id": "r", "quote": "нет такой цитаты", "effect": "cosmetic"}],
         }
         review = {"verdict": "pass", "covered_requirements": ["r"]}
-        provider = Provider([costly, {"verdict": "pass", "covered_requirements": []}, broken, review])
+        story = "Сил не хватило даже на малую долю замысла."
+        provider = Provider(
+            [costly, {"verdict": "pass", "covered_requirements": []}, broken, review, story, {"verdict": "pass"}]
+        )
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
         async with maker() as s:
             message = await s.get(Message, (await s.get(MasterTurn, tid)).narration_message_id)
-            assert "недостаточно энергии" in message.content  # not the vague "invalid parameters"
+            assert message.content == story
+            # the shortfall stays the fact told, not the vague failure of the second attempt
+            assert "не хватает 1" in narrate_prompt(provider)
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def bridge(scale="tiny"):
+    return dict(
+        schema_version=2,
+        name="Мост",
+        source="supernatural",
+        player_request="supernatural",
+        resolution="automatic",
+        effects=[
+            {
+                "kind": "create_object",
+                "template": "structure",
+                "scale": scale,
+                "lifetime": "timed",
+                "label": "Мост",
+            }
+        ],
+    )
+
+
+def test_laws_powers_and_world_reach_the_decision_and_the_meaning_review_but_never_the_narration_or_the_secret_notes(
+    tmp_path,
+):
+    from app.db.models import CampaignSecret
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        async with maker() as s:
+            secret = await s.get(CampaignSecret, "c")
+            secret.setting = {
+                "studio": {
+                    "laws": "NO TIME TRAVEL",
+                    "powers": "Магия природы живёт в корнях.",
+                    "world": "Подземное царство теней.",
+                    "private": "HIDDEN-SECRET",
+                }
+            }
+            await s.commit()
+        provider = Provider(
+            [
+                bridge("large"),
+                {"verdict": "pass", "covered_requirements": []},
+                "Мост перекидывается через пропасть.",
+                {"verdict": "pass"},
+            ]
+        )
+        await MasterService(maker, Bus(), provider).run_turn("c")
+        rules = {
+            "laws": "NO TIME TRAVEL",
+            "powers": "Магия природы живёт в корнях.",
+            "world": "Подземное царство теней.",
+        }
+        assert json.loads(provider.prompts[0][-1]["content"])["world_rules"] == rules
+        review = provider.prompts[1][-1]["content"]
+        assert "NO TIME TRAVEL" in review and "Магия природы живёт в корнях." in review
+        assert "HIDDEN-SECRET" not in review
+        # the narration and its review work from saved facts: the laws can hold an author's secrets
+        assert "NO TIME TRAVEL" not in json.dumps(provider.prompts[2:])
+        assert "HIDDEN-SECRET" not in json.dumps(provider.prompts[2:])
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_forbidden_verdict_spends_nothing_and_is_not_a_repair_loop(tmp_path):
+    from app.db.models import Character
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        why = "В этом мире мёртвых не воскрешают."
+        provider = Provider(
+            [bridge("large"), {"verdict": "forbidden", "message": why}, "Так не бывает.", {"verdict": "pass"}]
+        )
+        tid = await MasterService(maker, Bus(), provider).run_turn("c")
+        decisions = [p for p in provider.prompts if "Интерпретируй" in p[0]["content"]]
+        assert len(decisions) == 1  # no second attempt: the world simply does not allow it
+        async with maker() as s:
+            assert list(await s.scalars(select(Event))) == []
+            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "24"
+            assert (await s.get(MasterTurn, tid)).trace["intent_reviews"]
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_an_unsupported_verdict_asks_the_model_to_use_a_free_effect(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        review = {"verdict": "unsupported", "message": "Нет вида для остановки существ."}
+        provider = Provider([bridge("large"), review, bridge("large"), review, "Не вышло.", {"verdict": "pass"}])
+        await MasterService(maker, Bus(), provider).run_turn("c")
+        assert "free_effect" in json.loads(provider.prompts[2][-1]["content"])["repair"]
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_reviewer_who_finds_the_scale_implausible_stops_the_spell_and_tells_the_model_why(tmp_path):
+    from app.db.models import Character
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        why = "Мост через пропасть не может быть крошечным."
+        provider = Provider(
+            [
+                bridge("tiny"),
+                {"verdict": "mismatch", "message": why},
+                bridge("tiny"),  # the same answer again: its review is already known, so no second review call
+                "Магия не слушается.",
+                {"verdict": "pass"},
+            ]
+        )
+        tid = await MasterService(maker, Bus(), provider).run_turn("c")
+        assert why in json.loads(provider.prompts[2][-1]["content"])["repair"]
+        async with maker() as s:
+            assert list(await s.scalars(select(Event))) == []
+            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "24"
+            assert (await s.get(MasterTurn, tid)).status == "done"
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_walk_that_names_no_structure_is_reviewed_where_a_crossable_one_stands():
+    from app.core.universal.interpretation import is_plain_action
+    from app.rules.universal.exploration import EffectIntentV2, IntentV2
+
+    def walk(**effect):
+        return IntentV2(
+            source="mundane",
+            player_request="ordinary",
+            resolution="automatic",
+            effects=[EffectIntentV2(kind="move", **effect)],
+        )
+
+    assert is_plain_action(walk())  # no bridge around: plain walking
+    assert not is_plain_action(walk(), crossable=True)  # a bridge stands here and the walk names none: ask the reviewer
+    assert is_plain_action(walk(object_id="en_bridge"), crossable=True)
+
+
+def test_the_master_is_shown_what_each_running_effect_says_and_what_each_created_being_can_do(tmp_path):
+    from app.core.universal.effects import start_effect
+    from app.core.universal.objects import ObjectState, store
+    from app.db.models import Entity
+    from app.rules.universal.exploration import EffectIntentV2
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        async with maker() as s:
+            s.add(Event(id="fx", campaign_id="c", actor_id="hero", tool="universal_action", payload={}))
+            doll = Entity(id="en_doll", campaign_id="c", kind="object", name="Глиняный человечек", state={})
+            store(doll, ObjectState(template="creature", controller_id="hero", abilities="Ходит и носит лёгкое."))
+            s.add(doll)
+            await s.flush()
+            await start_effect(
+                s,
+                "c",
+                "hero",
+                "hero",
+                "fx",
+                "0",
+                EffectIntentV2(
+                    kind="free_effect",
+                    label="Скелеты остановлены",
+                    appearance="Костяные силуэты замерли.",
+                    lifetime="timed",
+                ),
+                0,
+                60,
+            )
+            await s.commit()
+        provider = Provider(
+            [proposal(), {"verdict": "pass", "covered_requirements": []}, "Искры.", {"verdict": "pass"}]
+        )
+        await MasterService(maker, Bus(), provider).run_turn("c")
+        context = json.loads(provider.prompts[0][-1]["content"])
+        effect = context["active_effects"][0]
+        assert effect["label"] == "Скелеты остановлены" and effect["description"] == "Костяные силуэты замерли."
+        being = next(o for o in context["objects"] if o["id"] == "en_doll")
+        assert being["template"] == "creature" and being["abilities"] == "Ходит и носит лёгкое."
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def narrate_prompt(provider):
+    """The facts the writer was given: the call whose system prompt asks for a continuation of the scene."""
+    return next(p for p in provider.prompts if "Расскажи продолжение сцены" in p[0]["content"])[-1]["content"]
+
+
+def test_a_shortfall_is_told_in_the_story_with_how_much_was_missing(tmp_path):
+    from app.db.models import Character
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        async with maker() as s:
+            hero = await s.get(Character, "hero")
+            hero.resources = {**hero.resources, "energies": {**hero.resources["energies"], "wis": "2"}}
+            await s.commit()
+        costly = dict(
+            schema_version=2,
+            source="supernatural",
+            player_request="supernatural",
+            resolution="automatic",
+            intensity="normal",
+            effects=[{"kind": "cosmetic"}],
+        )
+        story = "Ты тужишься, но сил не хватает: глина остаётся глиной."
+        provider = Provider(
+            [costly, {"verdict": "pass", "covered_requirements": []}, costly, story, {"verdict": "pass"}]
+        )
+        tid = await MasterService(maker, Bus(), provider).run_turn("c")
+        assert "не хватает 1" in narrate_prompt(provider)
+        async with maker() as s:
+            message = await s.get(Message, (await s.get(MasterTurn, tid)).narration_message_id)
+            assert message.content == story  # the master's own words, not a service phrase
+            assert list(await s.scalars(select(Event))) == []
+            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "2"
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_law_that_forbids_is_told_in_the_story(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        why = "Мёртвых в этом мире не воскрешают."
+        story = "Магия откликается лишь эхом: мёртвые здесь остаются мёртвыми."
+        provider = Provider([bridge("large"), {"verdict": "forbidden", "message": why}, story, {"verdict": "pass"}])
+        tid = await MasterService(maker, Bus(), provider).run_turn("c")
+        assert why in narrate_prompt(provider)
+        async with maker() as s:
+            message = await s.get(Message, (await s.get(MasterTurn, tid)).narration_message_id)
+            assert message.content == story and list(await s.scalars(select(Event))) == []
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_exhausted_repairs_are_told_in_the_story_not_as_invalid_parameters(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        broken = dict(
+            schema_version=2,
+            source="supernatural",
+            player_request="supernatural",
+            resolution="automatic",
+            intensity="light",
+            requirements=[{"id": "r", "quote": "нет такой цитаты", "effect": "cosmetic"}],
+            effects=[{"kind": "cosmetic"}],
+        )
+        story = "Магия не слушается: замысел рассыпается, не успев начаться."
+        provider = Provider(
+            [broken, {"verdict": "pass", "covered_requirements": ["r"]}, broken, story, {"verdict": "pass"}]
+        )
+        tid = await MasterService(maker, Bus(), provider).run_turn("c")
+        async with maker() as s:
+            message = await s.get(Message, (await s.get(MasterTurn, tid)).narration_message_id)
+            assert message.content == story
+            assert "некорректные параметры" not in json.dumps(provider.prompts, ensure_ascii=False)
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_only_technical_failures_stay_plain_notices_the_rest_go_into_the_story():
+    from app.agents.master.action_results import narration_parts
+
+    def outcome(category):
+        return {"status": "denied", "failure": {"category": category, "code": "x", "message": category}}
+
+    story, notices = narration_parts(
+        {
+            "a": outcome("insufficient_resources"),
+            "b": outcome("world_denial"),
+            "c": outcome("invalid_proposal"),
+            "d": outcome("roll_failed"),
+            "e": outcome("internal_error"),
+            "f": {"status": "applied"},
+        }
+    )
+    assert sorted(story) == ["a", "b", "c", "d", "f"] and notices == ["internal_error"]

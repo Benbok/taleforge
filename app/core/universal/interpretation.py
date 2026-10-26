@@ -12,7 +12,6 @@ from app.core.universal.profiles import load_actor
 from app.core.universal.validation import authorize_actor
 from app.db.models import Entity, HeroAbility
 from app.rules.universal.exploration import (
-    DEFAULT_EFFECT_SECONDS,
     MAGIC_KINDS,
     ORDINARY_KINDS,
     AbilityDefinitionV2,
@@ -35,13 +34,17 @@ def needs_intent_review(source, intent, known=False):
     )
 
 
-def is_plain_action(intent):
-    """The model itself read the request as ordinary and every effect is ordinary: no meaning review is needed."""
+def is_plain_action(intent, *, crossable=False):
+    """The model itself read the request as ordinary and every effect is ordinary: no meaning review is needed.
+
+    Where a structure that leads somewhere stands, a walk that names none is not plain: the player may have
+    meant to cross it, and only the review can tell."""
     return (
         intent.player_request == "ordinary"
         and intent.source == "mundane"
         and not intent.introductions
         and all(effect.kind in ORDINARY_KINDS for effect in intent.effects)
+        and not (crossable and any(e.kind == "move" and not e.object_id for e in intent.effects))
     )
 
 
@@ -99,7 +102,7 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
         attribute=intent.attribute,
         intensity=intent.intensity,
         target_count=len(targets),
-        duration_seconds=DEFAULT_EFFECT_SECONDS,  # one fixed term; the player renews or dismisses instead
+        duration_seconds=intent.duration_seconds,  # 18 seconds unless the player names another term
         effects=intent.effects,
     )
     definition.id = definition_key(definition)
@@ -209,7 +212,7 @@ async def validate_exploration(ctx, action):
         if a.cost < 1:
             raise ValueError("Сверхъестественное действие должно иметь положительную цену")
         if have < a.cost:
-            raise InsufficientEnergy(f"Недостаточно энергии: нужно {a.cost}, есть {have}")
+            raise InsufficientEnergy(a.cost, have)
     elif any(op.kind in MAGIC_KINDS for op in a.operations):
         raise ValueError("Сверхъестественное действие не может быть бесплатным")
     if a.elapsed_game_seconds > 3600 or a.elapsed_game_seconds < 1:
@@ -220,8 +223,8 @@ async def validate_exploration(ctx, action):
     for index, op in enumerate(a.operations):
         if op.target_id and op.kind != "pour" and op.target_id not in a.targets:
             raise ValueError("Недоступная цель компонента")
-        if op.kind == "create_object" and (op.template != "vessel" or op.quantity != 1):
-            raise ValueError("Создаётся один обычный сосуд")
+        if op.kind == "create_object" and (op.template not in {"vessel", "structure", "creature"} or op.quantity != 1):
+            raise ValueError("Создаётся один предмет, одна постройка или одно существо")
         for field in ("source_id", "object_id") + (("target_id",) if op.kind == "pour" else ()):
             ref = getattr(op, field)
             if not ref:
