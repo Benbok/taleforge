@@ -33,7 +33,7 @@ def test_cup_light_form_and_reconnect_are_real_scoped_state(tmp_path):
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
             seq = 0
 
-            async def act(ops, source="mundane", introductions=None, elapsed=6):
+            async def act(ops, source="mundane", introductions=None, elapsed=6, term=18):
                 nonlocal seq
                 seq += 1
                 mid = f"action-{seq}"
@@ -53,6 +53,7 @@ def test_cup_light_form_and_reconnect_are_real_scoped_state(tmp_path):
                         effects=ops,
                         introductions=introductions or [],
                         elapsed_game_seconds=elapsed,
+                        duration_seconds=term,
                     ),
                     IntentReview(verdict="pass"),
                     dict(source_message_id=mid, source_text=mid, evidence="Рядом лежат щепки; из стены сочится вода."),
@@ -62,7 +63,7 @@ def test_cup_light_form_and_reconnect_are_real_scoped_state(tmp_path):
                 return result
 
             result = await act(
-                [EffectIntentV2(kind="create_object", source_id="intro:wood", lifetime="permanent")],
+                [EffectIntentV2(kind="create_object", source_id="intro:wood", lifetime="timed")],
                 "supernatural",
                 [
                     IntroductionV2(
@@ -72,6 +73,7 @@ def test_cup_light_form_and_reconnect_are_real_scoped_state(tmp_path):
                         ref="water", template="water_source", name="Вода", evidence_quote="из стены сочится вода"
                     ),
                 ],
+                term=60,  # the player names a longer term so the cup lasts through the whole scene
             )
             cup = next(c.subject_id for c in result.changes if c.kind == "object_created")
             view = await exploration_game_card(s, hero)
@@ -90,7 +92,9 @@ def test_cup_light_form_and_reconnect_are_real_scoped_state(tmp_path):
             assert not (await exploration_game_card(s, hero))["exploration"]["constraints"]["can_speak"]
             await act([EffectIntentV2(kind="wait")], elapsed=18)
             assert not (await exploration_game_card(s, hero))["exploration"]["effects"]
-            assert await s.scalar(select(UniversalEffect).where(UniversalEffect.status == "active")) is None
+            # light and form are over; only the cup, made for a longer term, is still within its own
+            still = list(await s.scalars(select(UniversalEffect).where(UniversalEffect.status == "active")))
+            assert [e.definition["kind"] for e in still] == ["create_object"]
             await s.commit()
         async with maker() as s:
             hero = await s.get(Character, "hero")

@@ -12,7 +12,6 @@ from app.core.universal.profiles import load_actor
 from app.core.universal.validation import authorize_actor
 from app.db.models import Entity, HeroAbility
 from app.rules.universal.exploration import (
-    DEFAULT_EFFECT_SECONDS,
     MAGIC_KINDS,
     ORDINARY_KINDS,
     AbilityDefinitionV2,
@@ -83,7 +82,7 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
         attribute=intent.attribute,
         intensity=intent.intensity,
         target_count=len(targets),
-        duration_seconds=DEFAULT_EFFECT_SECONDS,  # one fixed term; the player renews or dismisses instead
+        duration_seconds=intent.duration_seconds,  # 18 seconds unless the player names another term
         effects=intent.effects,
     )
     definition.id = definition_key(definition)

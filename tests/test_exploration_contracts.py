@@ -34,11 +34,11 @@ def test_semantic_identity_is_not_just_numeric_parameters_or_display_name():
     assert definition_key(form) == definition_key(form.model_copy(update={"effects": [renamed_effect]}))
 
 
-def test_permanent_object_is_a_paid_creation_not_an_infinite_buff():
+def test_a_created_object_is_a_paid_timed_creation_not_an_infinite_buff():
     cup = AbilityDefinitionV2(
-        name="Кружка", source="supernatural", effects=[EffectIntentV2(kind="create_object", lifetime="permanent")]
+        name="Кружка", source="supernatural", effects=[EffectIntentV2(kind="create_object", lifetime="timed")]
     )
-    assert exploration_cost(cup, 1) == 1
+    assert exploration_cost(cup, 1) == 3
     light = AbilityDefinitionV2(
         name="Светлячки",
         source="supernatural",
@@ -102,7 +102,7 @@ def test_model_filler_for_unrelated_effect_fields_is_dropped_before_validation()
     cup = parsed(
         {"kind": "create_object", "template": "vessel", "material": "wood", "form": "vessel", "lifetime": "permanent"}
     )
-    assert cup.effects[0].lifetime == "permanent" and cup.effects[0].material == "wood"  # relevant fields stay
+    assert cup.effects[0].lifetime == "timed" and cup.effects[0].material == "wood"  # relevant fields stay
     fill = parsed(
         {
             "kind": "fill",
@@ -222,7 +222,7 @@ def test_acts_with_no_uncertain_outcome_never_need_a_roll_and_numbers_are_made_e
     )  # the default applies
 
 
-def creation(scale=None, *, sturdiness=None, lifetime="permanent", **extra):
+def creation(scale=None, *, sturdiness=None, lifetime="timed", **extra):
     fields = {"kind": "create_object", "template": "structure", "lifetime": lifetime, **extra}
     if scale:
         fields["scale"] = scale
@@ -233,15 +233,12 @@ def creation(scale=None, *, sturdiness=None, lifetime="permanent", **extra):
 
 def test_creation_price_follows_the_models_scale_and_sturdiness():
     prices = {s: exploration_cost(creation(s), 1) for s in ("tiny", "small", "medium", "large", "huge")}
-    assert prices == {"tiny": 1, "small": 3, "medium": 6, "large": 12, "huge": 24}
-    assert exploration_cost(creation("large", sturdiness="sturdy"), 1) == 24
-    assert exploration_cost(creation("large", sturdiness="fragile"), 1) == 12
-    assert exploration_cost(creation("huge"), 2) == 48
-    assert exploration_cost(creation("huge", lifetime="timed"), 1) == 72  # three six-second units
-    cup = AbilityDefinitionV2(
-        name="Кружка", source="supernatural", effects=[EffectIntentV2(kind="create_object", lifetime="permanent")]
-    )
-    assert exploration_cost(cup, 1) == 1  # a creation with no stated scale is the old cup
+    assert prices == {"tiny": 3, "small": 6, "medium": 12, "large": 24, "huge": 48}  # 1, 2, 4, 8, 16 per unit, 3 units
+    assert exploration_cost(creation("large", sturdiness="sturdy"), 1) == 48
+    assert exploration_cost(creation("large", sturdiness="fragile"), 1) == 24
+    assert exploration_cost(creation("huge"), 2) == 96
+    cup = AbilityDefinitionV2(name="Кружка", source="supernatural", effects=[EffectIntentV2(kind="create_object")])
+    assert exploration_cost(cup, 1) == 3  # a creation with no stated scale is the old cup
 
 
 def test_leads_to_is_for_large_creations_only():
@@ -256,7 +253,7 @@ def test_scale_and_sturdiness_change_the_identity_of_a_creation_but_a_label_does
     assert definition_key(creation("large")) != definition_key(creation("large", sturdiness="sturdy"))
     assert definition_key(creation("large", label="Мост")) == definition_key(creation("large", label="Переправа"))
     cup = AbilityDefinitionV2(
-        name="Кружка", source="supernatural", effects=[EffectIntentV2(kind="create_object", lifetime="permanent")]
+        name="Кружка", source="supernatural", effects=[EffectIntentV2(kind="create_object", lifetime="timed")]
     )
     assert definition_key(cup).startswith("ability2-")  # defaults stay out of the key, so a learned cup keeps its id
 
@@ -310,3 +307,35 @@ def test_pretending_to_cast_is_ordinary_acting_even_when_the_model_labels_it_sup
         }
     )
     assert claimed["source"] == "supernatural" and claimed["effects"][0]["kind"] == "cosmetic"
+
+
+def test_a_permanent_result_becomes_a_timed_one_and_the_cup_costs_three():
+    from app.rules.universal.exploration import clean_model_intent
+
+    raw = {
+        "schema_version": 2,
+        "source": "supernatural",
+        "effects": [{"kind": "create_object", "lifetime": "permanent"}, {"kind": "cosmetic", "lifetime": "permanent"}],
+    }
+    cleaned = clean_model_intent(raw)
+    assert [e["lifetime"] for e in cleaned["effects"][:1]] == ["timed"]
+    cup = AbilityDefinitionV2(name="Кружка", source="supernatural", effects=[EffectIntentV2(kind="create_object")])
+    assert exploration_cost(cup, 1) == 3  # one price unit for each six seconds of the eighteen
+    with pytest.raises(ValidationError):
+        EffectIntentV2(kind="create_object", lifetime="permanent")  # nothing the engine keeps is eternal
+
+
+def test_a_term_named_by_the_player_is_priced_by_its_six_second_units():
+    def spell(seconds):
+        return AbilityDefinitionV2(
+            name="Стена",
+            source="supernatural",
+            duration_seconds=seconds,
+            effects=[EffectIntentV2(kind="create_object", template="structure", scale="medium")],
+        )
+
+    assert exploration_cost(spell(18), 1) == 12  # 4 per unit, three units
+    assert exploration_cost(spell(60), 1) == 40  # ten units
+    assert exploration_cost(spell(61), 1) == 44  # a started unit is paid for
+    with pytest.raises(ValidationError):
+        spell(604801)

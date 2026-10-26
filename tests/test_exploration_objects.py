@@ -39,7 +39,7 @@ def test_real_cup_fill_transfer_place_and_replay(tmp_path):
                 "Рядом течёт ручей",
                 actor_id="hero",
             )
-            op = EffectIntentV2(kind="create_object", label="Кружка", lifetime="permanent")
+            op = EffectIntentV2(kind="create_object", label="Кружка", lifetime="timed")
             result = await apply_object_operation(ctx, op, event, component="0")
             cup_id = result.subject_id
             assert (await apply_object_operation(ctx, op, event, component="0")).subject_id == cup_id

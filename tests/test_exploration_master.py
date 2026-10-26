@@ -424,7 +424,7 @@ def bridge(scale="tiny"):
                 "kind": "create_object",
                 "template": "structure",
                 "scale": scale,
-                "lifetime": "permanent",
+                "lifetime": "timed",
                 "label": "Мост",
             }
         ],

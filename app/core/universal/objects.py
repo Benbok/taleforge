@@ -149,7 +149,7 @@ async def apply_object_operation(ctx, operation, source_event, *, component="0")
                     template="structure",
                     owner_id=None,
                     material=op.material,
-                    temporary=op.lifetime == "timed",
+                    temporary=True,  # whatever is made lasts only its term
                     source_event_id=source_event.id,
                     scale=op.scale,
                     sturdiness=op.sturdiness,
@@ -186,7 +186,7 @@ async def apply_object_operation(ctx, operation, source_event, *, component="0")
                 owner_id=actor.id,
                 material=op.material,
                 capacity_ml=op.capacity_ml,
-                temporary=op.lifetime == "timed",
+                temporary=True,  # whatever is made lasts only its term
                 source_event_id=source_event.id,
             )
             row = Entity(

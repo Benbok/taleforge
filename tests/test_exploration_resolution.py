@@ -28,7 +28,7 @@ async def prepare(s, ctx, kind="cosmetic", source="supernatural", resolution="au
         source=source,
         resolution=resolution,
         intensity="light",
-        effects=[EffectIntentV2(kind=kind, lifetime="permanent" if kind == "create_object" else "instant")],
+        effects=[EffectIntentV2(kind=kind, lifetime="timed" if kind == "create_object" else "instant")],
         check_outcomes=CheckNarration(
             success="Успех проверки.",
             failure="Провал проверки.",
@@ -62,13 +62,13 @@ def test_paid_automatic_cup_learns_once_and_replays_without_time_or_energy(tmp_p
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
             action = await prepare(s, ctx, "create_object")
             result = await resolve_exploration(ctx, action, "m")
-            assert result.status == "applied" and result.success and result.cost == 1 and result.ability_ref
+            assert result.status == "applied" and result.success and result.cost == 3 and result.ability_ref
             assert result.rolls == []
             assert await s.scalar(select(func.count()).select_from(Entity)) == 1
             assert await s.scalar(select(func.count()).select_from(HeroAbility)) == 1
             assert (await resolve_exploration(ctx, action, "m")).status == "repeated"
-            # 10, minus the price 1, plus the 2 the six seconds of this step give back; the replay adds nothing
-            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "11"
+            # 10, minus the price 3, plus the 2 the six seconds of this step give back; the replay adds nothing
+            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "9"
             assert (await clock_view(s, "c"))["game_seconds"] == "6"
             await s.commit()
         async with maker() as s:
@@ -211,7 +211,7 @@ def test_a_failed_check_is_described_by_the_outcome_the_model_wrote_for_it(tmp_p
     asyncio.run(run())
 
 
-def structure(scale="large", lifetime="permanent", **extra):
+def structure(scale="large", lifetime="timed", **extra):
     return IntentV2(
         name="Мост",
         source="supernatural",
@@ -249,13 +249,13 @@ def test_a_structure_is_remembered_priced_and_not_built_twice(tmp_path):
         async with maker() as s:
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
             action, result = await build(ctx, s, structure())
-            assert result.status == "applied" and result.cost == 12
+            assert result.status == "applied" and result.cost == 24
             rows = list(await s.scalars(select(Entity).where(Entity.kind == "object")))
             assert len(rows) == 1 and rows[0].name == "Каменный мост"
             state = object_state(rows[0])
             assert state.template == "structure" and state.owner_id is None and state.scale == "large"
             energy = (await s.get(Character, "hero")).resources["energies"]["wis"]
-            assert energy == "14"  # 24 - 12 + 2 of the step's regeneration
+            assert energy == "2"  # 24 - 24 + 2 of the step's regeneration
             assert (await resolve_exploration(ctx, action, "m")).status == "repeated"
             assert await s.scalar(select(func.count()).select_from(Entity).where(Entity.kind == "object")) == 1
             assert (await s.get(Character, "hero")).resources["energies"]["wis"] == energy
@@ -303,7 +303,7 @@ def test_a_huge_creation_the_hero_cannot_afford_is_refused_with_numbers_and_buil
         await run_low(maker, "7")
         async with maker() as s:
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
-            with pytest.raises(InsufficientEnergy, match="нужно 24, есть 7"):
+            with pytest.raises(InsufficientEnergy, match="нужно 48, есть 7"):
                 await build(ctx, s, structure("huge"))
             assert await s.scalar(select(func.count()).select_from(Entity).where(Entity.kind == "object")) == 0
             assert await s.scalar(select(func.count()).select_from(Event)) == 0

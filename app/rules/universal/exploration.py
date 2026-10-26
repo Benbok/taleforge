@@ -42,10 +42,11 @@ EffectKind = Literal[
 ObjectTemplate = Literal["vessel", "wood_source", "water_source", "energy_tonic", "observer", "structure"]
 Scale = Literal["tiny", "small", "medium", "large", "huge"]
 Sturdiness = Literal["fragile", "ordinary", "sturdy"]
-# Energy per hero level for creating something of this size; the model judges the size, the server counts.
-SCALE_PRICE = {"tiny": 1, "small": 3, "medium": 6, "large": 12, "huge": 24}
+# Energy per hero level and per six-second unit for something of this size; the model judges the size.
+SCALE_PRICE = {"tiny": 1, "small": 2, "medium": 4, "large": 8, "huge": 16}
 LEADS_SCALES = frozenset({"large", "huge"})
 DEFAULT_EFFECT_SECONDS = 18
+MAX_EFFECT_SECONDS = 604800  # a week: only keeps the whole numbers sane, the price is the real limit
 
 
 class InsufficientEnergy(ValueError):
@@ -58,6 +59,7 @@ class FormBlocked(ValueError):
 
 TIMED_KINDS = frozenset(
     {
+        "create_object",
         "illumination",
         "camouflage",
         "change_form",
@@ -121,7 +123,7 @@ class EffectIntentV2(ClosedModel):
     effect_id: str | None = Field(default=None, max_length=64)
     label: str = Field(default="", max_length=128)
     appearance: str = Field(default="", max_length=500)
-    lifetime: Literal["instant", "timed", "permanent"] = "instant"
+    lifetime: Literal["instant", "timed"] = "instant"
     template: ObjectTemplate = "vessel"
     material: MATERIALS = "wood"
     form: Literal["plant_bush"] = "plant_bush"
@@ -136,8 +138,6 @@ class EffectIntentV2(ClosedModel):
 
     @model_validator(mode="after")
     def lifetime_supported(self):
-        if self.lifetime == "permanent" and self.kind != "create_object":
-            raise ValueError("Only a created ordinary object may be a permanent result")
         if self.leads_to and self.scale not in LEADS_SCALES:
             raise ValueError("Only a large or huge creation can lead to another place")
         return self
@@ -161,7 +161,7 @@ class AbilityDefinitionV2(ClosedModel):
     attribute: AbilityKey = "wis"
     intensity: Literal["light", "normal", "strong"] = "light"
     target_count: int = Field(default=1, ge=1, le=100, strict=True)
-    duration_seconds: Count = Field(default=18, ge=1, le=600)
+    duration_seconds: Count = Field(default=18, ge=1, le=MAX_EFFECT_SECONDS)
     effects: list[EffectIntentV2] = Field(min_length=1, max_length=16)
 
     @model_validator(mode="after")
@@ -187,7 +187,7 @@ class IntentV2(ClosedModel):
     requirements: list[RequirementV2] = Field(default_factory=list, max_length=16)
     effects: list[EffectIntentV2] = Field(min_length=1, max_length=16)
     introductions: list[IntroductionV2] = Field(default_factory=list, max_length=8)
-    duration_seconds: Count = Field(default=18, ge=1, le=600)
+    duration_seconds: Count = Field(default=18, ge=1, le=MAX_EFFECT_SECONDS)
     elapsed_game_seconds: Count = Field(default=6, ge=0, le=3600)
     public_reason: str = Field(default="", max_length=4000)
     check_outcomes: CheckNarration | None = None
@@ -377,6 +377,8 @@ def clean_model_intent(raw):
             keep = keep - {"object_id"}  # the new object is this effect's result, not something to point at
             if effect.get("scale") not in LEADS_SCALES:
                 keep = keep - {"leads_to", "leads_view"}  # only a large creation can lead somewhere
+        if effect.get("lifetime") == "permanent":
+            effect = {**effect, "lifetime": "timed"}  # nothing the engine keeps is eternal
         mended = {k: v for k, v in effect.items() if not _empty(v) and (k in keep or k not in known)}
         if str(mended.get("amount", "1")).strip() in {"0", "-0"}:
             mended.pop("amount")  # "nothing" is how a model says it was not given an amount
