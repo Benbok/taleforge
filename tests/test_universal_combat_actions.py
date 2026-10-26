@@ -128,3 +128,50 @@ def test_heal_clamps_to_maximum(tmp_path):
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_first_attack_can_bind_a_visible_foe_from_established_scene_evidence(tmp_path):
+    from app.db.models import Entity
+    from app.rules.universal.exploration import IntroductionV2
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            s.add(Entity(id="place", campaign_id="c", kind="location", name="Зал", description="Страж стоит у арки."))
+            (await s.get(Character, "hero")).location_id = "place"
+            s.add(
+                Message(
+                    id="first-attack",
+                    campaign_id="c",
+                    seq=1,
+                    seat_id="seat",
+                    author_user_id="u",
+                    kind="action",
+                    content="Атакую стража.",
+                )
+            )
+            await s.flush()
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([15, 4]), frozenset({"hero"}))
+            intent = IntentV2(
+                source="supernatural",
+                resolution="attack",
+                intensity="normal",
+                targets=["intro:guard"],
+                effects=[EffectIntentV2(kind="damage")],
+                introductions=[
+                    IntroductionV2(ref="guard", template="observer", name="Страж", evidence_quote="Страж стоит у арки.")
+                ],
+            )
+            action = await compile_exploration(
+                ctx,
+                intent,
+                IntentReview(verdict="pass"),
+                dict(source_message_id="first-attack", source_text="Атакую стража.", evidence="Страж стоит у арки."),
+            )
+            result = await resolve_exploration(ctx, action, "first-attack")
+            assert result.status == "applied" and result.success
+            foe = await s.get(Entity, action.targets[0])
+            assert foe.state["resources"]["hp"] == "14" and foe.state["hostile"]
+        await engine.dispose()
+
+    asyncio.run(run())

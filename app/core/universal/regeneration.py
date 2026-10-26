@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from app.core.campaigns import NotFound
 from app.core.universal.profiles import load_actor
-from app.db.models import Character, Scene
+from app.db.models import Character
 from app.rules.universal.contracts import ENERGY_KEYS
 from app.rules.universal.mechanics import STEP_SECONDS, derive, energy_regen, starting_defense_bonuses
 
@@ -16,13 +16,16 @@ async def regenerate_energy(session, campaign_id, elapsed_seconds):
     Called once per saved game step, so a replayed step restores nothing twice. Health is not an energy
     (healing and consumables own it), and nothing comes back while the scene is a combat."""
     units = -(-elapsed_seconds // STEP_SECONDS)
-    scene = await session.get(Scene, campaign_id)
-    if units < 1 or (scene is not None and scene.mode == "combat"):
+    if units < 1:
         return
     heroes = await session.scalars(
         select(Character).where(Character.campaign_id == campaign_id, Character.status.in_(["active", "approved"]))
     )
+    from app.core.universal.encounters import in_combat
+
     for hero in heroes:
+        if await in_combat(session, campaign_id, hero.location_id):
+            continue
         try:
             sheet, resources = await load_actor(session, campaign_id, hero.id)
         except (NotFound, ValidationError, ValueError, KeyError):

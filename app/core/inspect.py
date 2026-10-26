@@ -308,6 +308,18 @@ async def entity_card(session: AsyncSession, viewer: Viewer, entity_id: str) -> 
     if e is None or e.campaign_id != viewer.campaign.id:
         raise InspectError("такого в мире нет")
     ordinary = None
+    if e.state.get("universal_item"):
+        from app.core.universal.inventory import _owned, item_view
+
+        if not viewer.is_master:
+            hero = await viewer_hero(session, viewer)
+            if hero is None:
+                raise InspectError("такого в мире нет")
+            try:
+                await _owned(session, viewer.campaign.id, hero.id, e.id)
+            except AccessDenied:
+                raise InspectError("такого в мире нет") from None
+        ordinary = item_view(e)
     if e.state.get("exploration"):
         from app.core.universal.objects import accessible, ordinary_object_view
 

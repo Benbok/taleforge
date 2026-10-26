@@ -51,11 +51,9 @@ async def eligible_enemies(ctx, exchange):
         .where(Entity.campaign_id == ctx.campaign_id, Entity.kind == "creature", Entity.location_id == hero.location_id)
         .execution_options(populate_existing=True)
     ):
-        if (
-            not foe.state.get("hostile")
-            or foe.state.get("hidden")
-            or foe.state.get("visibility") in {"hidden", "private"}
-        ):
+        from app.core.universal.visibility import visible_entity
+
+        if not foe.state.get("hostile") or not await visible_entity(s, ctx.campaign_id, hero.id, foe):
             continue
         await initialize_combatant(s, ctx.campaign_id, foe.id)
         if (await load_actor(s, ctx.campaign_id, foe.id))[1].hp <= 0:
@@ -256,9 +254,10 @@ async def run_exchange(ctx, action, choose_reply=None, request_key=None):
         from app.core.world import get_scene
 
         scene = await get_scene(s, ctx.campaign_id)
-        candidates = await eligible_enemies(ctx, exchange)
+        from app.core.universal.encounters import hostile_locations
+
         if scene is not None:
-            scene.mode = "combat" if candidates else "free"
+            scene.mode = "combat" if await hostile_locations(s, ctx.campaign_id) else "free"
         step = await complete_step(s, ctx.campaign_id, request_key, int(exchange.elapsed_seconds), dice=ctx.dice)
         exchange.changes = step.changes
         from app.core.universal.vitality import progress_unconscious_party

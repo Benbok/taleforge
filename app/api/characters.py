@@ -24,6 +24,7 @@ from app.core.world import load_world
 from app.db.models import ActiveEffect, Character, Entity, InventoryItem
 from app.gateway.events import envelope
 from app.rules.universal.contracts import UniversalGameCard
+from app.rules.universal.items import GameItemAction
 
 router = APIRouter(prefix="/api/campaigns/{campaign_id}", tags=["characters"])
 
@@ -54,6 +55,31 @@ class PreviewIn(CharacterIn):
 class ReviewIn(BaseModel):
     approve: bool
     comment: str = Field("", max_length=2000)
+
+
+@router.post("/characters/{character_id}/universal-actions", response_model=UniversalGameCard)
+async def universal_item_action(
+    campaign_id: str,
+    character_id: str,
+    body: GameItemAction,
+    user: UserDep,
+    session: SessionDep,
+    request: Request,
+    as_seat: str | None = None,
+):
+    from app.core.universal.ui_actions import perform_item_action
+
+    viewer = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
+    hero = await svc.get_character(session, viewer, character_id)
+    card, messages = await perform_item_action(session, viewer, hero, body, request.app.state.master.dice_factory())
+    from app.gateway.events import publish_message
+
+    for message in messages:
+        await publish_message(request.app.state.bus, message)
+    from app.core.universal.publication import publish_game_state
+
+    await publish_game_state(session, request.app.state.bus, viewer.campaign)
+    return card
 
 
 async def _view(session, viewer: Viewer, ch: Character) -> dict:

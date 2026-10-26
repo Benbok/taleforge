@@ -84,7 +84,7 @@ export default function GamePage() {
       (h) => useGame.getState().setSheet(h),
       () => useGame.getState().setSheet(null),
     );
-  }, [id, heroId]);
+  }, [id, heroId, snapshot]);
 
   useEffect(() => useDraft.getState().load(id), [id]);
 

@@ -109,3 +109,57 @@ async def ensure_roll_message(session, campaign_id, session_id, turn_id, source_
     session.add(message)
     await session.flush()
     return message
+
+
+async def ensure_completion_message(session, campaign_id, session_id, turn_id, source_id, audience):
+    from types import SimpleNamespace
+
+    from app.core.universal.effects import scope_changes
+    from app.db.models import CombatExchange
+    from app.rules.universal.exploration import EffectChange
+
+    exchange = await session.scalar(
+        select(CombatExchange).where(CombatExchange.campaign_id == campaign_id, CombatExchange.source_key == source_id)
+    )
+    if exchange is None or exchange.status != "ticks_done":
+        return None
+    mid = "tick_" + exchange.id
+    existing = await session.get(Message, mid)
+    if existing:
+        return existing
+    scoped = await scope_changes(
+        SimpleNamespace(session=session, campaign_id=campaign_id, actor_id=exchange.actor_id),
+        [EffectChange.model_validate(change) for change in exchange.changes],
+    )
+    changes = [change for change in scoped if not change.private]
+    if not changes:
+        return None
+    draws = [draw for change in changes for draw in change.data.get("draws", [])]
+    proof = dict(
+        receipt_id=exchange.id,
+        source_id=source_id,
+        revision="2",
+        cost="0",
+        damage=str(sum(int(change.data.get("amount", "0")) for change in changes if change.kind == "periodic_damage")),
+        resource_key=None,
+        draws=draws,
+        checks=[],
+        legacy=False,
+        automatic=True,
+        description=" ".join(change.description for change in changes),
+        changes=[change.model_dump(mode="json") for change in changes],
+    )
+    message = Message(
+        id=mid,
+        campaign_id=campaign_id,
+        session_id=session_id,
+        turn_id=turn_id,
+        seq=await next_seq(session, campaign_id),
+        kind="roll",
+        visible_to=audience,
+        content="Последствия игрового шага",
+        data=dict(tool="universal_action", title="Последствия шага", outcome="success", universal_proof=proof),
+    )
+    session.add(message)
+    await session.flush()
+    return message

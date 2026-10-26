@@ -35,16 +35,17 @@ async def established_evidence(session, campaign_id, actor_id):
     return "\n".join(parts)
 
 
+def observer_id(campaign_id, location_id, spec):
+    return (
+        "en_" + hashlib.sha256(f"{campaign_id}:{location_id}:observer:{spec.evidence_quote}".encode()).hexdigest()[:24]
+    )
+
+
 async def introduce_observer(ctx, spec):
     actor = await ctx.session.get(Character, ctx.actor_id)
     if spec.evidence_quote not in await established_evidence(ctx.session, ctx.campaign_id, ctx.actor_id):
         raise ValueError("Нет известного основания для наблюдателя")
-    key = (
-        "en_"
-        + hashlib.sha256(f"{ctx.campaign_id}:{actor.location_id}:observer:{spec.evidence_quote}".encode()).hexdigest()[
-            :24
-        ]
-    )
+    key = observer_id(ctx.campaign_id, actor.location_id, spec)
     row = await ctx.session.get(Entity, key)
     if row is None:
         row = Entity(
@@ -110,7 +111,7 @@ async def illumination_view(session, campaign_id, actor_id):
     return dict(magical_light=light, reveals_secrets=False)
 
 
-async def assess_detection(ctx, observer_id, actor_id, source_key):
+async def assess_detection(ctx, observer_id, actor_id, source_key, *, at_seconds=None):
     s = ctx.session
     actor = await s.get(Character, actor_id)
     observer = await s.get(Entity, observer_id)
@@ -130,7 +131,7 @@ async def assess_detection(ctx, observer_id, actor_id, source_key):
         return EffectChange.model_validate(previous.payload["change"])
     state = observer.state["exploration_observer"]
     witness = state.get("notices", {}).get(actor_id) in {"witness", "detected"}
-    effects = await active_effects(s, ctx.campaign_id, actor_id)
+    effects = await active_effects(s, ctx.campaign_id, actor_id, at_seconds=at_seconds)
     edge = stealth_edge(
         effects,
         dict(
@@ -153,7 +154,9 @@ async def assess_detection(ctx, observer_id, actor_id, source_key):
             },
         },
     }
-    private = bool(observer.state.get("hidden") or observer.state.get("visibility") in {"hidden", "private"})
+    from app.core.universal.visibility import visible_entity
+
+    private = not await visible_entity(s, ctx.campaign_id, actor_id, observer)
     change = EffectChange(
         kind="detection",
         subject_id=actor_id,

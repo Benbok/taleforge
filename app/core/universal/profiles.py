@@ -78,7 +78,7 @@ async def save_actor(session, campaign_id, actor_id, sheet, resources):
         row.state = {
             **row.state,
             "universal_sheet": sheet.model_dump(mode="json"),
-            "resources": resources.model_dump(mode="json"),
+            "resources": {**row.state.get("resources", {}), **resources.model_dump(mode="json")},
         }
 
 

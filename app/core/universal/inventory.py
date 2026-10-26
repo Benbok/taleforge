@@ -44,6 +44,36 @@ def set_resources(actor, resources):
         actor.state = {**actor.state, "resources": resources}
 
 
+def starting_profiles(sheet):
+    if not sheet.starting_equipment:
+        return []
+    return [
+        ItemProfile(
+            name=item.name,
+            description=item.description,
+            kind=item.kind,
+            attribute=item.attack_ability if item.kind == "weapon" else "str",
+            base_dice=item.damage_dice if item.kind == "weapon" else "1d6",
+            defense_bonus=item.defense_bonus if item.kind == "armor" else 0,
+        )
+        for item in (sheet.starting_equipment.weapon, sheet.starting_equipment.armor)
+    ]
+
+
+def starter_views(campaign_id, actor_id, sheet):
+    return [
+        dict(
+            id="en_" + hashlib.sha256(f"{campaign_id}:{actor_id}:starter:{p.kind}".encode()).hexdigest()[:24],
+            **p.model_dump(mode="json"),
+            status_name=STATUS_NAMES[p.status],
+            quantity="1",
+            equipped=True,
+            slot=p.kind,
+        )
+        for p in starting_profiles(sheet)
+    ]
+
+
 async def create_item(session, campaign_id, actor_id, profile, source_key, *, quantity=1, equipped=False):
     profile = ItemProfile.model_validate(profile.model_dump())
     if not source_key or len(source_key) > 128:
@@ -77,17 +107,8 @@ async def ensure_inventory(session, campaign_id, actor_id):
     if resources_of(actor).get("inventory_initialized"):
         return
     sheet, _ = await load_actor(session, campaign_id, actor_id)
-    if sheet.starting_equipment:
-        for item in (sheet.starting_equipment.weapon, sheet.starting_equipment.armor):
-            profile = ItemProfile(
-                name=item.name,
-                description=item.description,
-                kind=item.kind,
-                attribute=item.attack_ability if item.kind == "weapon" else "str",
-                base_dice=item.damage_dice if item.kind == "weapon" else "1d6",
-                defense_bonus=item.defense_bonus if item.kind == "armor" else 0,
-            )
-            await create_item(session, campaign_id, actor_id, profile, f"starter:{item.kind}", equipped=True)
+    for profile in starting_profiles(sheet):
+        await create_item(session, campaign_id, actor_id, profile, f"starter:{profile.kind}", equipped=True)
     set_resources(actor, {**resources_of(actor), "inventory_initialized": True})
     await session.flush()
 

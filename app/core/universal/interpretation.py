@@ -72,6 +72,20 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
     if any(i.evidence_quote not in evidence for i in intent.introductions):
         raise ValueError("Предмет или наблюдатель не подтверждён известной обстановкой")
     targets = intent.targets or [ctx.actor_id]
+    if intent.introductions:
+        from app.core.universal.perception import observer_id
+        from app.core.universal.profiles import actor_row
+
+        actor = await actor_row(ctx.session, ctx.campaign_id, ctx.actor_id)
+        bindings = {
+            f"intro:{spec.ref}": observer_id(ctx.campaign_id, actor.location_id, spec)
+            for spec in intent.introductions
+            if spec.template == "observer"
+        }
+        targets = [bindings.get(target, target) for target in targets]
+        intent.effects = [
+            op.model_copy(update={"target_id": bindings.get(op.target_id, op.target_id)}) for op in intent.effects
+        ]
     if any(op.kind == "weapon_attack" for op in intent.effects):
         from app.core.universal.inventory import _owned
 
@@ -149,9 +163,16 @@ async def validate_exploration(ctx, action):
             raise FormBlocked("В форме куста нельзя говорить, двигаться или действовать руками; сначала снимите форму.")
     from app.core.universal.combat_actions import COMBAT_KINDS, effective_actor, scoped_targets
 
-    combat = any(op.kind in COMBAT_KINDS for op in a.operations)
+    combat = any(op.kind in COMBAT_KINDS or op.kind == "consume" for op in a.operations)
     current = await effective_actor(ctx.session, ctx.campaign_id, a.actor_id, pending_event_id=ctx.pending_event_id)
-    if resources.hp <= 0 or current["cannot_act"]:
+    passive_wait = (
+        a.definition.source == "mundane"
+        and a.resolution == "automatic"
+        and not a.introductions
+        and a.targets == [actor.id]
+        and all(op.kind == "wait" for op in a.operations)
+    )
+    if resources.hp <= 0 or (current["cannot_act"] and not passive_wait):
         raise ValueError("Герой сейчас не может действовать")
     if current["cannot_move"] and any(op.kind == "move" for op in a.operations):
         raise ValueError("Эффект запрещает двигаться")
@@ -163,7 +184,13 @@ async def validate_exploration(ctx, action):
     }:
         raise ValueError("Недоступная цель или тип разрешения")
     if combat:
-        await scoped_targets(ctx, a)
+        targets = await scoped_targets(ctx, a)
+        if (
+            current["cannot_move"]
+            and any(op.kind == "weapon_attack" for op in a.operations)
+            and any(target.zone == "far" for target in targets.values())
+        ):
+            raise ValueError("Связанный герой не может приблизиться для удара оружием")
         if current["cannot_target"] and any(
             op.kind in {"damage", "weapon_attack", "cannot_move", "cannot_act", "cannot_target"} for op in a.operations
         ):

@@ -12,6 +12,13 @@ STATUS_NAMES = dict(common="Обычный", rare="Редкий", unique="Уни
 BONUS_BUDGET = dict(common=0, rare=1, unique=2, epic=3)
 
 
+class GameItemAction(ClosedModel):
+    kind: Literal["equip", "unequip", "consume", "weapon_attack", "guard"]
+    request_key: str = Field(min_length=1, max_length=64)
+    item_id: str | None = Field(default=None, max_length=32)
+    target_id: str | None = Field(default=None, max_length=32)
+
+
 class ItemProfile(ClosedModel):
     schema_version: Literal[1] = 1
     name: str = Field(min_length=1, max_length=128)

@@ -6,6 +6,20 @@ from app.core.campaigns import AccessDenied, Conflict
 from app.db.models import Character, Entity, Event, UniversalEffect
 from app.rules.universal.exploration import EffectChange, EffectIntentV2
 
+EFFECT_LABELS = {
+    "change_form": "Форма куста",
+    "camouflage": "Маскировка",
+    "illumination": "Освещение",
+    "hold_breath": "Задержка дыхания",
+    "guard": "Защита",
+    "cannot_move": "Связывание",
+    "cannot_act": "Действия ограничены",
+    "cannot_target": "Выбор цели ограничен",
+    "check_bonus": "Усиление проверки",
+    "defense_bonus": "Усиление защиты",
+    "damage_over_time": "Периодический урон",
+}
+
 RENEWABLE_KINDS = frozenset({"change_form", "camouflage", "illumination"})
 
 
@@ -114,11 +128,12 @@ async def active_effects(session, campaign_id, target_id=None, *, at_seconds=Non
 
 async def _end(session, row, status):
     row.status = status
+    label = row.definition.get("label") or EFFECT_LABELS.get(row.definition["kind"], "Эффект")
     changes = [
         EffectChange(
             kind="effect_ended",
             subject_id=row.target_id,
-            description=f"Эффект «{row.definition.get('label') or row.definition['kind']}» завершён.",
+            description=f"Эффект «{label}» завершён.",
             data=dict(effect_id=row.id, effect_kind=row.definition["kind"]),
         )
     ]
@@ -174,6 +189,8 @@ async def dismiss_effect(session, campaign_id, actor_id, effect_id):
 
 async def scope_changes(ctx, changes):
     """Global clock changes are stored fully, but narration sees only the acting audience's facts."""
+    from app.core.universal.visibility import visible_entity
+
     actor = await ctx.session.get(Character, ctx.actor_id)
     result = []
     for change in changes:
@@ -189,8 +206,7 @@ async def scope_changes(ctx, changes):
                 or (
                     row is not None
                     and row.campaign_id == ctx.campaign_id
-                    and not row.state.get("hidden")
-                    and row.state.get("visibility") not in {"hidden", "private"}
+                    and await visible_entity(ctx.session, ctx.campaign_id, ctx.actor_id, row)
                     and state.get("owner_id") in {None, ctx.actor_id}
                     and row.location_id == actor.location_id
                 )

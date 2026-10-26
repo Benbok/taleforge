@@ -69,12 +69,14 @@
 
 **Files:** exploration_views; master V2 capability/context/narration; REST operations; isolated UniversalCombatPanel and tests; contracts; tests/test_universal_combat_playthrough.py.
 **Interfaces:** Authoritative gear/effects/HP/outcome/exchange projection, existing authenticated endpoints/events. Client never resolves combat.
-- [ ] RED: integrated equip→vine hit+resisted bind→one reply→effect expiry→matching potion→0HP/rescue→reconnect, with private counters absent from player/narrator/voice; visible dice remain exact.
-- [ ] Run acceptance/frontend tests; expected missing integration.
-- [ ] Render actual equipment slots, compatible equip controls, HP/energy, active effects, enemy response and public life state. Retain current UI refinements and optional art; no grid, class system, XP/progression or map rewrite.
-- [ ] Run complete Universal/exploration backend suites, contract generation, frontend tests/typecheck/build and additive migrations. One independent final review; fix important findings with RED/GREEN. Update graphify once after final code. Restart same app and run read-only authenticated smoke, no paid casts.
-- [ ] Commit owned work and verification report, keep branch/worktree. Next stage remains progression/XP.
+- [x] RED: integrated equip→vine hit+resisted bind→one reply→effect expiry→matching potion→0HP/rescue→reconnect, with private counters absent from player/narrator/voice; visible dice remain exact.
+- [x] Run acceptance/frontend tests; expected missing integration.
+- [x] Render actual equipment slots, compatible equip controls, HP/energy, active effects, enemy response and public life state. Retain current UI refinements and optional art; no grid, class system, XP/progression or map rewrite.
+- [x] Run complete Universal/exploration backend suites, contract generation, frontend tests/typecheck/build and additive migrations. One independent final review; fix important findings with RED/GREEN. Update graphify once after final code. Restart same app and run read-only authenticated smoke, no paid casts.
+- [x] Commit owned work and verification report, keep branch/worktree. Next stage remains progression/XP.
 
 ## Execution rulings
 
 User's request authorizes implementation of the existing Node3 design. This plan reconciles reused2A parts and occupied migration numbers, rather than repeating design approval. Any further behavior choices are recorded in the plan-specific ledger. Review findings from the earlier2A session are regressions to verify when touching shared combat effects/perception; completed2A work is not reverted or reimplemented.
+
+Implementation and automated acceptance: complete 2026-10-26. See docs/universal-combat.md for validation and playtest scope. Independent review findings fixed; final reviewer verdict was interrupted by usage limit. User playtest remains before Node4.

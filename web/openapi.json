@@ -5792,6 +5792,58 @@
     "title": "FeatureUses",
     "type": "object"
    },
+   "GameItemAction": {
+    "additionalProperties": false,
+    "properties": {
+     "item_id": {
+      "anyOf": [
+       {
+        "maxLength": 32,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Item Id"
+     },
+     "kind": {
+      "enum": [
+       "equip",
+       "unequip",
+       "consume",
+       "weapon_attack",
+       "guard"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "request_key": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Request Key",
+      "type": "string"
+     },
+     "target_id": {
+      "anyOf": [
+       {
+        "maxLength": 32,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Target Id"
+     }
+    },
+    "required": [
+     "kind",
+     "request_key"
+    ],
+    "title": "GameItemAction",
+    "type": "object"
+   },
    "GeneratedObject": {
     "properties": {
      "id": {
@@ -15378,6 +15430,19 @@
    "UniversalGameCard": {
     "additionalProperties": false,
     "properties": {
+     "combat": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Combat"
+     },
      "derived": {
       "$ref": "#/components/schemas/ActorDerived"
      },
@@ -21899,6 +21964,88 @@
      }
     ],
     "summary": "Submit",
+    "tags": [
+     "characters"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/characters/{character_id}/universal-actions": {
+   "post": {
+    "operationId": "universal_item_action_api_campaigns__campaign_id__characters__character_id__universal_actions_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "character_id",
+      "required": true,
+      "schema": {
+       "title": "Character Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "as_seat",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "As Seat"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/GameItemAction"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UniversalGameCard"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Universal Item Action",
     "tags": [
      "characters"
     ]

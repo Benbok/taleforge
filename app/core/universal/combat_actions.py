@@ -2,7 +2,7 @@
 
 from sqlalchemy import select
 
-from app.core.universal.effects import active_effects, start_effect
+from app.core.universal.effects import EFFECT_LABELS, active_effects, start_effect
 from app.core.universal.inventory import _owned, actor_derived, ensure_inventory, equip
 from app.core.universal.profiles import actor_row, load_actor, save_actor
 from app.db.models import Character, Entity, UniversalEffect
@@ -62,13 +62,40 @@ async def effective_actor(session, campaign_id, actor_id, *, at_seconds=None, pe
 async def scoped_targets(ctx, action):
     actor = await actor_row(ctx.session, ctx.campaign_id, action.actor_id)
     targets = {}
+    from app.core.universal.perception import observer_id
+
+    introductions = {
+        observer_id(ctx.campaign_id, actor.location_id, spec): spec
+        for spec in action.introductions
+        if spec.template == "observer"
+    }
     if len(action.targets) != len(set(action.targets)):
         raise ValueError("Повтор цели")
     for target_id in action.targets:
-        if ctx.allowed_target_ids is not None and target_id != actor.id and target_id not in ctx.allowed_target_ids:
+        if (
+            ctx.allowed_target_ids is not None
+            and target_id != actor.id
+            and target_id not in ctx.allowed_target_ids
+            and target_id not in introductions
+        ):
             raise ValueError("Цель не видна герою")
-        target = await actor_row(ctx.session, ctx.campaign_id, target_id)
-        if target.location_id != actor.location_id or (isinstance(target, Entity) and target.state.get("hidden")):
+        if target_id in introductions and await ctx.session.get(Entity, target_id) is None:
+            spec = introductions[target_id]
+            target = Entity(
+                id=target_id,
+                campaign_id=ctx.campaign_id,
+                kind="creature",
+                name=spec.name,
+                location_id=actor.location_id,
+                state={},
+            )
+        else:
+            target = await actor_row(ctx.session, ctx.campaign_id, target_id, refresh=True)
+        from app.core.universal.visibility import visible_entity
+
+        if target.location_id != actor.location_id or (
+            isinstance(target, Entity) and not await visible_entity(ctx.session, ctx.campaign_id, ctx.actor_id, target)
+        ):
             raise ValueError("Цель недоступна")
         if isinstance(target, Character) or target.state.get("universal_sheet"):
             _, target_resources = await load_actor(ctx.session, ctx.campaign_id, target_id)
@@ -290,7 +317,10 @@ async def combat_action(ctx, action, event, result, now):
                         EffectChange(
                             kind=op.kind,
                             subject_id=target_id,
-                            description=f"{target.name}: эффект «{op.label or op.kind}» действует {duration} с.",
+                            description=(
+                                f"{target.name}: эффект «{op.label or EFFECT_LABELS.get(op.kind, 'Эффект')}» "
+                                f"действует {duration} с."
+                            ),
                         )
                     )
     if all_hits:

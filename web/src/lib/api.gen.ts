@@ -1481,6 +1481,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaign_id}/characters/{character_id}/universal-actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Universal Item Action */
+        post: operations["universal_item_action_api_campaigns__campaign_id__characters__character_id__universal_actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaign_id}/characters/{hero_id}/portrait": {
         parameters: {
             query?: never;
@@ -4765,6 +4782,20 @@ export interface components {
             /** Unit */
             unit: string;
         };
+        /** GameItemAction */
+        GameItemAction: {
+            /** Item Id */
+            item_id?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "equip" | "unequip" | "consume" | "weapon_attack" | "guard";
+            /** Request Key */
+            request_key: string;
+            /** Target Id */
+            target_id?: string | null;
+        };
         /** GeneratedObject */
         GeneratedObject: {
             /** Id */
@@ -8006,6 +8037,13 @@ export interface components {
         };
         /** UniversalGameCard */
         UniversalGameCard: {
+            /**
+             * Combat
+             * @default null
+             */
+            combat?: {
+                [key: string]: unknown;
+            } | null;
             derived: components["schemas"]["ActorDerived"];
             /**
              * Editable
@@ -8564,6 +8602,7 @@ export type Event_vote_started = components['schemas']['Event_vote_started'];
 export type Event_vote_updated = components['schemas']['Event_vote_updated'];
 export type FactionItem = components['schemas']['FactionItem'];
 export type FeatureUses = components['schemas']['FeatureUses'];
+export type GameItemAction = components['schemas']['GameItemAction'];
 export type GeneratedObject = components['schemas']['GeneratedObject'];
 export type GenerationStatusOut = components['schemas']['GenerationStatusOut'];
 export type Grid = components['schemas']['Grid'];
@@ -11921,6 +11960,44 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    universal_item_action_api_campaigns__campaign_id__characters__character_id__universal_actions_post: {
+        parameters: {
+            query?: {
+                as_seat?: string | null;
+            };
+            header?: never;
+            path: {
+                campaign_id: string;
+                character_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GameItemAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversalGameCard"];
                 };
             };
             /** @description Validation Error */

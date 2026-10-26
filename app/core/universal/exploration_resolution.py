@@ -65,7 +65,7 @@ async def record_exploration_ability(session, actor, action, outcome, event):
     return learned
 
 
-async def _objects(ctx, action, event):
+async def _introductions(ctx, action):
     bindings = {}
     # Evidence was admitted separately; do not accept evidence supplied by the player's action.
     for spec in action.introductions:
@@ -76,6 +76,11 @@ async def _objects(ctx, action, event):
         else:
             row = await introduce_object(ctx.session, ctx.campaign_id, spec, spec.evidence_quote, actor_id=ctx.actor_id)
         bindings[f"intro:{spec.ref}"] = row.id
+    return bindings
+
+
+async def _objects(ctx, action, event):
+    bindings = await _introductions(ctx, action)
     changes = []
     for index, op in enumerate(action.operations):
         if op.kind not in OBJECT_KINDS:
@@ -85,6 +90,21 @@ async def _objects(ctx, action, event):
             for field in ("object_id", "source_id", "target_id", "recipient_id")
         }
         actual = op.model_copy(update=updates)
+        if actual.kind == "consume":
+            item = await ctx.session.get(Entity, actual.object_id or "")
+            if item is not None and "universal_item" in item.state:
+                from app.core.universal.inventory import consume
+
+                used = await consume(
+                    ctx.session,
+                    ctx.campaign_id,
+                    ctx.actor_id,
+                    item.id,
+                    actual.target_id or action.targets[0],
+                    f"item-{event.id}-{index}",
+                )
+                changes.extend(used.changes)
+                continue
         change = await apply_object_operation(ctx, actual, event, component=str(index))
         bindings[f"created:{index}"] = change.subject_id
         changes.append(change)
@@ -177,7 +197,9 @@ async def _execute(ctx, action, key):
     await s.flush()
     from app.core.universal.combat_actions import COMBAT_KINDS, combat_action
 
-    if any(op.kind in COMBAT_KINDS for op in action.operations):
+    if action.introductions:
+        await _introductions(ctx, action)
+    if result.success and any(op.kind in COMBAT_KINDS for op in action.operations):
         await combat_action(ctx, action, event, result, now)
     if result.success:
         result.changes.extend(await _objects(ctx, action, event))
@@ -247,8 +269,8 @@ async def _execute(ctx, action, key):
             Entity.location_id == state.actor.location_id,
         )
     ):
-        if "exploration_observer" in observer.state:
-            detection = await assess_detection(ctx, observer.id, action.actor_id, key)
+        if not ctx.npc_reply and "exploration_observer" in observer.state:
+            detection = await assess_detection(ctx, observer.id, action.actor_id, key, at_seconds=result.game_seconds)
             result.changes.append(detection)
             if not detection.private and detection.data.get("natural") is not None:
                 data = detection.data

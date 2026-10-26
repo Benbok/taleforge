@@ -178,3 +178,4 @@ class UniversalGameCard(HeroCard):
     status: str
     editable: Literal[False] = False
     exploration: dict | None = None
+    combat: dict | None = None

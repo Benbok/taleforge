@@ -21,7 +21,7 @@ from app.core.universal.action_intents import LegacyAdmission
 from app.core.universal.profiles import load_actor
 from app.core.universal.references import link_scene_text, location_reference
 from app.core.universal.resolution import ResolutionContext, resolve_action
-from app.core.universal.rolls import ensure_roll_message
+from app.core.universal.rolls import ensure_completion_message, ensure_roll_message
 from app.db.models import (
     AgentConfig,
     Campaign,
@@ -34,7 +34,7 @@ from app.db.models import (
     User,
     now,
 )
-from app.gateway.events import envelope, publish_message
+from app.gateway.events import publish_message
 from app.rules.universal.failures import ActionModelError, action_failure
 
 Admission = LegacyAdmission
@@ -220,11 +220,14 @@ async def run_universal_turn(service, cid, place=None):
                     enemy_card = await ensure_roll_message(
                         s, cid, game.id, tid, enemy_source_key(mid), trace.get("audience")
                     )
+                    completion_card = await ensure_completion_message(s, cid, game.id, tid, mid, trace.get("audience"))
                     await s.commit()
                 if card:
                     await publish_message(service.bus, card)
                 if enemy_card:
                     await publish_message(service.bus, enemy_card)
+                if completion_card:
+                    await publish_message(service.bus, completion_card)
                 continue
             async with service.maker() as s:
                 msg = await s.get(Message, mid)
@@ -242,8 +245,12 @@ async def run_universal_turn(service, cid, place=None):
                     raise ValueError("Source author does not control hero")
                 sh, resources = await load_actor(s, cid, hero.id)
                 secret = await s.get(CampaignSecret, cid)
+                from app.core.universal.inventory import ensure_inventory, item_view, owned_items
                 from app.core.universal.scene import universal_scene
 
+                await ensure_inventory(s, cid, hero.id)
+                inventory = [item_view(row) for row in await owned_items(s, cid, hero.id)]
+                await s.commit()
                 user = await s.get(User, seat.user_id)
                 public_scene = await universal_scene(s, c, Viewer(user, c, seat))
                 known = list(await s.scalars(select(HeroAbility).where(HeroAbility.character_id == hero.id)))
@@ -288,6 +295,7 @@ async def run_universal_turn(service, cid, place=None):
                     source=msg.content,
                     established_evidence=evidence,
                     objects=objects,
+                    inventory=inventory,
                     constraints=constraints,
                     active_effects=running,
                     known_abilities=[
@@ -341,6 +349,7 @@ async def run_universal_turn(service, cid, place=None):
                             ResolutionContext(s, cid, **scope, dice=service.dice_factory()), compiled.proposal, mid
                         )
                     outcome = public_outcome(result, compiled.public_reason)
+                    trace["scene"] = await universal_scene(s, c, Viewer(user, c, seat))
                     if results:
                         from app.core.universal.effects import scope_changes
                         from app.db.models import CombatExchange
@@ -362,11 +371,14 @@ async def run_universal_turn(service, cid, place=None):
                             s, cid, game.id, tid, enemy_source_key(mid), trace.get("audience")
                         )
                     card = await ensure_roll_message(s, cid, game.id, tid, mid, trace.get("audience"))
+                    completion_card = await ensure_completion_message(s, cid, game.id, tid, mid, trace.get("audience"))
                     await s.commit()
                 if card:
                     await publish_message(service.bus, card)
                 if enemy_card:
                     await publish_message(service.bus, enemy_card)
+                if completion_card:
+                    await publish_message(service.bus, completion_card)
             trace["outcomes"][mid] = outcome
             async with service.maker() as s:
                 t = await s.get(MasterTurn, tid)
@@ -467,33 +479,10 @@ async def run_universal_turn(service, cid, place=None):
             except Exception:
                 log.exception("master text voice failed")  # optional: never replays saved actions
         await publish_message(service.bus, m)
-        from app.core.characters import public_view
-        from app.core.universal.exploration_views import exploration_game_card
-        from app.core.universal.scene import universal_scene
+        from app.core.universal.publication import publish_game_state
 
         async with service.maker() as s:
-            campaign = await s.get(Campaign, cid)
-            heroes = list(
-                await s.scalars(
-                    select(Character).where(Character.campaign_id == cid, Character.status.in_(["active", "approved"]))
-                )
-            )
-            for changed in heroes:
-                await service.bus.publish(
-                    cid, envelope("character.updated", cid, {"character": public_view(changed)}), None
-                )
-                if changed.seat_id:
-                    await service.bus.publish(
-                        cid,
-                        envelope("character.sheet", cid, {"character": await exploration_game_card(s, changed)}),
-                        [changed.seat_id],
-                    )
-            for player in campaign.seats:
-                if player.role != "player" or not player.user_id:
-                    continue
-                user = await s.get(User, player.user_id)
-                snapshot = await universal_scene(s, campaign, Viewer(user, campaign, player))
-                await service.bus.publish(cid, envelope("scene.updated", cid, snapshot), [player.id])
+            await publish_game_state(s, service.bus, await s.get(Campaign, cid))
         async with service.maker() as s:
             for mid in ids:
                 source = await s.get(Message, mid)

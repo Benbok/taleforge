@@ -31,6 +31,8 @@ async def universal_scene(session, campaign, viewer):
                     or entity.state["exploration"].get("owner_id") is not None
                 )
             )
+            and not entity.state.get("universal_item")
+            and entity.state.get("visibility") not in {"hidden", "private"}
         }
     found = await revealed_to(session, hero_id)
     view = visible_scene(scene, entities, characters, hero_id=hero_id, is_master=viewer.is_master, revealed=found)
@@ -43,4 +45,8 @@ async def universal_scene(session, campaign, viewer):
         from app.core.universal.perception import illumination_view
 
         payload["exploration_light"] = await illumination_view(session, campaign.id, hero.id)
+        payload["mode"] = "combat" if any(
+            entity.kind == "creature" and entity.state.get("hostile")
+            and int(entity.state.get("resources", {}).get("hp", "1")) > 0 for entity in view.entities
+        ) else "free"
     return payload

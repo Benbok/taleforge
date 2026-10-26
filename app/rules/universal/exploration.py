@@ -298,6 +298,9 @@ _BINDINGS = frozenset(
     {"kind", "required_by", "target_id", "source_id", "object_id", "recipient_id", "effect_id", "label", "appearance"}
 )
 _RELEVANT = {
+    "cannot_move": {"lifetime", "quantity", "resistance_attribute"},
+    "cannot_act": {"lifetime", "quantity", "resistance_attribute"},
+    "cannot_target": {"lifetime", "quantity", "resistance_attribute"},
     "create_object": {"template", "material", "capacity_ml", "lifetime", "quantity"},
     "change_form": {"form", "lifetime", "quantity"},
     "observe": {"aspect", "lifetime"},
@@ -413,6 +416,11 @@ def exploration_capabilities():
         default_action_seconds="6",
         default_effect_seconds=str(DEFAULT_EFFECT_SECONDS),
         every_supernatural_use_costs_energy=True,
+        resolutions=["automatic", "check", "attack"],
+        enemy_reply_limit=1,
+        item_statuses=["common", "rare", "unique", "epic"],
+        damage_dice="1d6",
+        resistance="d20+M(target_attribute) vs 10+M(source_attribute)",
         forms=["plant_bush"],
         object_templates=["vessel", "wood_source", "water_source", "energy_tonic", "observer"],
     )

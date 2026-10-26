@@ -12,6 +12,8 @@ import Composer from './Composer';
 import { useDraft } from './draft';
 import { loadChatFontSize, saveChatFontSize, type ChatFontSize } from './scenePreferences';
 import ExplorationPanel, { type ExplorationState } from './ExplorationPanel';
+import UniversalCombatPanel, { type CombatView } from './UniversalCombatPanel';
+import type { HeroSheet } from '../lib/types';
 import SessionControls from './SessionControls';
 import SoundControl from './SoundControl';
 
@@ -30,6 +32,7 @@ export default function UniversalAdventure({
   const sheet = useGame(s => s.sheet);
   const exploration = propExploration ?? (sheet as unknown as { exploration?: ExplorationState } | null)?.exploration ?? null;
   const card = universalCard(sheet);
+  const combat = (sheet as unknown as { combat?: CombatView } | null)?.combat;
   const abilities = card?.learned_abilities ?? [];
   const [showCardModal, setShowCardModal] = useState(false);
   const [isChatFullscreen, setIsChatFullscreen] = useState(false);
@@ -169,6 +172,8 @@ export default function UniversalAdventure({
 
               {/* Действующие эффекты, ограничения формы и интерактивные предметы */}
               {exploration && <ExplorationPanel state={exploration} />}
+              {card && combat && <UniversalCombatPanel campaignId={campaignId} heroId={card.id} state={combat}
+                onUpdated={updated => useGame.getState().setSheet(updated as HeroSheet)} />}
 
               {/* Кнопка открытия полной карточки в модальном окне */}
               <button
