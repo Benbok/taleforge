@@ -17,9 +17,9 @@ Keep feature/universal-creative-studio and the existing worktree/database. Prese
 - [x] GREEN map/privacy/socket tests and targeted frontend tests; commit owned files.
 
 ### Task 2: Grounded public narration and relevant memory
-- [ ] RED shared facts/history/dialogue and relevant saved knowledge included; secrets/rescue counters/adaptations absent from narration/review/voice. Damage remains when binding resisted. Retry and changed audience do not reroll or leak.
-- [ ] Implement audience-scoped public context and persisted narration checkpoint using current Universal pipeline. Reuse memory/retrieval with campaign/recipient/known-subject filtering. Allow scene-appropriate detail and dialogue without forcing a short paragraph or inventing facts/actions. Preserve existing prose/link improvements.
-- [ ] GREEN narration/recovery/privacy tests; commit.
+- [x] RED shared facts/history/dialogue and relevant saved knowledge included; secrets/rescue counters/adaptations absent from narration/review/voice. Damage remains when binding resisted. Retry and changed audience do not reroll or leak.
+- [x] Implement audience-scoped public context and persisted narration checkpoint using current Universal pipeline. Reuse memory/retrieval with campaign/recipient/known-subject filtering. Allow scene-appropriate detail and dialogue without forcing a short paragraph or inventing facts/actions. Preserve existing prose/link improvements.
+- [x] GREEN narration/recovery/privacy tests; commit.
 
 ### Task 3: Whole persistent adventure acceptance and delivery
 - [ ] RED accepted author world → two launches → independent library copy → invented ability → combat/effect/potion → equal XP/growth → read-only map → reconnect. Assert original/other launch unchanged and no private player/voice leakage.

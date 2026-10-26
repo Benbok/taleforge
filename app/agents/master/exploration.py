@@ -298,11 +298,11 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
     return result
 
 
-async def reviewed_narration(service, campaign, tid, trace, facts, scene, history, ask, tone=""):
+async def reviewed_narration(service, campaign, tid, trace, facts, scene, history, ask, tone="", *, context=None):
     state = trace.setdefault("exploration_narration", {"attempts": 0})
     from app.agents.master.universal_narration import SYSTEM as NARRATION_SYSTEM
 
-    public = dict(outcomes=facts, scene=scene, recent_history=history)
+    public = context if context is not None else dict(outcomes=facts, scene=scene, recent_history=history)
     while state["attempts"] < 2:
         state["attempts"] += 1
         await store(service, tid, trace)

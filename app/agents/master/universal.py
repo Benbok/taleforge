@@ -390,15 +390,25 @@ async def run_universal_turn(service, cid, place=None):
                 source = await s.get(Message, mid)
                 mark_source(source, outcome)
                 await s.commit()
-        # Only public saved results enter narrator context, never admission/private studio.
+        # Checkpoint the same recipient-safe view before any text model call.
+        # A resumed narration never rebuilds memory from a later world state.
+        story, notices = narration_parts(trace["outcomes"])
         async with service.maker() as s:
             saved_turn = await s.get(MasterTurn, tid)
             saved_narration = (
                 await s.get(Message, saved_turn.narration_message_id) if saved_turn.narration_message_id else None
             )
-            history = await recent_history(s, c, saved_turn.upto_seq, trace.get("audience"), trace.get("scene", {}))
+            if "public_context" not in trace:
+                from app.agents.master.public_context import public_context
+
+                trace["public_context"] = await public_context(
+                    s, c, saved_turn.upto_seq, trace.get("audience"), trace.get("scene", {}), story
+                )
+                saved_turn.trace = dict(trace)
+                await s.commit()
+        public = trace["public_context"]
+        story, scene, history = public["outcomes"], public["scene"], public["recent_history"]
         await service._status(cid, "describing")
-        story, notices = narration_parts(trace["outcomes"])
         tone = await mood_note(service, c, tid, trace) if story and not saved_narration else ""
         if saved_narration:
             text = saved_narration.content
@@ -412,7 +422,7 @@ async def run_universal_turn(service, cid, place=None):
                     return await _call(service, c, tid, purpose, payload)
 
                 text = await reviewed_narration(
-                    service, c, tid, trace, story, trace.get("scene", {}), history, ask_narration, tone
+                    service, c, tid, trace, story, scene, history, ask_narration, tone, context=public
                 )
             else:
                 text = await _call(
@@ -428,7 +438,7 @@ async def run_universal_turn(service, cid, place=None):
                         {
                             "role": "user",
                             "content": json.dumps(
-                                {"outcomes": story, "scene": trace.get("scene", {}), "recent_history": history},
+                                public,
                                 ensure_ascii=False,
                             ),
                         },
@@ -444,14 +454,14 @@ async def run_universal_turn(service, cid, place=None):
                     session_id=game.id,
                     turn_id=tid,
                     kind="narration",
-                    content=link_scene_text(text, trace.get("scene", {})),
+                    content=link_scene_text(text, scene),
                     seq=await next_seq(s, cid),
                     visible_to=trace.get("audience"),
                     data={
                         "universal": True,
-                        "location_ref": location_reference(trace.get("scene", {})),
+                        "location_ref": location_reference(scene),
                         "scope": "party" if trace.get("audience") is not None else "public",
-                        "location_id": (trace.get("scene", {}).get("location") or {}).get("id"),
+                        "location_id": (scene.get("location") or {}).get("id"),
                     },
                 )
                 s.add(m)
