@@ -1,6 +1,8 @@
 """One saved cosmetic sketch per location; no game step, loot or model calls."""
 
+import hashlib
 import zlib
+from dataclasses import replace
 
 from sqlalchemy import select
 
@@ -21,14 +23,26 @@ def build_sketch(campaign_id, location, entities):
     shape = "cave" if any(w in text for w in ("пещер", "ущель", "провал", "cave", "gorge")) else "open"
     if any(w in text for w in ("комнат", "зал", "таверн", "room", "hall", "tavern")):
         shape = "rect"
-    intent = LayoutIntent(entry="here", parts=[PartIntent(
-        part_ref="here", name="Место", public_name="Место", shape=shape,
-        environment="indoor" if shape != "open" else "outdoor", size="medium",
-    )])
+    intent = LayoutIntent(
+        entry="here",
+        parts=[
+            PartIntent(
+                part_ref="here",
+                name="Место",
+                public_name="Место",
+                shape=shape,
+                environment="indoor" if shape != "open" else "outdoor",
+                size="medium",
+            )
+        ],
+    )
     seed = zlib.crc32(f"{campaign_id}:{location.id}:orientation-v1".encode())
     blueprint = DeterministicLayoutProvider().propose(intent, seed=seed, root_id=location.id)
-    sketch = build_area(blueprint, blueprint.areas[0])
-    cells = sorted(floor_cells(sketch) - {tuple(sketch["party"])}, key=lambda c: (c[1], c[0]))
+    area = replace(blueprint.areas[0], details=(), object_slots=())
+    sketch = build_area(blueprint, area)
+    sketch.pop("blueprint", None)  # cosmetic sketch is not a persisted playable complex
+    floor = floor_cells(sketch) or {(c, r) for c in range(sketch["cols"]) for r in range(sketch["rows"])}
+    cells = sorted(floor - {tuple(sketch["party"])}, key=lambda c: (c[1], c[0]))
     markers = []
     for row in sorted(entities.values(), key=lambda e: e.id):
         if row.kind != "object" or row.location_id != location.id or concealed(row, entities):
@@ -42,10 +56,18 @@ def build_sketch(campaign_id, location, entities):
         markers.append(row)
     for i, row in enumerate(markers[:16]):
         c, r = cells[(i + 1) * len(cells) // (min(len(markers), 16) + 1)]
-        sketch["features"].append(dict(
-            id=f"sf_{row.id}"[:32], entity_id=row.id, name=row.name[:60],
-            kind="object", cells=[[c, r, c, r]], cover="none", hidden=False, solid=False,
-        ))
+        sketch["features"].append(
+            dict(
+                id="sf_" + hashlib.sha256(row.id.encode()).hexdigest()[:24],
+                entity_id=row.id,
+                name=row.name[:60],
+                kind="object",
+                cells=[[c, r, c, r]],
+                cover="none",
+                hidden=False,
+                solid=False,
+            )
+        )
     if errors := check(sketch, set(entities)):
         raise ValueError("; ".join(errors))
     return sketch
@@ -63,11 +85,14 @@ async def ensure_map(session, campaign_id, location_id):
     if location.kind != "location":
         raise ValueError("Выберите локацию")
     state = location.state or {}
-    if state.get("sketch") or state.get("complex") or state.get("blueprint"):
+    if state.get("sketch") or state.get("complex") or state.get("blueprint") or state.get("room"):
         return False
     entities = {e.id: e for e in await session.scalars(select(Entity).where(Entity.campaign_id == campaign_id))}
-    location.state = {**state, "sketch": build_sketch(campaign_id, location, entities),
-                      "orientation_map": {"version": 1, "approximate": True}}
+    location.state = {
+        **state,
+        "sketch": build_sketch(campaign_id, location, entities),
+        "orientation_map": {"version": 1, "approximate": True},
+    }
     await session.flush()
     return True
 
@@ -78,12 +103,11 @@ async def generate_for_viewer(session, viewer, location_id):
     hero = await viewer_hero(session, viewer) if not viewer.is_master else None
     if hero:
         await session.refresh(hero)
-        here = hero.location_id
-    elif viewer.is_master:
-        scene = await session.get(Scene, cid)
-        here = scene.location_id if scene else None
-    else:
+    elif not viewer.is_master:
         raise AccessDenied("Создать схему может игрок своего героя или мастер")
+    from app.core.map import party_map
+
+    here = ((await party_map(session, viewer)).get("here") or {}).get("id")
     if here != location_id:
         raise ValueError("Местоположение изменилось. Обновите карту и попробуйте снова.")
     return dict(created=await ensure_map(session, cid, location_id), location_id=location_id)
@@ -92,9 +116,16 @@ async def generate_for_viewer(session, viewer, location_id):
 async def prepare_party_maps(session, campaign):
     if campaign.ruleset_id != "universal":
         return
-    locations = set(await session.scalars(select(Character.location_id).where(
-        Character.campaign_id == campaign.id, Character.status.in_(["active", "approved"]),
-        Character.seat_id.is_not(None), Character.location_id.is_not(None),
-    )))
-    for location_id in sorted(locations):
+    scene = await session.get(Scene, campaign.id)
+    locations = {
+        location_id or (scene.location_id if scene else None)
+        for location_id in await session.scalars(
+            select(Character.location_id).where(
+                Character.campaign_id == campaign.id,
+                Character.status.in_(["active", "approved"]),
+                Character.seat_id.is_not(None),
+            )
+        )
+    }
+    for location_id in sorted(locations - {None}):
         await ensure_map(session, campaign.id, location_id)

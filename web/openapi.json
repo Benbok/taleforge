@@ -11596,6 +11596,39 @@
     "title": "OrderEntry",
     "type": "object"
    },
+   "OrientationMapIn": {
+    "properties": {
+     "location_id": {
+      "maxLength": 32,
+      "minLength": 1,
+      "title": "Location Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "location_id"
+    ],
+    "title": "OrientationMapIn",
+    "type": "object"
+   },
+   "OrientationMapOut": {
+    "properties": {
+     "created": {
+      "title": "Created",
+      "type": "boolean"
+     },
+     "location_id": {
+      "title": "Location Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "created",
+     "location_id"
+    ],
+    "title": "OrientationMapOut",
+    "type": "object"
+   },
    "OriginItem": {
     "properties": {
      "ability_bonuses": {
@@ -23405,6 +23438,79 @@
     "summary": "Get Narrative Status",
     "tags": [
      "plan"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/orientation-map": {
+   "post": {
+    "operationId": "orientation_map_api_campaigns__campaign_id__orientation_map_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "as_seat",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "As Seat"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/OrientationMapIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OrientationMapOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Orientation Map",
+    "tags": [
+     "generation"
     ]
    }
   },

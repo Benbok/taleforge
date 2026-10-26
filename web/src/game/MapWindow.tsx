@@ -922,7 +922,7 @@ export default function MapWindow({orientationOnly=false}:{orientationOnly?:bool
           <div className="min-w-0">
             <h2 className="truncate font-heading text-xl font-bold text-ink">{data?.here ? data.here.name : "Карта"}</h2>
             <p className="font-mono text-xs text-muted">
-              {loading ? "Обновляю карту…" : error ?? "Мастер дополняет карту по ходу игры"}
+              {loading ? "Обновляю карту…" : error ?? (orientationOnly ? "Схема места и известные ориентиры" : "Мастер дополняет карту по ходу игры")}
             </p>
           </div>
           <button className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line text-2xl leading-none text-muted hover:text-ink" onClick={hide} aria-label="Закрыть">

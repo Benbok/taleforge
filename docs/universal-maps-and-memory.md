@@ -73,3 +73,5 @@ authenticated API/library smoke passed. Headless Chrome opened campaign
 `c_d31978690fbfe4bd`, found the header map button, opened the orientation map and
 confirmed that it exposes no tactical gameplay commands. No gameplay actions or
 paid model calls were sent. Live prose quality remains a user playtest check.
+
+Automatic first-entry generation and the existing-game map button are now integrated in combined; see [generation delivery and verification](universal-orientation-generation.md).

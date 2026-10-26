@@ -48,8 +48,12 @@ class OrientationMapOut(BaseModel):
 
 @router.post("/campaigns/{campaign_id}/orientation-map", response_model=OrientationMapOut)
 async def orientation_map(
-    campaign_id: str, body: OrientationMapIn, user: UserDep, session: SessionDep,
-    request: Request, as_seat: str | None = None,
+    campaign_id: str,
+    body: OrientationMapIn,
+    user: UserDep,
+    session: SessionDep,
+    request: Request,
+    as_seat: str | None = None,
 ) -> dict:
     from app.core.universal.orientation_generation import generate_for_viewer
     from app.gateway.events import envelope

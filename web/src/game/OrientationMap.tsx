@@ -1,6 +1,30 @@
 ﻿import {LocationMap} from './LocationMap';
 import type {MapState,MapLocationPlan} from './map';
 import {useInspector} from './inspector';
+import {useState} from 'react';
+import {api,ApiError} from '../lib/api';
+import {useGame} from '../stores/game';
+import {useMapWindow} from './map';
+
+function GenerateMap({locationId}:{locationId:string}){
+ const campaignId=useGame(s=>s.snapshot?.campaign.id);
+ const [busy,setBusy]=useState(false),[error,setError]=useState('');
+ if(!campaignId)return null;
+ async function generate(){
+  if(busy)return;
+  const seat=useGame.getState().playAs;
+  setBusy(true);setError('');
+  try{
+   await api(`/api/campaigns/${campaignId}/orientation-map${seat?'?as_seat='+encodeURIComponent(seat):''}`,{body:{location_id:locationId}});
+   if(useGame.getState().snapshot?.campaign.id===campaignId&&useGame.getState().playAs===seat)useMapWindow.getState().request();
+  }catch(e){setError(e instanceof ApiError?e.message:'Не удалось создать схему. Попробуйте ещё раз.');}
+  finally{setBusy(false);}
+ }
+ return <div className='space-y-2'>
+  <button type='button' className='btn btn-outline-copper' disabled={busy} onClick={generate}>{busy?'Создаю схему…':'Создать схему'}</button>
+  {error&&<p role='alert' className='text-sm text-danger'>{error}</p>}
+ </div>;
+}
 
 export default function OrientationMap({map}:{map:MapState}){
  const inspect=useInspector(s=>s.open);
@@ -9,7 +33,7 @@ export default function OrientationMap({map}:{map:MapState}){
  }:null);
  return <section className='space-y-4' aria-label='Ориентирующая карта'>
   <p className='rounded-lg border border-line-soft bg-raised p-3 text-sm text-muted'>Карта показывает известное окружение. Осмотр и масштаб не расходуют время. Действия и перемещения описывайте в чате.</p>
-  {visual ? <LocationMap map={visual} m={map} orientationOnly /> : <p className='text-sm text-muted'>Точная схема ещё не известна. Для игры достаточно описания и известных ориентиров.</p>}
+  {visual ? <><p className='text-xs text-muted'>Ориентирующая схема: масштаб и положение ориентиров условны.</p><LocationMap map={visual} m={map} orientationOnly /></> : <div className='space-y-3'><p className='text-sm text-muted'>Точная схема ещё не известна. Для игры достаточно описания и известных ориентиров. Схема создаётся при первом входе; для уже начатой игры её можно создать здесь.</p>{map.here&&<GenerateMap key={map.here.id} locationId={map.here.id}/>}</div>}
   {map.here?.description&&<p className='whitespace-pre-line leading-relaxed text-ink-2'>{map.here.description}</p>}
   {map.around.length>0&&<div className='space-y-2'>
    <h3 className='font-semibold'>Известное окружение</h3>

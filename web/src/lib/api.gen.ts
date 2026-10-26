@@ -1842,6 +1842,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaign_id}/orientation-map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Orientation Map */
+        post: operations["orientation_map_api_campaigns__campaign_id__orientation_map_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaign_id}/party-roles": {
         parameters: {
             query?: never;
@@ -6755,6 +6772,18 @@ export interface components {
              */
             side: "hero" | "enemy" | "ally";
         };
+        /** OrientationMapIn */
+        OrientationMapIn: {
+            /** Location Id */
+            location_id: string;
+        };
+        /** OrientationMapOut */
+        OrientationMapOut: {
+            /** Created */
+            created: boolean;
+            /** Location Id */
+            location_id: string;
+        };
         /** OriginItem */
         OriginItem: {
             /** Ability Bonuses */
@@ -8751,6 +8780,8 @@ export type NarrativeSettingsIn = components['schemas']['NarrativeSettingsIn'];
 export type NoteIn = components['schemas']['NoteIn'];
 export type Option = components['schemas']['Option'];
 export type OrderEntry = components['schemas']['OrderEntry'];
+export type OrientationMapIn = components['schemas']['OrientationMapIn'];
+export type OrientationMapOut = components['schemas']['OrientationMapOut'];
 export type OriginItem = components['schemas']['OriginItem'];
 export type OverviewArea = components['schemas']['OverviewArea'];
 export type OverviewLocation = components['schemas']['OverviewLocation'];
@@ -12834,6 +12865,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NarrativePreparationStatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    orientation_map_api_campaigns__campaign_id__orientation_map_post: {
+        parameters: {
+            query?: {
+                as_seat?: string | null;
+            };
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrientationMapIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrientationMapOut"];
                 };
             };
             /** @description Validation Error */
