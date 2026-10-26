@@ -12,6 +12,7 @@ import Composer from './Composer';
 import { useDraft } from './draft';
 import { loadChatFontSize, saveChatFontSize, type ChatFontSize } from './scenePreferences';
 import ExplorationPanel, { type ExplorationState } from './ExplorationPanel';
+import LevelAllocation from './LevelAllocation';
 import UniversalCombatPanel, { type CombatView } from './UniversalCombatPanel';
 import type { HeroSheet } from '../lib/types';
 import SessionControls from './SessionControls';
@@ -172,6 +173,7 @@ export default function UniversalAdventure({
 
               {/* Действующие эффекты, ограничения формы и интерактивные предметы */}
               {exploration && <ExplorationPanel state={exploration} />}
+              {card && <LevelAllocation key={`${card.id}:${card.revision}`} campaignId={campaignId} card={card} onUpdated={updated => useGame.getState().setSheet(updated as HeroSheet)} />}
               {card && combat && <UniversalCombatPanel campaignId={campaignId} heroId={card.id} state={combat}
                 onUpdated={updated => useGame.getState().setSheet(updated as HeroSheet)} />}
 

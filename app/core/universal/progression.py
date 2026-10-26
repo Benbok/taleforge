@@ -79,3 +79,50 @@ async def award_xp(session, campaign_id, source_key, actor_ids, amount, *, reaso
         )
         await session.flush()
     return binding["actor_ids"]
+
+
+async def spend_points(session, campaign_id, character_id, expected_revision, allocations, request_key):
+    from app.db.models import CombatExchange
+    from app.rules.universal.progression import allocate_points
+
+    natural(expected_revision, 1)
+    key = receipt_key("points", f"{character_id}:{request_key}")
+    binding = dict(
+        actor_id=character_id,
+        expected_revision=str(expected_revision),
+        allocations={k: str(natural(v)) for k, v in allocations.items()},
+    )
+    async with session.begin_nested():
+        await lock_campaign(session, campaign_id)
+        hero = await session.get(Character, character_id, populate_existing=True)
+        if hero is None or hero.campaign_id != campaign_id or hero.status not in {"active", "approved"}:
+            raise AccessDenied("Герой недоступен")
+        previous = await session.scalar(
+            select(Event).where(Event.campaign_id == campaign_id, Event.idempotency_key == key)
+        )
+        if previous:
+            if previous.tool != "universal_points" or previous.payload["binding"] != binding:
+                raise Conflict("Запрос уже сохранён с другими параметрами")
+            return (await load_actor(session, campaign_id, hero.id))[0]
+        if int(hero.resources.get("progression_revision", 1)) != expected_revision:
+            raise Conflict("Развитие героя изменилось. Обновите карточку перед подтверждением.")
+        if await session.scalar(
+            select(CombatExchange.id).where(
+                CombatExchange.campaign_id == campaign_id, CombatExchange.status.not_in(["ticks_done", "rejected"])
+            )
+        ):
+            raise Conflict("Дождитесь завершения текущего игрового действия")
+        before, _ = await load_actor(session, campaign_id, hero.id)
+        after = allocate_points(before, allocations)
+        await persist_growth(session, hero, before, after)
+        session.add(
+            Event(
+                campaign_id=campaign_id,
+                actor_id=hero.id,
+                tool="universal_points",
+                idempotency_key=key,
+                payload={"binding": binding},
+            )
+        )
+        await session.flush()
+    return after

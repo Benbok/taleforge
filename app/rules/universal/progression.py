@@ -1,8 +1,19 @@
+
 """Exact uncapped version1 growth. Library editing never calls these operations."""
 
 from bisect import bisect_right
 
-from app.rules.universal.contracts import ABILITY_KEYS, AbilityScores, HeroBudget, UniversalSheet
+from pydantic import Field
+
+from app.rules.universal.contracts import (
+    ABILITY_KEYS,
+    AbilityKey,
+    AbilityScores,
+    ClosedModel,
+    Count,
+    HeroBudget,
+    UniversalSheet,
+)
 
 THRESHOLDS = (
     0,
@@ -98,3 +109,9 @@ def allocate_points(sheet, allocations):
     return UniversalSheet.model_validate(
         {**sheet.model_dump(), "abilities": scores, "budget": budget, "unspent_points": budget.unspent}
     )
+
+
+class PointAllocation(ClosedModel):
+    expected_revision: int = Field(ge=1, strict=True)
+    allocations: dict[AbilityKey, Count] = Field(min_length=1, max_length=6)
+    request_key: str = Field(min_length=1, max_length=64)

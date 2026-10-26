@@ -25,6 +25,7 @@ from app.db.models import ActiveEffect, Character, Entity, InventoryItem
 from app.gateway.events import envelope
 from app.rules.universal.contracts import UniversalGameCard
 from app.rules.universal.items import GameItemAction
+from app.rules.universal.progression import PointAllocation
 
 router = APIRouter(prefix="/api/campaigns/{campaign_id}", tags=["characters"])
 
@@ -80,6 +81,33 @@ async def universal_item_action(
 
     await publish_game_state(session, request.app.state.bus, viewer.campaign)
     return card
+
+
+@router.post("/characters/{character_id}/allocate-points", response_model=UniversalGameCard)
+async def allocate_earned_points(
+    campaign_id: str,
+    character_id: str,
+    body: PointAllocation,
+    user: UserDep,
+    session: SessionDep,
+    request: Request,
+    as_seat: str | None = None,
+):
+    from app.core.universal.exploration_views import exploration_game_card
+    from app.core.universal.progression import spend_points
+    from app.core.universal.publication import publish_game_state
+
+    viewer = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
+    hero = await svc.get_character(session, viewer, character_id)
+    if not viewer.seat or viewer.seat.id != hero.seat_id:
+        raise AccessDenied("Распределить очки может только игрок этого героя")
+    try:
+        await spend_points(session, campaign_id, hero.id, body.expected_revision, body.allocations, body.request_key)
+    except ValueError as exc:
+        raise Conflict(str(exc)) from exc
+    await session.commit()
+    await publish_game_state(session, request.app.state.bus, viewer.campaign)
+    return await exploration_game_card(session, hero)
 
 
 async def _view(session, viewer: Viewer, ch: Character) -> dict:

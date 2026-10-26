@@ -17,6 +17,7 @@ import { attack } from "./quick";
 import Features from "./Features";
 import Spellbook from "./Spellbook";
 import Gear from "./Gear";
+import LevelAllocation from './LevelAllocation';
 import UniversalHeroCard from '../builder/UniversalHeroCard';
 import { universalCard } from '../lib/universal';
 
@@ -413,6 +414,7 @@ function Log() {
 export default function HeroWindow() {
   const { open, tab, hide, setTab } = useHeroWindow();
   const sheet = useGame((s) => s.sheet);
+  const campaignId = useGame(s => s.snapshot?.campaign.id);
   const activeTabRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
@@ -462,6 +464,7 @@ export default function HeroWindow() {
         </header>
         <div className='min-h-0 flex-1 overflow-y-auto p-4 md:p-6'>
           <UniversalHeroCard card={universal} />
+          {campaignId && <LevelAllocation key={`${universal.id}:${universal.revision}`} campaignId={campaignId} card={universal} onUpdated={updated => useGame.getState().setSheet(updated as HeroSheet)} />}
         </div>
       </div>
     </div>
