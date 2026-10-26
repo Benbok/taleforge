@@ -182,7 +182,7 @@ def test_free_and_denied_actions_preserve_energy(tmp_path, admission):
         engine, maker = await setup(tmp_path)
         await prepare(maker)
         await seed_legacy(maker, admission)
-        service = MasterService(maker, Bus(), Provider([admission["reason"]]))
+        service = MasterService(maker, Bus(), Provider([admission["reason"], {"verdict": "pass"}]))
         tid = await service.run_turn("c")
         async with maker() as s:
             t = await s.get(MasterTurn, tid)
@@ -208,7 +208,9 @@ def test_hidden_target_cannot_be_granted_by_model(tmp_path):
                     targets=["target"],
                     profile=dict(id="lash", attribute="wis", kind="damage", resource_key="wis"),
                 ),
-                "No visible target can be reached.",
+                "No visible target can be reached.",  # the saved admission is read once more
+                "Nothing visible lies within reach.",  # the story of the refusal
+                {"verdict": "pass"},
             ]
         )
         await seed_legacy(maker, provider.replies.pop(0))

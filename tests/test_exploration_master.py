@@ -213,14 +213,15 @@ def test_walking_in_bush_form_gets_the_form_reason_without_extra_model_calls(tmp
             resolution="automatic",
             effects=[{"kind": "move"}],
         )
-        provider = Provider([walking])
+        provider = Provider([walking, "Куст шелестит, но с места не сдвигается.", {"verdict": "pass"}])
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
         async with maker() as s:
             turn = await s.get(MasterTurn, tid)
             message = await s.get(Message, turn.narration_message_id)
-            assert "форме куста" in message.content
+            assert message.content == "Куст шелестит, но с места не сдвигается."
+            assert "форме куста" in narrate_prompt(provider)  # the reason is a fact for the story
             assert list(await s.scalars(select(Event).where(Event.id != "form"))) == []
-        assert len(provider.prompts) == 1  # a plain action needs neither a repair nor a meaning review
+        assert len(provider.prompts) == 3  # the decision, the story and its check: no repair, no meaning review
         await engine.dispose()
 
     asyncio.run(run())
@@ -260,13 +261,14 @@ def test_lack_of_energy_is_explained_to_the_player_after_one_repair_attempt(tmp_
             effects=[{"kind": "cosmetic"}],
         )
         review = {"verdict": "pass", "covered_requirements": []}
-        provider = Provider([costly, review, costly, review])
+        provider = Provider([costly, review, costly, "Сил не хватило.", {"verdict": "pass"}])
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
         repair = json.loads(provider.prompts[2][-1]["content"])["repair"]
         assert "нужно 3" in repair and "есть 2" in repair  # the model is told the real numbers and may choose less
         async with maker() as s:
             message = await s.get(Message, (await s.get(MasterTurn, tid)).narration_message_id)
-            assert "недостаточно энергии" in message.content
+            assert message.content == "Сил не хватило."
+            assert "не хватает 1" in narrate_prompt(provider)
             assert list(await s.scalars(select(Event))) == []
         await engine.dispose()
 
@@ -402,11 +404,16 @@ def test_the_energy_shortage_stays_the_answer_when_the_repair_attempt_fails_othe
             "requirements": [{"id": "r", "quote": "нет такой цитаты", "effect": "cosmetic"}],
         }
         review = {"verdict": "pass", "covered_requirements": ["r"]}
-        provider = Provider([costly, {"verdict": "pass", "covered_requirements": []}, broken, review])
+        story = "Сил не хватило даже на малую долю замысла."
+        provider = Provider(
+            [costly, {"verdict": "pass", "covered_requirements": []}, broken, review, story, {"verdict": "pass"}]
+        )
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
         async with maker() as s:
             message = await s.get(Message, (await s.get(MasterTurn, tid)).narration_message_id)
-            assert "недостаточно энергии" in message.content  # not the vague "invalid parameters"
+            assert message.content == story
+            # the shortfall stays the fact told, not the vague failure of the second attempt
+            assert "не хватает 1" in narrate_prompt(provider)
         await engine.dispose()
 
     asyncio.run(run())
@@ -522,8 +529,9 @@ def test_a_reviewer_who_finds_the_scale_implausible_stops_the_spell_and_tells_th
             [
                 bridge("tiny"),
                 {"verdict": "mismatch", "message": why},
-                bridge("tiny"),
-                {"verdict": "mismatch", "message": why},
+                bridge("tiny"),  # the same answer again: its review is already known, so no second review call
+                "Магия не слушается.",
+                {"verdict": "pass"},
             ]
         )
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
@@ -598,3 +606,105 @@ def test_the_master_is_shown_what_each_running_effect_says_and_what_each_created
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def narrate_prompt(provider):
+    """The facts the writer was given: the call whose system prompt asks for a continuation of the scene."""
+    return next(p for p in provider.prompts if "Расскажи продолжение сцены" in p[0]["content"])[-1]["content"]
+
+
+def test_a_shortfall_is_told_in_the_story_with_how_much_was_missing(tmp_path):
+    from app.db.models import Character
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        async with maker() as s:
+            hero = await s.get(Character, "hero")
+            hero.resources = {**hero.resources, "energies": {**hero.resources["energies"], "wis": "2"}}
+            await s.commit()
+        costly = dict(
+            schema_version=2,
+            source="supernatural",
+            player_request="supernatural",
+            resolution="automatic",
+            intensity="normal",
+            effects=[{"kind": "cosmetic"}],
+        )
+        story = "Ты тужишься, но сил не хватает: глина остаётся глиной."
+        provider = Provider(
+            [costly, {"verdict": "pass", "covered_requirements": []}, costly, story, {"verdict": "pass"}]
+        )
+        tid = await MasterService(maker, Bus(), provider).run_turn("c")
+        assert "не хватает 1" in narrate_prompt(provider)
+        async with maker() as s:
+            message = await s.get(Message, (await s.get(MasterTurn, tid)).narration_message_id)
+            assert message.content == story  # the master's own words, not a service phrase
+            assert list(await s.scalars(select(Event))) == []
+            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "2"
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_law_that_forbids_is_told_in_the_story(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        why = "Мёртвых в этом мире не воскрешают."
+        story = "Магия откликается лишь эхом: мёртвые здесь остаются мёртвыми."
+        provider = Provider([bridge("large"), {"verdict": "forbidden", "message": why}, story, {"verdict": "pass"}])
+        tid = await MasterService(maker, Bus(), provider).run_turn("c")
+        assert why in narrate_prompt(provider)
+        async with maker() as s:
+            message = await s.get(Message, (await s.get(MasterTurn, tid)).narration_message_id)
+            assert message.content == story and list(await s.scalars(select(Event))) == []
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_exhausted_repairs_are_told_in_the_story_not_as_invalid_parameters(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        broken = dict(
+            schema_version=2,
+            source="supernatural",
+            player_request="supernatural",
+            resolution="automatic",
+            intensity="light",
+            requirements=[{"id": "r", "quote": "нет такой цитаты", "effect": "cosmetic"}],
+            effects=[{"kind": "cosmetic"}],
+        )
+        story = "Магия не слушается: замысел рассыпается, не успев начаться."
+        provider = Provider(
+            [broken, {"verdict": "pass", "covered_requirements": ["r"]}, broken, story, {"verdict": "pass"}]
+        )
+        tid = await MasterService(maker, Bus(), provider).run_turn("c")
+        async with maker() as s:
+            message = await s.get(Message, (await s.get(MasterTurn, tid)).narration_message_id)
+            assert message.content == story
+            assert "некорректные параметры" not in json.dumps(provider.prompts, ensure_ascii=False)
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_only_technical_failures_stay_plain_notices_the_rest_go_into_the_story():
+    from app.agents.master.action_results import narration_parts
+
+    def outcome(category):
+        return {"status": "denied", "failure": {"category": category, "code": "x", "message": category}}
+
+    story, notices = narration_parts(
+        {
+            "a": outcome("insufficient_resources"),
+            "b": outcome("world_denial"),
+            "c": outcome("invalid_proposal"),
+            "d": outcome("roll_failed"),
+            "e": outcome("internal_error"),
+            "f": {"status": "applied"},
+        }
+    )
+    assert sorted(story) == ["a", "b", "c", "d", "f"] and notices == ["internal_error"]

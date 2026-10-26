@@ -156,7 +156,7 @@ async def validate_exploration(ctx, action):
         if a.cost < 1:
             raise ValueError("Сверхъестественное действие должно иметь положительную цену")
         if have < a.cost:
-            raise InsufficientEnergy(f"Недостаточно энергии: нужно {a.cost}, есть {have}")
+            raise InsufficientEnergy(a.cost, have)
     elif any(op.kind in MAGIC_KINDS for op in a.operations):
         raise ValueError("Сверхъестественное действие не может быть бесплатным")
     if a.elapsed_game_seconds > 3600 or a.elapsed_game_seconds < 1:

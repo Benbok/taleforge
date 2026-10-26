@@ -52,7 +52,11 @@ MAX_EFFECT_SECONDS = 604800  # a week: only keeps the whole numbers sane, the pr
 
 
 class InsufficientEnergy(ValueError):
-    """The hero cannot pay for this spell; the numbers help the model choose less and explain the refusal."""
+    """The hero cannot pay for this spell; the numbers help the model choose less and tell what was missing."""
+
+    def __init__(self, need, have):
+        self.need, self.have = need, have
+        super().__init__(f"Недостаточно энергии: нужно {need}, есть {have}")
 
 
 class FormBlocked(ValueError):
