@@ -163,7 +163,9 @@ REVIEW = (
     "Допустимость решает текст мира world_rules (laws, powers, world): verdict=forbidden только если этот текст "
     "прямо исключает действие, в message объясни причину в терминах мира; если действие допустимо, но для него "
     "нет подходящего вида эффекта, это не запрет и не unsupported, а mismatch с подсказкой использовать "
-    "free_effect. Создание не должно раскрывать скрытое. "
+    "free_effect. Неверный срок, цель или размер — всегда mismatch (в message назови верное значение), "
+    "а unsupported допустим только если для смысла действия действительно нет вида эффекта. "
+    "Создание не должно раскрывать скрытое. "
     "Не раскрывай private/world. Не разрешай introductions, если evidence не подтверждает предмет/наблюдателя "
     "и его свойства; восстанавливающий настой требует явного подтверждения, обычное питьё энергию не даёт."
 )
@@ -322,7 +324,10 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                 return result
             if review.verdict == "unsupported":
                 # No engine kind for it is never a refusal: say it again as a free effect or a creation.
-                raise ValueError("Нужного вида эффекта нет: оформи это как free_effect или create_object")
+                raise ValueError(
+                    (f"{review.message}. " if review.message else "")
+                    + "Если нужного вида эффекта нет, оформи это как free_effect или create_object"
+                )
             if review.verdict != "pass":
                 raise ValueError(review.message or "Смысл действия требует уточнения; ничего не применено.")
             async with service.maker() as s:
