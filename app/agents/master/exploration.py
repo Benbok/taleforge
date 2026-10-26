@@ -14,11 +14,13 @@ from app.core.universal.interpretation import compile_exploration, is_plain_acti
 from app.db.models import Event, MasterTurn
 from app.rules.universal.contracts import ClosedModel
 from app.rules.universal.exploration import (
+    EffectIntentV2,
     ExplorationAction,
     FormBlocked,
     InsufficientEnergy,
     IntentReview,
     IntentV2,
+    RequirementV2,
     clean_model_intent,
     exploration_capabilities,
 )
@@ -56,7 +58,7 @@ def not_realised_fact():
     return ActionFailure(
         category="invalid_proposal",
         code="not_realised",
-        message="Замысел не удалось воплотить: магия не слушается. Ничего не создано и не потрачено.",
+        message="Замысел не удалось воплотить. Ничего не создано и не потрачено.",
     )
 
 
@@ -197,6 +199,47 @@ async def journal(service, campaign, kind, mid, context, detail):
         log.exception("journal entry failed")
 
 
+async def fallback_action(service, campaign, mid, context, scope, leaning):
+    """The floor under every request the world allows: when the model could not shape it, the player's own words
+    become a free effect (magic) or a plain turn (ordinary), never a refusal the engine invented.
+    Returns the action, a shortfall fact when the spell is unaffordable, or None when even this does not compile."""
+    text = context["source"]
+    if leaning == "supernatural":
+        intent = IntentV2(
+            source="supernatural",
+            player_request="supernatural",
+            delivery="spell",
+            resolution="automatic",
+            intensity="light",
+            name=text[:128],
+            requirements=[RequirementV2(id="req_1", quote=text[:1000], effect="free_effect")],
+            effects=[
+                EffectIntentV2(
+                    kind="free_effect", label=text[:128], appearance=text[:500], lifetime="timed", required_by=["req_1"]
+                )
+            ],
+        )
+    else:
+        intent = IntentV2(
+            source="mundane", player_request="ordinary", resolution="automatic", effects=[EffectIntentV2(kind="wait")]
+        )
+    review = IntentReview(verdict="pass", covered_requirements=[r.id for r in intent.requirements])
+    try:
+        async with service.maker() as s:
+            ctx = ResolutionContext(s, campaign.id, **scope, dice=None)
+            return await compile_exploration(
+                ctx,
+                intent,
+                review,
+                dict(source_message_id=mid, source_text=text, evidence=context.get("established_evidence", "")),
+            )
+    except InsufficientEnergy as exc:
+        return shortfall_fact(exc.need, exc.have)
+    except (ValueError, AccessDenied, FormBlocked):
+        log.exception("exploration fallback did not compile")
+        return None
+
+
 async def obtain_exploration_action(service, campaign, tid, mid, trace, context, scope, ask):
     prepared = trace.setdefault("prepared", {})
     binding = hashlib.sha256(
@@ -222,6 +265,7 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
     raw = trace.get("admissions", {}).get(mid)
     hint = None
     shortfall = None
+    leaning = None  # what the model took the request for, so the floor under a failure matches it
     # A budget slot is persisted before every external call. A crashed call cannot earn a free retry.
     while raw is not None or attempts.get(mid, 0) < 2:
         if raw is None:
@@ -256,6 +300,8 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                 failures[mid] = action_failure("provider_error").model_dump()
                 await store(service, tid, trace)
                 raise ActionModelError() from exc
+        if isinstance(raw, dict) and raw.get("source") in {"supernatural", "mundane"}:
+            leaning = raw["source"]
         try:
             intent = IntentV2.model_validate(raw)
             review_key = hashlib.sha256((binding + json.dumps(raw, sort_keys=True)).encode()).hexdigest()
@@ -373,7 +419,15 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
         trace.get("admissions", {}).pop(mid, None)
         await store(service, tid, trace)
     if last_failure.code == "not_realised":
-        await journal(service, campaign, "exhausted", mid, context, {"hint": hint or ""})
+        await journal(service, campaign, "exhausted", mid, context, {"hint": hint or "", "floor": leaning or "mundane"})
+        floor = await fallback_action(service, campaign, mid, context, scope, leaning)
+        if isinstance(floor, ExplorationAction):
+            result = PreparedExploration(proposal=floor)
+            prepared[mid] = result.model_dump(mode="json")
+            await store(service, tid, trace)
+            return result
+        if floor is not None:
+            last_failure = floor
     result = PreparedExploration(failure=last_failure)
     prepared[mid] = result.model_dump(mode="json")
     await store(service, tid, trace)

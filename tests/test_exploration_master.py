@@ -48,6 +48,8 @@ def test_fresh_v2_magic_has_real_cost_learning_and_automatic_card(tmp_path):
 
 
 def test_fresh_legacy_proposal_cannot_bypass_review_or_spend(tmp_path):
+    from app.db.models import Character
+
     async def run():
         engine, maker = await setup(tmp_path)
         await prepare(maker)
@@ -59,7 +61,10 @@ def test_fresh_legacy_proposal_cannot_bypass_review_or_spend(tmp_path):
         )
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
         async with maker() as s:
-            assert list(await s.scalars(select(Event))) == []
+            events = list(await s.scalars(select(Event)))
+            # Nothing of the legacy proposal is used: the floor is a plain turn that costs nothing.
+            assert [op["kind"] for e in events for op in e.payload["proposal"]["operations"]] == ["wait"]
+            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "24"
             turn = await s.get(MasterTurn, tid)
             assert turn.trace["proposal_attempts"]["source"] == 2
         await engine.dispose()
@@ -537,8 +542,9 @@ def test_a_reviewer_who_finds_the_scale_implausible_stops_the_spell_and_tells_th
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
         assert why in json.loads(provider.prompts[2][-1]["content"])["repair"]
         async with maker() as s:
-            assert list(await s.scalars(select(Event))) == []
-            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "24"
+            # The floor records the words as a free effect: it makes no bridge and opens no place beyond it.
+            events = list(await s.scalars(select(Event)))
+            assert [op["kind"] for e in events for op in e.payload["proposal"]["operations"]] == ["free_effect"]
             assert (await s.get(MasterTurn, tid)).status == "done"
         await engine.dispose()
 
@@ -708,3 +714,66 @@ def test_only_technical_failures_stay_plain_notices_the_rest_go_into_the_story()
         }
     )
     assert sorted(story) == ["a", "b", "c", "d", "f"] and notices == ["internal_error"]
+
+
+def unrealisable(source):
+    """A proposal that is well formed but never compiles: the quote it relies on is not in the player's words."""
+    return dict(
+        schema_version=2,
+        source=source,
+        player_request="supernatural" if source == "supernatural" else "ordinary",
+        resolution="automatic",
+        intensity="light",
+        requirements=[{"id": "r", "quote": "нет такой цитаты", "effect": "cosmetic"}],
+        effects=[{"kind": "cosmetic"}],
+    )
+
+
+def test_a_magic_request_the_model_cannot_shape_is_kept_as_a_free_effect(tmp_path):
+    from app.db.models import Character
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        story = "Магия откликается, но по-своему: вокруг героя вспыхивают светлячки."
+        broken = unrealisable("supernatural")
+        provider = Provider([broken, {"verdict": "pass", "covered_requirements": ["r"]}, broken, story, {"verdict": "pass"}])
+        tid = await MasterService(maker, Bus(), provider).run_turn("c")
+        async with maker() as s:
+            events = list(await s.scalars(select(Event)))
+            assert len(events) == 1  # the words are recorded, not refused
+            kinds = [op["kind"] for op in events[0].payload["proposal"]["operations"]]
+            assert kinds == ["free_effect"]
+            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "23"  # a tiny effect: one start
+            message = await s.get(Message, (await s.get(MasterTurn, tid)).narration_message_id)
+            assert message.content == story
+        assert "не слушается" not in json.dumps(provider.prompts, ensure_ascii=False)
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_an_ordinary_request_the_model_cannot_shape_is_a_plain_turn_that_costs_nothing(tmp_path):
+    from app.db.models import Character
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        story = "Доска занимается неохотно, но тесак высекает искру."
+        broken = unrealisable("mundane")
+        provider = Provider([broken, {"verdict": "pass", "covered_requirements": ["r"]}, broken, story, {"verdict": "pass"}])
+        await MasterService(maker, Bus(), provider).run_turn("c")
+        async with maker() as s:
+            events = list(await s.scalars(select(Event)))
+            assert len(events) == 1
+            assert events[0].payload["proposal"]["definition"]["source"] == "mundane"
+            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "24"
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_the_not_realised_fact_does_not_blame_magic_for_an_ordinary_deed():
+    from app.agents.master.exploration import not_realised_fact
+
+    assert "магия" not in not_realised_fact().message.casefold()

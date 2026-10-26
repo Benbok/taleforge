@@ -153,6 +153,13 @@ CASES = [
     # Magic is paid and must be recognised as magic.
     case("base", "кастую свет на ладони", source="supernatural", request={"supernatural"}, any_of={"illumination"}),
     case("base", "освещаю тоннель светлячками", source="supernatural", any_of={"illumination"}),
+    case(
+        "base",
+        "осторожно подхожу к тоннелю и кастую светлячков на 3 секунды, чтобы разглядеть его содержимое",
+        source="supernatural",
+        any_of={"illumination"},
+        term=3,
+    ),
     case("base", "колдую искры, чтобы развлечься", source="supernatural", any_of={"cosmetic", "illumination"}),
     case("base", "превращаюсь в куст, чтобы меня не заметили", source="supernatural", any_of={"change_form"}),
     case("base", "создаю деревянную кружку магией", source="supernatural", any_of={"create_object"}),
@@ -249,6 +256,7 @@ CASES = [
     case("base", "пускаю корень в сторону шума, чтобы почувствовать существ", gap=True),
     case("base", "приказываю скелетам остановиться", gap=True),
     case("base", "читаю заклинание огня и поджигаю факел", gap=True),
+    case("base", "подбираю доску, высекаю тесаком искру из камня и поджигаю её, делая факел", gap=True),
     case("base", "мне бы хотелось стать кустом", gap=True),
     case("form", "светлячки, освети мне путь", gap=True),
 ]
