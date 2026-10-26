@@ -1,7 +1,7 @@
-
 """Exact uncapped version1 growth. Library editing never calls these operations."""
 
 from bisect import bisect_right
+from typing import Literal
 
 from pydantic import Field
 
@@ -115,3 +115,10 @@ class PointAllocation(ClosedModel):
     expected_revision: int = Field(ge=1, strict=True)
     allocations: dict[AbilityKey, Count] = Field(min_length=1, max_length=6)
     request_key: str = Field(min_length=1, max_length=64)
+
+
+class RewardIntent(ClosedModel):
+    category: Literal["victory", "exploration", "quest"]
+    subject_id: str = Field(min_length=1, max_length=32)
+    difficulty: Literal["easy", "medium", "hard", "epic"] = "medium"
+    reason: str = Field(min_length=1, max_length=500)

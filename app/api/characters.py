@@ -102,9 +102,41 @@ async def allocate_earned_points(
     if not viewer.seat or viewer.seat.id != hero.seat_id:
         raise AccessDenied("Распределить очки может только игрок этого героя")
     try:
-        await spend_points(session, campaign_id, hero.id, body.expected_revision, body.allocations, body.request_key)
+        await spend_points(
+            session,
+            campaign_id,
+            hero.id,
+            body.expected_revision,
+            body.allocations,
+            body.request_key,
+            user_id=user.id,
+            seat_id=viewer.seat.id,
+        )
     except ValueError as exc:
         raise Conflict(str(exc)) from exc
+    await session.commit()
+    await publish_game_state(session, request.app.state.bus, viewer.campaign)
+    return await exploration_game_card(session, hero)
+
+
+@router.post("/characters/{character_id}/resume-admission", response_model=UniversalGameCard)
+async def resume_hero_admission(
+    campaign_id: str,
+    character_id: str,
+    user: UserDep,
+    session: SessionDep,
+    request: Request,
+    as_seat: str | None = None,
+):
+    from app.core.universal.exploration_views import exploration_game_card
+    from app.core.universal.progression import resume_admission
+    from app.core.universal.publication import publish_game_state
+
+    viewer = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
+    hero = await svc.get_character(session, viewer, character_id)
+    if not viewer.seat or viewer.seat.id != hero.seat_id:
+        raise AccessDenied("Вступление завершает игрок этого героя")
+    await resume_admission(session, campaign_id, hero.id, user.id, viewer.seat.id)
     await session.commit()
     await publish_game_state(session, request.app.state.bus, viewer.campaign)
     return await exploration_game_card(session, hero)

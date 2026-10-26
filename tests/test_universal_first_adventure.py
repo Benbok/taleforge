@@ -139,7 +139,7 @@ def test_first_adventure_survives_restart_and_failed_narration(client, root, set
     top = derive(sheet, starting_defense_bonuses(sheet)).energy_max["wis"]
     # the price 3, then the energy the six seconds of that step give back, never above the pool
     assert debited.energies["wis"] == min(top, before_resources.energies["wis"] - 3 + energy_regen(top))
-    assert len(events) == 2 and len(learned) == 1
+    assert len([e for e in events if e.tool != "universal_catchup"]) == 2 and len(learned) == 1
 
     async def assert_failed():
         async with maker() as session:
@@ -157,7 +157,7 @@ def test_first_adventure_survives_restart_and_failed_narration(client, root, set
     assert asyncio.run(restarted.run_turn(cid)) is None
     _, restored, restored_events, restored_learned = asyncio.run(inspect(restarted_maker))
     assert restored == debited
-    assert len(restored_events) == 2 and len(restored_learned) == 1
+    assert len([e for e in restored_events if e.tool != "universal_catchup"]) == 2 and len(restored_learned) == 1
     assert "SECRET-LAW" not in str(narrator.prompts)
     with connect(client, root, cid, last_seq=0) as (_, snapshot):
         payload = snapshot["payload"]

@@ -33,6 +33,7 @@ export default function UniversalAdventure({
   const sheet = useGame(s => s.sheet);
   const exploration = propExploration ?? (sheet as unknown as { exploration?: ExplorationState } | null)?.exploration ?? null;
   const card = universalCard(sheet);
+  const progression = (sheet as unknown as {progression?: {next_threshold: string; xp_to_next: string; percent: string}} | null)?.progression;
   const combat = (sheet as unknown as { combat?: CombatView } | null)?.combat;
   const abilities = card?.learned_abilities ?? [];
   const [showCardModal, setShowCardModal] = useState(false);
@@ -172,6 +173,13 @@ export default function UniversalAdventure({
               <p className='text-xs text-muted'>Ресурсы и последствия сохраняются после каждого действия.</p>
 
               {/* Действующие эффекты, ограничения формы и интерактивные предметы */}
+              {progression && <div className='space-y-1 rounded-lg border border-line-soft p-2 text-[10px] text-muted'>
+                <p>До следующего уровня: {formatCount(progression.xp_to_next)} XP</p>
+                <div role='progressbar' aria-label='Опыт до следующего уровня' aria-valuemin={0} aria-valuemax={100} aria-valuenow={Number(progression.percent)} className='h-1.5 overflow-hidden rounded bg-surface-2'>
+                  <div className='h-full bg-accent transition-all' style={{width: `${progression.percent}%`}} />
+                </div>
+                <p>Порог: {formatCount(progression.next_threshold)} XP · За уровень +2 очка</p>
+              </div>}
               {exploration && <ExplorationPanel state={exploration} />}
               {card && <LevelAllocation key={`${card.id}:${card.revision}`} campaignId={campaignId} card={card} onUpdated={updated => useGame.getState().setSheet(updated as HeroSheet)} />}
               {card && combat && <UniversalCombatPanel campaignId={campaignId} heroId={card.id} state={combat}

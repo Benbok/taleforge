@@ -88,7 +88,18 @@ def game_card_of(hero, *, learned=None) -> dict:
                 },
             )
         learned.append(view)
+    from app.rules.universal.progression import level_threshold
+
+    floor, ceiling = level_threshold(sheet.level), level_threshold(sheet.level + 1)
+    progress = dict(
+        admission_pending=bool(hero.resources.get("admission_pending")),
+        current_threshold=str(floor),
+        next_threshold=str(ceiling),
+        xp_to_next=str(max(0, ceiling - sheet.xp)),
+        percent=str(min(100, max(0, sheet.xp - floor) * 100 // (ceiling - floor))),
+    )
     return UniversalGameCard(
+        progression=progress,
         id=hero.id,
         name=hero.name,
         portrait_url=portrait_url(hero.portrait_id),

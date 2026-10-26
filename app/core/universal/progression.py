@@ -63,7 +63,12 @@ async def award_xp(session, campaign_id, source_key, actor_ids, amount, *, reaso
         heroes = []
         for aid in binding["actor_ids"]:
             hero = await session.get(Character, aid, populate_existing=True)
-            if hero is None or hero.campaign_id != campaign_id or hero.status not in {"active", "approved"}:
+            if (
+                hero is None
+                or hero.campaign_id != campaign_id
+                or hero.status not in {"active", "approved"}
+                or hero.resources.get("admission_pending")
+            ):
                 raise AccessDenied("Получатель не является действующим героем кампании")
             before, _ = await load_actor(session, campaign_id, aid)
             heroes.append((hero, before, grant_xp(before, amount)))
@@ -81,7 +86,9 @@ async def award_xp(session, campaign_id, source_key, actor_ids, amount, *, reaso
     return binding["actor_ids"]
 
 
-async def spend_points(session, campaign_id, character_id, expected_revision, allocations, request_key):
+async def spend_points(
+    session, campaign_id, character_id, expected_revision, allocations, request_key, *, user_id=None, seat_id=None
+):
     from app.db.models import CombatExchange
     from app.rules.universal.progression import allocate_points
 
@@ -97,6 +104,10 @@ async def spend_points(session, campaign_id, character_id, expected_revision, al
         hero = await session.get(Character, character_id, populate_existing=True)
         if hero is None or hero.campaign_id != campaign_id or hero.status not in {"active", "approved"}:
             raise AccessDenied("Герой недоступен")
+        if hero.resources.get("admission_pending"):
+            raise Conflict("Сначала завершите вступление героя")
+        if user_id is not None or seat_id is not None:
+            await require_controller(session, campaign_id, hero, user_id, seat_id)
         previous = await session.scalar(
             select(Event).where(Event.campaign_id == campaign_id, Event.idempotency_key == key)
         )
@@ -139,7 +150,11 @@ async def party_level(session, campaign_id, *, exclude_id=None):
             Character.seat_id.is_not(None),
         )
     ):
-        if hero.id == exclude_id or hero.resources.get("vitality", {}).get("state") == "dead":
+        if (
+            hero.id == exclude_id
+            or hero.resources.get("vitality", {}).get("state") == "dead"
+            or hero.resources.get("admission_pending")
+        ):
             continue
         data = dict(hero.sheet)
         data.pop("source_library_id", None)
@@ -176,6 +191,7 @@ async def catch_up_copy(session, campaign_id, character_id):
         after = grant_xp(before, level_threshold(target))
         if target > 1:
             await persist_growth(session, hero, before, after)
+        hero.resources = {**hero.resources, "admission_pending": False}
         session.add(
             Event(
                 campaign_id=campaign_id,
@@ -192,3 +208,31 @@ async def catch_up_copy(session, campaign_id, character_id):
         )
         await session.flush()
     return after
+
+
+async def require_controller(session, campaign_id, hero, user_id, seat_id):
+    from app.db.models import Seat
+
+    seat = await session.get(Seat, seat_id, populate_existing=True) if seat_id else None
+    if (
+        user_id is None
+        or seat is None
+        or seat.campaign_id != campaign_id
+        or hero.seat_id != seat.id
+        or user_id not in {seat.user_id, seat.stand_in_user_id}
+    ):
+        raise AccessDenied("Право управлять этим героем изменилось")
+
+
+async def resume_admission(session, campaign_id, character_id, user_id, seat_id):
+    await lock_campaign(session, campaign_id)
+    hero = await session.get(Character, character_id, populate_existing=True)
+    if hero is None or hero.campaign_id != campaign_id:
+        raise AccessDenied("Герой недоступен")
+    await require_controller(session, campaign_id, hero, user_id, seat_id)
+    previous = await session.scalar(
+        select(Event.id).where(Event.campaign_id == campaign_id, Event.idempotency_key == receipt_key("admit", hero.id))
+    )
+    if not hero.resources.get("admission_pending") and previous is None:
+        raise Conflict("Для этого героя нет незавершённого вступления")
+    return await catch_up_copy(session, campaign_id, hero.id)

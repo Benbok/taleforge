@@ -97,6 +97,8 @@ async def scoped_targets(ctx, action):
             isinstance(target, Entity) and not await visible_entity(ctx.session, ctx.campaign_id, ctx.actor_id, target)
         ):
             raise ValueError("Цель недоступна")
+        if isinstance(target, Character) and target.resources.get("admission_pending"):
+            raise ValueError("Герой ещё не завершил вступление в группу")
         if isinstance(target, Character) or target.state.get("universal_sheet"):
             _, target_resources = await load_actor(ctx.session, ctx.campaign_id, target_id)
             if target_resources.hp <= 0 and any(

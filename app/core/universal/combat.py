@@ -41,7 +41,10 @@ async def eligible_enemies(ctx, exchange):
         )
         .execution_options(populate_existing=True)
     ):
-        if (await load_actor(s, ctx.campaign_id, player.id))[1].hp > 0:
+        if (
+            not player.resources.get("admission_pending")
+            and (await load_actor(s, ctx.campaign_id, player.id))[1].hp > 0
+        ):
             targets.append(player.id)
     if not targets:
         return []
@@ -264,6 +267,15 @@ async def run_exchange(ctx, action, choose_reply=None, request_key=None):
 
         continuation = await progress_unconscious_party(ctx, request_key)
         exchange.changes = [*exchange.changes, *(c.model_dump(mode="json") for c in continuation)]
+        from app.core.universal.progression import party_level
+        from app.core.universal.rewards import award_achievements, award_periodic_victories
+
+        reward_level = await party_level(s, ctx.campaign_id)
+        rewards = await award_achievements(
+            ctx, action, ExplorationOutcome.model_validate(exchange.hero_outcome), reward_level=reward_level
+        )
+        rewards.extend(await award_periodic_victories(ctx, exchange, reward_level=reward_level))
+        exchange.changes = [*exchange.changes, *(change.model_dump(mode="json") for change in rewards)]
         exchange.status = "ticks_done"
         await s.commit()
     return _results(exchange)

@@ -1,0 +1,5188 @@
+{
+  "rules_version": "universal.v1",
+  "seed": 47,
+  "levels": [
+    1,
+    10,
+    20,
+    100,
+    1000
+  ],
+  "rows": [
+    {
+      "level": "1",
+      "build": "str",
+      "allocated_points": "0",
+      "budget_verified": true,
+      "abilities": {
+        "str": "15",
+        "dex": "13",
+        "con": "14",
+        "int": "12",
+        "wis": "8",
+        "cha": "10"
+      },
+      "hp": "24",
+      "ac": "14",
+      "energies": {
+        "str": "25",
+        "dex": "23",
+        "int": "22",
+        "wis": "18",
+        "cha": "20"
+      },
+      "damage_quantiles": {
+        "min": "3",
+        "median": "6",
+        "max": "8"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "24",
+          "ac": "14",
+          "hit_chance": "9/20",
+          "control_chance_after_hit": "1/2",
+          "expected_damage": "53/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "720/29"
+        },
+        {
+          "build": "con",
+          "hp": "25",
+          "ac": "14",
+          "hit_chance": "9/20",
+          "control_chance_after_hit": "1/2",
+          "expected_damage": "53/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "720/29"
+        },
+        {
+          "build": "dex",
+          "hp": "24",
+          "ac": "15",
+          "hit_chance": "2/5",
+          "control_chance_after_hit": "9/20",
+          "expected_damage": "19/8",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "720/29"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "3",
+            "8"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "3",
+            "8"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "3",
+            "8"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "3",
+            "10"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "3",
+            "8"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "4",
+            "12"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "3",
+            "8"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "6",
+            "16"
+          ],
+          "max_one_shot_chance": "1/120",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "1",
+          "casts": "25",
+          "damage_range": [
+            "1",
+            "4"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "3",
+          "casts": "8",
+          "damage_range": [
+            "3",
+            "8"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "12",
+          "casts": "2",
+          "damage_range": [
+            "6",
+            "16"
+          ]
+        }
+      ],
+      "multi_target_cost": "12",
+      "timed_control_cost": "9",
+      "heal_per_energy": "11/6",
+      "combined_paid_reserve_damage": "144",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "1",
+      "build": "dex",
+      "allocated_points": "0",
+      "budget_verified": true,
+      "abilities": {
+        "str": "8",
+        "dex": "15",
+        "con": "14",
+        "int": "12",
+        "wis": "13",
+        "cha": "10"
+      },
+      "hp": "24",
+      "ac": "15",
+      "energies": {
+        "str": "18",
+        "dex": "25",
+        "int": "22",
+        "wis": "23",
+        "cha": "20"
+      },
+      "damage_quantiles": {
+        "min": "3",
+        "median": "6",
+        "max": "8"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "24",
+          "ac": "14",
+          "hit_chance": "9/20",
+          "control_chance_after_hit": "1/2",
+          "expected_damage": "53/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "144/5"
+        },
+        {
+          "build": "con",
+          "hp": "25",
+          "ac": "14",
+          "hit_chance": "9/20",
+          "control_chance_after_hit": "1/2",
+          "expected_damage": "53/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "144/5"
+        },
+        {
+          "build": "dex",
+          "hp": "24",
+          "ac": "15",
+          "hit_chance": "2/5",
+          "control_chance_after_hit": "9/20",
+          "expected_damage": "19/8",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "144/5"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "3",
+            "8"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "3",
+            "8"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "3",
+            "8"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "3",
+            "10"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "3",
+            "8"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "4",
+            "12"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "3",
+            "8"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "6",
+            "16"
+          ],
+          "max_one_shot_chance": "1/120",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "1",
+          "casts": "25",
+          "damage_range": [
+            "1",
+            "4"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "3",
+          "casts": "8",
+          "damage_range": [
+            "3",
+            "8"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "12",
+          "casts": "2",
+          "damage_range": [
+            "6",
+            "16"
+          ]
+        }
+      ],
+      "multi_target_cost": "12",
+      "timed_control_cost": "9",
+      "heal_per_energy": "11/6",
+      "combined_paid_reserve_damage": "144",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "1",
+      "build": "con",
+      "allocated_points": "0",
+      "budget_verified": true,
+      "abilities": {
+        "str": "8",
+        "dex": "13",
+        "con": "15",
+        "int": "12",
+        "wis": "14",
+        "cha": "10"
+      },
+      "hp": "25",
+      "ac": "14",
+      "energies": {
+        "str": "18",
+        "dex": "23",
+        "int": "22",
+        "wis": "24",
+        "cha": "20"
+      },
+      "damage_quantiles": {
+        "min": "3",
+        "median": "6",
+        "max": "8"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "24",
+          "ac": "14",
+          "hit_chance": "9/20",
+          "control_chance_after_hit": "1/2",
+          "expected_damage": "53/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "750/29"
+        },
+        {
+          "build": "con",
+          "hp": "25",
+          "ac": "14",
+          "hit_chance": "9/20",
+          "control_chance_after_hit": "1/2",
+          "expected_damage": "53/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "750/29"
+        },
+        {
+          "build": "dex",
+          "hp": "24",
+          "ac": "15",
+          "hit_chance": "2/5",
+          "control_chance_after_hit": "9/20",
+          "expected_damage": "19/8",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "750/29"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "1",
+            "5"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "1",
+            "5"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "1",
+            "5"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "1",
+            "6"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "1",
+            "5"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "1",
+            "7"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "1",
+            "5"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "1",
+            "10"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "1",
+          "casts": "24",
+          "damage_range": [
+            "1",
+            "4"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "3",
+          "casts": "8",
+          "damage_range": [
+            "3",
+            "8"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "12",
+          "casts": "2",
+          "damage_range": [
+            "6",
+            "16"
+          ]
+        }
+      ],
+      "multi_target_cost": "12",
+      "timed_control_cost": "9",
+      "heal_per_energy": "11/6",
+      "combined_paid_reserve_damage": "144",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "1",
+      "build": "wis",
+      "allocated_points": "0",
+      "budget_verified": true,
+      "abilities": {
+        "str": "8",
+        "dex": "13",
+        "con": "14",
+        "int": "12",
+        "wis": "15",
+        "cha": "10"
+      },
+      "hp": "24",
+      "ac": "14",
+      "energies": {
+        "str": "18",
+        "dex": "23",
+        "int": "22",
+        "wis": "25",
+        "cha": "20"
+      },
+      "damage_quantiles": {
+        "min": "3",
+        "median": "6",
+        "max": "8"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "24",
+          "ac": "14",
+          "hit_chance": "9/20",
+          "control_chance_after_hit": "1/2",
+          "expected_damage": "53/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "720/29"
+        },
+        {
+          "build": "con",
+          "hp": "25",
+          "ac": "14",
+          "hit_chance": "9/20",
+          "control_chance_after_hit": "1/2",
+          "expected_damage": "53/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "720/29"
+        },
+        {
+          "build": "dex",
+          "hp": "24",
+          "ac": "15",
+          "hit_chance": "2/5",
+          "control_chance_after_hit": "9/20",
+          "expected_damage": "19/8",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "720/29"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "1",
+            "5"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "1",
+            "5"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "1",
+            "5"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "1",
+            "6"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "1",
+            "5"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "1",
+            "7"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "1",
+            "5"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "1",
+            "10"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "1",
+          "casts": "25",
+          "damage_range": [
+            "1",
+            "4"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "3",
+          "casts": "8",
+          "damage_range": [
+            "3",
+            "8"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "12",
+          "casts": "2",
+          "damage_range": [
+            "6",
+            "16"
+          ]
+        }
+      ],
+      "multi_target_cost": "12",
+      "timed_control_cost": "9",
+      "heal_per_energy": "11/6",
+      "combined_paid_reserve_damage": "144",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "1",
+      "build": "even",
+      "allocated_points": "0",
+      "budget_verified": true,
+      "abilities": {
+        "str": "8",
+        "dex": "13",
+        "con": "14",
+        "int": "12",
+        "wis": "15",
+        "cha": "10"
+      },
+      "hp": "24",
+      "ac": "14",
+      "energies": {
+        "str": "18",
+        "dex": "23",
+        "int": "22",
+        "wis": "25",
+        "cha": "20"
+      },
+      "damage_quantiles": {
+        "min": "3",
+        "median": "6",
+        "max": "8"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "24",
+          "ac": "14",
+          "hit_chance": "9/20",
+          "control_chance_after_hit": "1/2",
+          "expected_damage": "53/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "720/29"
+        },
+        {
+          "build": "con",
+          "hp": "25",
+          "ac": "14",
+          "hit_chance": "9/20",
+          "control_chance_after_hit": "1/2",
+          "expected_damage": "53/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "720/29"
+        },
+        {
+          "build": "dex",
+          "hp": "24",
+          "ac": "15",
+          "hit_chance": "2/5",
+          "control_chance_after_hit": "9/20",
+          "expected_damage": "19/8",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "720/29"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "1",
+            "5"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "1",
+            "5"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "1",
+            "5"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "1",
+            "6"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "1",
+            "5"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "1",
+            "7"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "1",
+            "5"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "1",
+            "10"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "1",
+          "casts": "25",
+          "damage_range": [
+            "1",
+            "4"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "3",
+          "casts": "8",
+          "damage_range": [
+            "3",
+            "8"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "12",
+          "casts": "2",
+          "damage_range": [
+            "6",
+            "16"
+          ]
+        }
+      ],
+      "multi_target_cost": "12",
+      "timed_control_cost": "9",
+      "heal_per_energy": "11/6",
+      "combined_paid_reserve_damage": "144",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "10",
+      "build": "str",
+      "allocated_points": "18",
+      "budget_verified": true,
+      "abilities": {
+        "str": "33",
+        "dex": "13",
+        "con": "14",
+        "int": "12",
+        "wis": "8",
+        "cha": "10"
+      },
+      "hp": "78",
+      "ac": "14",
+      "energies": {
+        "str": "430",
+        "dex": "230",
+        "int": "220",
+        "wis": "180",
+        "cha": "200"
+      },
+      "damage_quantiles": {
+        "min": "30",
+        "median": "33",
+        "max": "35"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "81",
+          "ac": "16",
+          "hit_chance": "4/5",
+          "control_chance_after_hit": "17/20",
+          "expected_damage": "1047/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "780/77"
+        },
+        {
+          "build": "con",
+          "hp": "97",
+          "ac": "14",
+          "hit_chance": "9/10",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "1177/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "3120/253"
+        },
+        {
+          "build": "dex",
+          "hp": "78",
+          "ac": "24",
+          "hit_chance": "2/5",
+          "control_chance_after_hit": "9/20",
+          "expected_damage": "527/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "3120/253"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "30",
+            "35"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "30",
+            "35"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "30",
+            "35"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "37",
+            "43"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "30",
+            "35"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "45",
+            "52"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "30",
+            "35"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "60",
+            "70"
+          ],
+          "max_one_shot_chance": "1/120",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "10",
+          "casts": "43",
+          "damage_range": [
+            "15",
+            "17"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "30",
+          "casts": "14",
+          "damage_range": [
+            "30",
+            "35"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "120",
+          "casts": "3",
+          "damage_range": [
+            "60",
+            "70"
+          ]
+        }
+      ],
+      "multi_target_cost": "120",
+      "timed_control_cost": "90",
+      "heal_per_energy": "13/12",
+      "combined_paid_reserve_damage": "1022",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "10",
+      "build": "dex",
+      "allocated_points": "18",
+      "budget_verified": true,
+      "abilities": {
+        "str": "8",
+        "dex": "33",
+        "con": "14",
+        "int": "12",
+        "wis": "13",
+        "cha": "10"
+      },
+      "hp": "78",
+      "ac": "24",
+      "energies": {
+        "str": "180",
+        "dex": "430",
+        "int": "220",
+        "wis": "230",
+        "cha": "200"
+      },
+      "damage_quantiles": {
+        "min": "30",
+        "median": "33",
+        "max": "35"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "81",
+          "ac": "16",
+          "hit_chance": "4/5",
+          "control_chance_after_hit": "17/20",
+          "expected_damage": "1047/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "312/5"
+        },
+        {
+          "build": "con",
+          "hp": "97",
+          "ac": "14",
+          "hit_chance": "9/10",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "1177/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "65"
+        },
+        {
+          "build": "dex",
+          "hp": "78",
+          "ac": "24",
+          "hit_chance": "2/5",
+          "control_chance_after_hit": "9/20",
+          "expected_damage": "527/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "65"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "30",
+            "35"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "30",
+            "35"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "30",
+            "35"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "37",
+            "43"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "30",
+            "35"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "45",
+            "52"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "30",
+            "35"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "60",
+            "70"
+          ],
+          "max_one_shot_chance": "1/120",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "10",
+          "casts": "43",
+          "damage_range": [
+            "15",
+            "17"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "30",
+          "casts": "14",
+          "damage_range": [
+            "30",
+            "35"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "120",
+          "casts": "3",
+          "damage_range": [
+            "60",
+            "70"
+          ]
+        }
+      ],
+      "multi_target_cost": "120",
+      "timed_control_cost": "90",
+      "heal_per_energy": "13/12",
+      "combined_paid_reserve_damage": "1022",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "10",
+      "build": "con",
+      "allocated_points": "18",
+      "budget_verified": true,
+      "abilities": {
+        "str": "8",
+        "dex": "13",
+        "con": "33",
+        "int": "12",
+        "wis": "14",
+        "cha": "10"
+      },
+      "hp": "97",
+      "ac": "14",
+      "energies": {
+        "str": "180",
+        "dex": "230",
+        "int": "220",
+        "wis": "240",
+        "cha": "200"
+      },
+      "damage_quantiles": {
+        "min": "21",
+        "median": "24",
+        "max": "26"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "81",
+          "ac": "16",
+          "hit_chance": "7/20",
+          "control_chance_after_hit": "2/5",
+          "expected_damage": "42/5",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "970/77"
+        },
+        {
+          "build": "con",
+          "hp": "97",
+          "ac": "14",
+          "hit_chance": "9/20",
+          "control_chance_after_hit": "1/2",
+          "expected_damage": "43/4",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "3880/253"
+        },
+        {
+          "build": "dex",
+          "hp": "78",
+          "ac": "24",
+          "hit_chance": "1/20",
+          "control_chance_after_hit": "1/20",
+          "expected_damage": "27/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "3880/253"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "18",
+            "23"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "18",
+            "23"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "18",
+            "23"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "22",
+            "28"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "18",
+            "23"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "27",
+            "34"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "18",
+            "23"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "36",
+            "46"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "10",
+          "casts": "24",
+          "damage_range": [
+            "10",
+            "13"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "30",
+          "casts": "8",
+          "damage_range": [
+            "21",
+            "26"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "120",
+          "casts": "2",
+          "damage_range": [
+            "42",
+            "52"
+          ]
+        }
+      ],
+      "multi_target_cost": "120",
+      "timed_control_cost": "90",
+      "heal_per_energy": "47/60",
+      "combined_paid_reserve_damage": "755",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "10",
+      "build": "wis",
+      "allocated_points": "18",
+      "budget_verified": true,
+      "abilities": {
+        "str": "8",
+        "dex": "13",
+        "con": "14",
+        "int": "12",
+        "wis": "33",
+        "cha": "10"
+      },
+      "hp": "78",
+      "ac": "14",
+      "energies": {
+        "str": "180",
+        "dex": "230",
+        "int": "220",
+        "wis": "430",
+        "cha": "200"
+      },
+      "damage_quantiles": {
+        "min": "30",
+        "median": "33",
+        "max": "35"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "81",
+          "ac": "16",
+          "hit_chance": "4/5",
+          "control_chance_after_hit": "17/20",
+          "expected_damage": "1047/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "780/77"
+        },
+        {
+          "build": "con",
+          "hp": "97",
+          "ac": "14",
+          "hit_chance": "9/10",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "1177/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "3120/253"
+        },
+        {
+          "build": "dex",
+          "hp": "78",
+          "ac": "24",
+          "hit_chance": "2/5",
+          "control_chance_after_hit": "9/20",
+          "expected_damage": "527/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "3120/253"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "18",
+            "23"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "18",
+            "23"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "18",
+            "23"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "22",
+            "28"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "18",
+            "23"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "27",
+            "34"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "18",
+            "23"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "36",
+            "46"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "10",
+          "casts": "43",
+          "damage_range": [
+            "15",
+            "17"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "30",
+          "casts": "14",
+          "damage_range": [
+            "30",
+            "35"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "120",
+          "casts": "3",
+          "damage_range": [
+            "60",
+            "70"
+          ]
+        }
+      ],
+      "multi_target_cost": "120",
+      "timed_control_cost": "90",
+      "heal_per_energy": "13/12",
+      "combined_paid_reserve_damage": "1022",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "10",
+      "build": "even",
+      "allocated_points": "18",
+      "budget_verified": true,
+      "abilities": {
+        "str": "11",
+        "dex": "16",
+        "con": "17",
+        "int": "15",
+        "wis": "18",
+        "cha": "13"
+      },
+      "hp": "81",
+      "ac": "16",
+      "energies": {
+        "str": "210",
+        "dex": "260",
+        "int": "250",
+        "wis": "280",
+        "cha": "230"
+      },
+      "damage_quantiles": {
+        "min": "23",
+        "median": "26",
+        "max": "28"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "81",
+          "ac": "16",
+          "hit_chance": "9/20",
+          "control_chance_after_hit": "1/2",
+          "expected_damage": "233/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "540/37"
+        },
+        {
+          "build": "con",
+          "hp": "97",
+          "ac": "14",
+          "hit_chance": "11/20",
+          "control_chance_after_hit": "3/5",
+          "expected_damage": "71/5",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "360/19"
+        },
+        {
+          "build": "dex",
+          "hp": "78",
+          "ac": "24",
+          "hit_chance": "1/20",
+          "control_chance_after_hit": "1/10",
+          "expected_damage": "29/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "360/19"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "19",
+            "24"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "19",
+            "24"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "19",
+            "24"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "23",
+            "30"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "19",
+            "24"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "28",
+            "36"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "19",
+            "24"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "38",
+            "48"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "10",
+          "casts": "28",
+          "damage_range": [
+            "11",
+            "14"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "30",
+          "casts": "9",
+          "damage_range": [
+            "23",
+            "28"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "120",
+          "casts": "2",
+          "damage_range": [
+            "46",
+            "56"
+          ]
+        }
+      ],
+      "multi_target_cost": "120",
+      "timed_control_cost": "90",
+      "heal_per_energy": "17/20",
+      "combined_paid_reserve_damage": "1843/2",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "20",
+      "build": "str",
+      "allocated_points": "38",
+      "budget_verified": true,
+      "abilities": {
+        "str": "53",
+        "dex": "13",
+        "con": "14",
+        "int": "12",
+        "wis": "8",
+        "cha": "10"
+      },
+      "hp": "138",
+      "ac": "14",
+      "energies": {
+        "str": "1260",
+        "dex": "460",
+        "int": "440",
+        "wis": "360",
+        "cha": "400"
+      },
+      "damage_quantiles": {
+        "min": "60",
+        "median": "63",
+        "max": "65"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "144",
+          "ac": "18",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "1191/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "552/79"
+        },
+        {
+          "build": "con",
+          "hp": "177",
+          "ac": "14",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "1191/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "5520/493"
+        },
+        {
+          "build": "dex",
+          "hp": "138",
+          "ac": "34",
+          "hit_chance": "2/5",
+          "control_chance_after_hit": "9/20",
+          "expected_damage": "1007/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "5520/493"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "60",
+            "65"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "60",
+            "65"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "60",
+            "65"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "75",
+            "81"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "60",
+            "65"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "90",
+            "97"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "60",
+            "65"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "120",
+            "130"
+          ],
+          "max_one_shot_chance": "1/120",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "20",
+          "casts": "63",
+          "damage_range": [
+            "30",
+            "32"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "60",
+          "casts": "21",
+          "damage_range": [
+            "60",
+            "65"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "240",
+          "casts": "5",
+          "damage_range": [
+            "120",
+            "130"
+          ]
+        }
+      ],
+      "multi_target_cost": "240",
+      "timed_control_cost": "180",
+      "heal_per_energy": "25/24",
+      "combined_paid_reserve_damage": "4799/2",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "20",
+      "build": "dex",
+      "allocated_points": "38",
+      "budget_verified": true,
+      "abilities": {
+        "str": "8",
+        "dex": "53",
+        "con": "14",
+        "int": "12",
+        "wis": "13",
+        "cha": "10"
+      },
+      "hp": "138",
+      "ac": "34",
+      "energies": {
+        "str": "360",
+        "dex": "1260",
+        "int": "440",
+        "wis": "460",
+        "cha": "400"
+      },
+      "damage_quantiles": {
+        "min": "60",
+        "median": "63",
+        "max": "65"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "144",
+          "ac": "18",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "1191/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "2760/47"
+        },
+        {
+          "build": "con",
+          "hp": "177",
+          "ac": "14",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "1191/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "690/11"
+        },
+        {
+          "build": "dex",
+          "hp": "138",
+          "ac": "34",
+          "hit_chance": "2/5",
+          "control_chance_after_hit": "9/20",
+          "expected_damage": "1007/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "690/11"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "60",
+            "65"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "60",
+            "65"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "60",
+            "65"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "75",
+            "81"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "60",
+            "65"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "90",
+            "97"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "60",
+            "65"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "120",
+            "130"
+          ],
+          "max_one_shot_chance": "1/120",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "20",
+          "casts": "63",
+          "damage_range": [
+            "30",
+            "32"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "60",
+          "casts": "21",
+          "damage_range": [
+            "60",
+            "65"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "240",
+          "casts": "5",
+          "damage_range": [
+            "120",
+            "130"
+          ]
+        }
+      ],
+      "multi_target_cost": "240",
+      "timed_control_cost": "180",
+      "heal_per_energy": "25/24",
+      "combined_paid_reserve_damage": "4799/2",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "20",
+      "build": "con",
+      "allocated_points": "38",
+      "budget_verified": true,
+      "abilities": {
+        "str": "8",
+        "dex": "13",
+        "con": "53",
+        "int": "12",
+        "wis": "14",
+        "cha": "10"
+      },
+      "hp": "177",
+      "ac": "14",
+      "energies": {
+        "str": "360",
+        "dex": "460",
+        "int": "440",
+        "wis": "480",
+        "cha": "400"
+      },
+      "damage_quantiles": {
+        "min": "41",
+        "median": "44",
+        "max": "46"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "144",
+          "ac": "18",
+          "hit_chance": "1/4",
+          "control_chance_after_hit": "3/10",
+          "expected_damage": "221/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "708/79"
+        },
+        {
+          "build": "con",
+          "hp": "177",
+          "ac": "14",
+          "hit_chance": "9/20",
+          "control_chance_after_hit": "1/2",
+          "expected_damage": "79/4",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "7080/493"
+        },
+        {
+          "build": "dex",
+          "hp": "138",
+          "ac": "34",
+          "hit_chance": "1/20",
+          "control_chance_after_hit": "1/20",
+          "expected_damage": "47/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "7080/493"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "38",
+            "43"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "38",
+            "43"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "38",
+            "43"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "47",
+            "53"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "38",
+            "43"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "57",
+            "64"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "38",
+            "43"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "76",
+            "86"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "20",
+          "casts": "24",
+          "damage_range": [
+            "20",
+            "23"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "60",
+          "casts": "8",
+          "damage_range": [
+            "41",
+            "46"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "240",
+          "casts": "2",
+          "damage_range": [
+            "82",
+            "92"
+          ]
+        }
+      ],
+      "multi_target_cost": "240",
+      "timed_control_cost": "180",
+      "heal_per_energy": "29/40",
+      "combined_paid_reserve_damage": "1435",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "20",
+      "build": "wis",
+      "allocated_points": "38",
+      "budget_verified": true,
+      "abilities": {
+        "str": "8",
+        "dex": "13",
+        "con": "14",
+        "int": "12",
+        "wis": "53",
+        "cha": "10"
+      },
+      "hp": "138",
+      "ac": "14",
+      "energies": {
+        "str": "360",
+        "dex": "460",
+        "int": "440",
+        "wis": "1260",
+        "cha": "400"
+      },
+      "damage_quantiles": {
+        "min": "60",
+        "median": "63",
+        "max": "65"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "144",
+          "ac": "18",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "1191/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "552/79"
+        },
+        {
+          "build": "con",
+          "hp": "177",
+          "ac": "14",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "1191/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "5520/493"
+        },
+        {
+          "build": "dex",
+          "hp": "138",
+          "ac": "34",
+          "hit_chance": "2/5",
+          "control_chance_after_hit": "9/20",
+          "expected_damage": "1007/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "5520/493"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "38",
+            "43"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "38",
+            "43"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "38",
+            "43"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "47",
+            "53"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "38",
+            "43"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "57",
+            "64"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "38",
+            "43"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "76",
+            "86"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "20",
+          "casts": "63",
+          "damage_range": [
+            "30",
+            "32"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "60",
+          "casts": "21",
+          "damage_range": [
+            "60",
+            "65"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "240",
+          "casts": "5",
+          "damage_range": [
+            "120",
+            "130"
+          ]
+        }
+      ],
+      "multi_target_cost": "240",
+      "timed_control_cost": "180",
+      "heal_per_energy": "25/24",
+      "combined_paid_reserve_damage": "4799/2",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "20",
+      "build": "even",
+      "allocated_points": "38",
+      "budget_verified": true,
+      "abilities": {
+        "str": "15",
+        "dex": "20",
+        "con": "20",
+        "int": "18",
+        "wis": "21",
+        "cha": "16"
+      },
+      "hp": "144",
+      "ac": "18",
+      "energies": {
+        "str": "500",
+        "dex": "600",
+        "int": "560",
+        "wis": "620",
+        "cha": "520"
+      },
+      "damage_quantiles": {
+        "min": "44",
+        "median": "47",
+        "max": "49"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "144",
+          "ac": "18",
+          "hit_chance": "2/5",
+          "control_chance_after_hit": "9/20",
+          "expected_damage": "751/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "2880/221"
+        },
+        {
+          "build": "con",
+          "hp": "177",
+          "ac": "14",
+          "hit_chance": "3/5",
+          "control_chance_after_hit": "13/20",
+          "expected_damage": "1123/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "5760/169"
+        },
+        {
+          "build": "dex",
+          "hp": "138",
+          "ac": "34",
+          "hit_chance": "1/20",
+          "control_chance_after_hit": "1/20",
+          "expected_damage": "5/2",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "5760/169"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "41",
+            "46"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "41",
+            "46"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "41",
+            "46"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "51",
+            "57"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "41",
+            "46"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "61",
+            "69"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "41",
+            "46"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "82",
+            "92"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "20",
+          "casts": "31",
+          "damage_range": [
+            "22",
+            "24"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "60",
+          "casts": "10",
+          "damage_range": [
+            "44",
+            "49"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "240",
+          "casts": "2",
+          "damage_range": [
+            "88",
+            "98"
+          ]
+        }
+      ],
+      "multi_target_cost": "240",
+      "timed_control_cost": "180",
+      "heal_per_energy": "31/40",
+      "combined_paid_reserve_damage": "4087/2",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "100",
+      "build": "str",
+      "allocated_points": "198",
+      "budget_verified": true,
+      "abilities": {
+        "str": "213",
+        "dex": "13",
+        "con": "14",
+        "int": "12",
+        "wis": "8",
+        "cha": "10"
+      },
+      "hp": "618",
+      "ac": "14",
+      "energies": {
+        "str": "22300",
+        "dex": "2300",
+        "int": "2200",
+        "wis": "1800",
+        "cha": "2000"
+      },
+      "damage_quantiles": {
+        "min": "300",
+        "median": "303",
+        "max": "305"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "651",
+          "ac": "31",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "5751/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "12360/4117"
+        },
+        {
+          "build": "con",
+          "hp": "817",
+          "ac": "14",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "5751/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "24720/2413"
+        },
+        {
+          "build": "dex",
+          "hp": "618",
+          "ac": "114",
+          "hit_chance": "2/5",
+          "control_chance_after_hit": "9/20",
+          "expected_damage": "4847/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "24720/2413"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "300",
+            "305"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "300",
+            "305"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "300",
+            "305"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "375",
+            "381"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "300",
+            "305"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "450",
+            "457"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "300",
+            "305"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "600",
+            "610"
+          ],
+          "max_one_shot_chance": "1/120",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "100",
+          "casts": "223",
+          "damage_range": [
+            "150",
+            "152"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "300",
+          "casts": "74",
+          "damage_range": [
+            "300",
+            "305"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "1200",
+          "casts": "18",
+          "damage_range": [
+            "600",
+            "610"
+          ]
+        }
+      ],
+      "multi_target_cost": "1200",
+      "timed_control_cost": "900",
+      "heal_per_energy": "121/120",
+      "combined_paid_reserve_damage": "27632",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "100",
+      "build": "dex",
+      "allocated_points": "198",
+      "budget_verified": true,
+      "abilities": {
+        "str": "8",
+        "dex": "213",
+        "con": "14",
+        "int": "12",
+        "wis": "13",
+        "cha": "10"
+      },
+      "hp": "618",
+      "ac": "114",
+      "energies": {
+        "str": "1800",
+        "dex": "22300",
+        "int": "2200",
+        "wis": "2300",
+        "cha": "2000"
+      },
+      "damage_quantiles": {
+        "min": "300",
+        "median": "303",
+        "max": "305"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "651",
+          "ac": "31",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "5751/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "618/11"
+        },
+        {
+          "build": "con",
+          "hp": "817",
+          "ac": "14",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "5751/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "1030/17"
+        },
+        {
+          "build": "dex",
+          "hp": "618",
+          "ac": "114",
+          "hit_chance": "2/5",
+          "control_chance_after_hit": "9/20",
+          "expected_damage": "4847/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "1030/17"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "300",
+            "305"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "300",
+            "305"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "300",
+            "305"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "375",
+            "381"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "300",
+            "305"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "450",
+            "457"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "300",
+            "305"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "600",
+            "610"
+          ],
+          "max_one_shot_chance": "1/120",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "100",
+          "casts": "223",
+          "damage_range": [
+            "150",
+            "152"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "300",
+          "casts": "74",
+          "damage_range": [
+            "300",
+            "305"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "1200",
+          "casts": "18",
+          "damage_range": [
+            "600",
+            "610"
+          ]
+        }
+      ],
+      "multi_target_cost": "1200",
+      "timed_control_cost": "900",
+      "heal_per_energy": "121/120",
+      "combined_paid_reserve_damage": "27632",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "100",
+      "build": "con",
+      "allocated_points": "198",
+      "budget_verified": true,
+      "abilities": {
+        "str": "8",
+        "dex": "13",
+        "con": "213",
+        "int": "12",
+        "wis": "14",
+        "cha": "10"
+      },
+      "hp": "817",
+      "ac": "14",
+      "energies": {
+        "str": "1800",
+        "dex": "2300",
+        "int": "2200",
+        "wis": "2400",
+        "cha": "2000"
+      },
+      "damage_quantiles": {
+        "min": "201",
+        "median": "204",
+        "max": "206"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "651",
+          "ac": "31",
+          "hit_chance": "1/20",
+          "control_chance_after_hit": "1/20",
+          "expected_damage": "207/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "16340/4117"
+        },
+        {
+          "build": "con",
+          "hp": "817",
+          "ac": "14",
+          "hit_chance": "9/20",
+          "control_chance_after_hit": "1/2",
+          "expected_damage": "367/4",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "1720/127"
+        },
+        {
+          "build": "dex",
+          "hp": "618",
+          "ac": "114",
+          "hit_chance": "1/20",
+          "control_chance_after_hit": "1/20",
+          "expected_damage": "207/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "1720/127"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "198",
+            "203"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "198",
+            "203"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "198",
+            "203"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "247",
+            "253"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "198",
+            "203"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "297",
+            "304"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "198",
+            "203"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "396",
+            "406"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "100",
+          "casts": "24",
+          "damage_range": [
+            "100",
+            "103"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "300",
+          "casts": "8",
+          "damage_range": [
+            "201",
+            "206"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "1200",
+          "casts": "2",
+          "damage_range": [
+            "402",
+            "412"
+          ]
+        }
+      ],
+      "multi_target_cost": "1200",
+      "timed_control_cost": "900",
+      "heal_per_energy": "407/600",
+      "combined_paid_reserve_damage": "6875",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "100",
+      "build": "wis",
+      "allocated_points": "198",
+      "budget_verified": true,
+      "abilities": {
+        "str": "8",
+        "dex": "13",
+        "con": "14",
+        "int": "12",
+        "wis": "213",
+        "cha": "10"
+      },
+      "hp": "618",
+      "ac": "14",
+      "energies": {
+        "str": "1800",
+        "dex": "2300",
+        "int": "2200",
+        "wis": "22300",
+        "cha": "2000"
+      },
+      "damage_quantiles": {
+        "min": "300",
+        "median": "303",
+        "max": "305"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "651",
+          "ac": "31",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "5751/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "12360/4117"
+        },
+        {
+          "build": "con",
+          "hp": "817",
+          "ac": "14",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "5751/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "24720/2413"
+        },
+        {
+          "build": "dex",
+          "hp": "618",
+          "ac": "114",
+          "hit_chance": "2/5",
+          "control_chance_after_hit": "9/20",
+          "expected_damage": "4847/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "24720/2413"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "198",
+            "203"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "198",
+            "203"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "198",
+            "203"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "247",
+            "253"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "198",
+            "203"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "297",
+            "304"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "198",
+            "203"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "396",
+            "406"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "100",
+          "casts": "223",
+          "damage_range": [
+            "150",
+            "152"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "300",
+          "casts": "74",
+          "damage_range": [
+            "300",
+            "305"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "1200",
+          "casts": "18",
+          "damage_range": [
+            "600",
+            "610"
+          ]
+        }
+      ],
+      "multi_target_cost": "1200",
+      "timed_control_cost": "900",
+      "heal_per_energy": "121/120",
+      "combined_paid_reserve_damage": "27632",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "100",
+      "build": "even",
+      "allocated_points": "198",
+      "budget_verified": true,
+      "abilities": {
+        "str": "41",
+        "dex": "46",
+        "con": "47",
+        "int": "45",
+        "wis": "48",
+        "cha": "43"
+      },
+      "hp": "651",
+      "ac": "31",
+      "energies": {
+        "str": "5100",
+        "dex": "5600",
+        "int": "5500",
+        "wis": "5800",
+        "cha": "5300"
+      },
+      "damage_quantiles": {
+        "min": "218",
+        "median": "221",
+        "max": "223"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "651",
+          "ac": "31",
+          "hit_chance": "9/20",
+          "control_chance_after_hit": "1/2",
+          "expected_damage": "497/5",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "2170/181"
+        },
+        {
+          "build": "con",
+          "hp": "817",
+          "ac": "14",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "4193/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "1085/17"
+        },
+        {
+          "build": "dex",
+          "hp": "618",
+          "ac": "114",
+          "hit_chance": "1/20",
+          "control_chance_after_hit": "1/20",
+          "expected_damage": "56/5",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "1085/17"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "214",
+            "219"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "214",
+            "219"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "214",
+            "219"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "267",
+            "273"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "214",
+            "219"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "321",
+            "328"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "214",
+            "219"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "428",
+            "438"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "100",
+          "casts": "58",
+          "damage_range": [
+            "109",
+            "111"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "300",
+          "casts": "19",
+          "damage_range": [
+            "218",
+            "223"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "1200",
+          "casts": "4",
+          "damage_range": [
+            "436",
+            "446"
+          ]
+        }
+      ],
+      "multi_target_cost": "1200",
+      "timed_control_cost": "900",
+      "heal_per_energy": "147/200",
+      "combined_paid_reserve_damage": "38903/2",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "1000",
+      "build": "str",
+      "allocated_points": "1998",
+      "budget_verified": true,
+      "abilities": {
+        "str": "2013",
+        "dex": "13",
+        "con": "14",
+        "int": "12",
+        "wis": "8",
+        "cha": "10"
+      },
+      "hp": "6018",
+      "ac": "14",
+      "energies": {
+        "str": "2023000",
+        "dex": "23000",
+        "int": "22000",
+        "wis": "18000",
+        "cha": "20000"
+      },
+      "damage_quantiles": {
+        "min": "3000",
+        "median": "3003",
+        "max": "3005"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "6351",
+          "ac": "181",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "57051/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "120360/41167"
+        },
+        {
+          "build": "con",
+          "hp": "8017",
+          "ac": "14",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "57051/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "4080/407"
+        },
+        {
+          "build": "dex",
+          "hp": "6018",
+          "ac": "1014",
+          "hit_chance": "2/5",
+          "control_chance_after_hit": "9/20",
+          "expected_damage": "48047/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "4080/407"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "3000",
+            "3005"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "3000",
+            "3005"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "3000",
+            "3005"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "3750",
+            "3756"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "3000",
+            "3005"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "4500",
+            "4507"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "3000",
+            "3005"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "6000",
+            "6010"
+          ],
+          "max_one_shot_chance": "1/120",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "1000",
+          "casts": "2023",
+          "damage_range": [
+            "1500",
+            "1502"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "3000",
+          "casts": "674",
+          "damage_range": [
+            "3000",
+            "3005"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "12000",
+          "casts": "168",
+          "damage_range": [
+            "6000",
+            "6010"
+          ]
+        }
+      ],
+      "multi_target_cost": "12000",
+      "timed_control_cost": "9000",
+      "heal_per_energy": "1201/1200",
+      "combined_paid_reserve_damage": "2075732",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "1000",
+      "build": "dex",
+      "allocated_points": "1998",
+      "budget_verified": true,
+      "abilities": {
+        "str": "8",
+        "dex": "2013",
+        "con": "14",
+        "int": "12",
+        "wis": "13",
+        "cha": "10"
+      },
+      "hp": "6018",
+      "ac": "1014",
+      "energies": {
+        "str": "18000",
+        "dex": "2023000",
+        "int": "22000",
+        "wis": "23000",
+        "cha": "20000"
+      },
+      "damage_quantiles": {
+        "min": "3000",
+        "median": "3003",
+        "max": "3005"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "6351",
+          "ac": "181",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "57051/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "12036/217"
+        },
+        {
+          "build": "con",
+          "hp": "8017",
+          "ac": "14",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "57051/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "10030/167"
+        },
+        {
+          "build": "dex",
+          "hp": "6018",
+          "ac": "1014",
+          "hit_chance": "2/5",
+          "control_chance_after_hit": "9/20",
+          "expected_damage": "48047/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "10030/167"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "3000",
+            "3005"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "3000",
+            "3005"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "3000",
+            "3005"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "3750",
+            "3756"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "3000",
+            "3005"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "4500",
+            "4507"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "3000",
+            "3005"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "6000",
+            "6010"
+          ],
+          "max_one_shot_chance": "1/120",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "1000",
+          "casts": "2023",
+          "damage_range": [
+            "1500",
+            "1502"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "3000",
+          "casts": "674",
+          "damage_range": [
+            "3000",
+            "3005"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "12000",
+          "casts": "168",
+          "damage_range": [
+            "6000",
+            "6010"
+          ]
+        }
+      ],
+      "multi_target_cost": "12000",
+      "timed_control_cost": "9000",
+      "heal_per_energy": "1201/1200",
+      "combined_paid_reserve_damage": "2075732",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "1000",
+      "build": "con",
+      "allocated_points": "1998",
+      "budget_verified": true,
+      "abilities": {
+        "str": "8",
+        "dex": "13",
+        "con": "2013",
+        "int": "12",
+        "wis": "14",
+        "cha": "10"
+      },
+      "hp": "8017",
+      "ac": "14",
+      "energies": {
+        "str": "18000",
+        "dex": "23000",
+        "int": "22000",
+        "wis": "24000",
+        "cha": "20000"
+      },
+      "damage_quantiles": {
+        "min": "2001",
+        "median": "2004",
+        "max": "2006"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "6351",
+          "ac": "181",
+          "hit_chance": "1/20",
+          "control_chance_after_hit": "1/20",
+          "expected_damage": "2007/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "160340/41167"
+        },
+        {
+          "build": "con",
+          "hp": "8017",
+          "ac": "14",
+          "hit_chance": "9/20",
+          "control_chance_after_hit": "1/2",
+          "expected_damage": "3607/4",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "320680/24013"
+        },
+        {
+          "build": "dex",
+          "hp": "6018",
+          "ac": "1014",
+          "hit_chance": "1/20",
+          "control_chance_after_hit": "1/20",
+          "expected_damage": "2007/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "320680/24013"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "1998",
+            "2003"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "1998",
+            "2003"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "1998",
+            "2003"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "2497",
+            "2503"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "1998",
+            "2003"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "2997",
+            "3004"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "1998",
+            "2003"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "3996",
+            "4006"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "1000",
+          "casts": "24",
+          "damage_range": [
+            "1000",
+            "1003"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "3000",
+          "casts": "8",
+          "damage_range": [
+            "2001",
+            "2006"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "12000",
+          "casts": "2",
+          "damage_range": [
+            "4002",
+            "4012"
+          ]
+        }
+      ],
+      "multi_target_cost": "12000",
+      "timed_control_cost": "9000",
+      "heal_per_energy": "4007/6000",
+      "combined_paid_reserve_damage": "68075",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "1000",
+      "build": "wis",
+      "allocated_points": "1998",
+      "budget_verified": true,
+      "abilities": {
+        "str": "8",
+        "dex": "13",
+        "con": "14",
+        "int": "12",
+        "wis": "2013",
+        "cha": "10"
+      },
+      "hp": "6018",
+      "ac": "14",
+      "energies": {
+        "str": "18000",
+        "dex": "23000",
+        "int": "22000",
+        "wis": "2023000",
+        "cha": "20000"
+      },
+      "damage_quantiles": {
+        "min": "3000",
+        "median": "3003",
+        "max": "3005"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "6351",
+          "ac": "181",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "57051/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "120360/41167"
+        },
+        {
+          "build": "con",
+          "hp": "8017",
+          "ac": "14",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "57051/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "4080/407"
+        },
+        {
+          "build": "dex",
+          "hp": "6018",
+          "ac": "1014",
+          "hit_chance": "2/5",
+          "control_chance_after_hit": "9/20",
+          "expected_damage": "48047/40",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "4080/407"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "1998",
+            "2003"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "1998",
+            "2003"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "1998",
+            "2003"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "2497",
+            "2503"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "1998",
+            "2003"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "2997",
+            "3004"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "1998",
+            "2003"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "3996",
+            "4006"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "1000",
+          "casts": "2023",
+          "damage_range": [
+            "1500",
+            "1502"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "3000",
+          "casts": "674",
+          "damage_range": [
+            "3000",
+            "3005"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "12000",
+          "casts": "168",
+          "damage_range": [
+            "6000",
+            "6010"
+          ]
+        }
+      ],
+      "multi_target_cost": "12000",
+      "timed_control_cost": "9000",
+      "heal_per_energy": "1201/1200",
+      "combined_paid_reserve_damage": "2075732",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    },
+    {
+      "level": "1000",
+      "build": "even",
+      "allocated_points": "1998",
+      "budget_verified": true,
+      "abilities": {
+        "str": "341",
+        "dex": "346",
+        "con": "347",
+        "int": "345",
+        "wis": "348",
+        "cha": "343"
+      },
+      "hp": "6351",
+      "ac": "181",
+      "energies": {
+        "str": "351000",
+        "dex": "356000",
+        "int": "355000",
+        "wis": "358000",
+        "cha": "353000"
+      },
+      "damage_quantiles": {
+        "min": "2168",
+        "median": "2171",
+        "max": "2173"
+      },
+      "opponents": [
+        {
+          "build": "even",
+          "hp": "6351",
+          "ac": "181",
+          "hit_chance": "9/20",
+          "control_chance_after_hit": "1/2",
+          "expected_damage": "9769/10",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "10585/903"
+        },
+        {
+          "build": "con",
+          "hp": "8017",
+          "ac": "14",
+          "hit_chance": "19/20",
+          "control_chance_after_hit": "19/20",
+          "expected_damage": "41243/20",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "10585/167"
+        },
+        {
+          "build": "dex",
+          "hp": "6018",
+          "ac": "1014",
+          "hit_chance": "1/20",
+          "control_chance_after_hit": "1/20",
+          "expected_damage": "1087/10",
+          "one_shot_chance": "0",
+          "expected_opposing_actions_to_zero": "10585/167"
+        }
+      ],
+      "rarity": [
+        {
+          "status": "common",
+          "variant": "flat",
+          "attack_bonus": "0",
+          "damage_range": [
+            "2164",
+            "2169"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "common",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "2164",
+            "2169"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "flat",
+          "attack_bonus": "1",
+          "damage_range": [
+            "2164",
+            "2169"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "rare",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "2705",
+            "2711"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "flat",
+          "attack_bonus": "2",
+          "damage_range": [
+            "2164",
+            "2169"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "unique",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "3246",
+            "3253"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "flat",
+          "attack_bonus": "3",
+          "damage_range": [
+            "2164",
+            "2169"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": true,
+          "energy_cost": "0"
+        },
+        {
+          "status": "epic",
+          "variant": "multiplier",
+          "attack_bonus": "0",
+          "damage_range": [
+            "4328",
+            "4338"
+          ],
+          "max_one_shot_chance": "0",
+          "flat_bonus_disables_multiplier": false,
+          "energy_cost": "0"
+        }
+      ],
+      "intensities": [
+        {
+          "intensity": "light",
+          "cost": "1000",
+          "casts": "358",
+          "damage_range": [
+            "1084",
+            "1086"
+          ]
+        },
+        {
+          "intensity": "normal",
+          "cost": "3000",
+          "casts": "119",
+          "damage_range": [
+            "2168",
+            "2173"
+          ]
+        },
+        {
+          "intensity": "strong",
+          "cost": "12000",
+          "casts": "29",
+          "damage_range": [
+            "4336",
+            "4346"
+          ]
+        }
+      ],
+      "multi_target_cost": "12000",
+      "timed_control_cost": "9000",
+      "heal_per_energy": "1447/2000",
+      "combined_paid_reserve_damage": "2554503/2",
+      "weapon_when_empty": {
+        "energy_cost": "0",
+        "available": true
+      },
+      "sample_d20": [
+        12,
+        3,
+        14,
+        18,
+        15,
+        19,
+        11,
+        9
+      ]
+    }
+  ],
+  "flags": [
+    "L1 str epic/multiplier: weapon one-shot risk 1/120",
+    "L1 dex epic/multiplier: weapon one-shot risk 1/120",
+    "L10 str epic/multiplier: weapon one-shot risk 1/120",
+    "L10 dex epic/multiplier: weapon one-shot risk 1/120",
+    "L10 con vs dex: accuracy reaches natural-die bound 1/20",
+    "L10 even vs dex: accuracy reaches natural-die bound 1/20",
+    "L20 str epic/multiplier: weapon one-shot risk 1/120",
+    "L20 str vs even: accuracy reaches natural-die bound 19/20",
+    "L20 str vs con: accuracy reaches natural-die bound 19/20",
+    "L20 dex epic/multiplier: weapon one-shot risk 1/120",
+    "L20 dex vs even: accuracy reaches natural-die bound 19/20",
+    "L20 dex vs con: accuracy reaches natural-die bound 19/20",
+    "L20 con vs dex: accuracy reaches natural-die bound 1/20",
+    "L20 wis vs even: accuracy reaches natural-die bound 19/20",
+    "L20 wis vs con: accuracy reaches natural-die bound 19/20",
+    "L20 even vs dex: accuracy reaches natural-die bound 1/20",
+    "L100 str epic/multiplier: weapon one-shot risk 1/120",
+    "L100 str vs even: accuracy reaches natural-die bound 19/20",
+    "L100 str vs con: accuracy reaches natural-die bound 19/20",
+    "L100 dex epic/multiplier: weapon one-shot risk 1/120",
+    "L100 dex vs even: accuracy reaches natural-die bound 19/20",
+    "L100 dex vs con: accuracy reaches natural-die bound 19/20",
+    "L100 con vs even: accuracy reaches natural-die bound 1/20",
+    "L100 con vs dex: accuracy reaches natural-die bound 1/20",
+    "L100 wis vs even: accuracy reaches natural-die bound 19/20",
+    "L100 wis vs con: accuracy reaches natural-die bound 19/20",
+    "L100 even vs con: accuracy reaches natural-die bound 19/20",
+    "L100 even vs dex: accuracy reaches natural-die bound 1/20",
+    "L1000 str epic/multiplier: weapon one-shot risk 1/120",
+    "L1000 str vs even: accuracy reaches natural-die bound 19/20",
+    "L1000 str vs con: accuracy reaches natural-die bound 19/20",
+    "L1000 dex epic/multiplier: weapon one-shot risk 1/120",
+    "L1000 dex vs even: accuracy reaches natural-die bound 19/20",
+    "L1000 dex vs con: accuracy reaches natural-die bound 19/20",
+    "L1000 con vs even: accuracy reaches natural-die bound 1/20",
+    "L1000 con vs dex: accuracy reaches natural-die bound 1/20",
+    "L1000 wis vs even: accuracy reaches natural-die bound 19/20",
+    "L1000 wis vs con: accuracy reaches natural-die bound 19/20",
+    "L1000 even vs con: accuracy reaches natural-die bound 19/20",
+    "L1000 even vs dex: accuracy reaches natural-die bound 1/20"
+  ],
+  "provisional": true,
+  "notes": [
+    "Exact arithmetic audit, not a balance proof or live model evaluation.",
+    "Natural20/1 bounds remain; high specialization can make other outcomes rare.",
+    "Resource-rich specialists and burst damage remain prototype tradeoffs.",
+    "One eligible enemy reply per action; no grid/classes/XP cap.",
+    "Compare balance-preliminary.md from Node2; this sweep uses saved-growth arithmetic and real item profiles."
+  ]
+}

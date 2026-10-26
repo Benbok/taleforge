@@ -138,6 +138,7 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
         elapsed_game_seconds=intent.elapsed_game_seconds,
         check_outcomes=intent.check_outcomes,
         public_reason=intent.public_reason,
+        reward=intent.reward,
     )
     await validate_exploration(ctx, action)
     return action

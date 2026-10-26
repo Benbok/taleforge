@@ -88,5 +88,6 @@ async def exploration_game_card(session, hero):
         inventory=inventory,
         enemies=enemies,
         pending_request=pending_request,
+        admission_pending=bool(hero.resources.get("admission_pending")),
     )
     return card

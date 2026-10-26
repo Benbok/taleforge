@@ -49,6 +49,8 @@ async def authorize_actor(ctx, proposal, *, require_active=True):
     except NotFound:
         reject("not_allowed")
     seat = await ctx.session.get(Seat, ctx.seat_id, populate_existing=True)
+    if require_active and isinstance(row, Character) and row.resources.get("admission_pending"):
+        reject("not_allowed")
     if (
         proposal.actor_id != ctx.actor_id
         or not isinstance(row, Character)

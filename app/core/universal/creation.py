@@ -219,7 +219,11 @@ async def confirm_hero(session, dialogue_id: str, owner_id: str, expected_revisi
                 status="premade" if draft.target_id == "premade" else "approved",
                 location_id=(campaign.settings or {}).get("studio_entry_location_id"),
                 creation_method="description",
-                resources=dict(hp=str(derived.hp_max), energies={k: str(v) for k, v in derived.energy_max.items()}),
+                resources=dict(
+                    hp=str(derived.hp_max),
+                    energies={k: str(v) for k, v in derived.energy_max.items()},
+                    admission_pending=draft.target_id != "premade",
+                ),
             )
         )
     else:
@@ -269,7 +273,9 @@ async def copy_library_hero(session, viewer, original):
         status="approved",
         creation_method="description",
         sheet={**sheet.model_dump(mode="json"), "source_library_id": original.id},
-        resources=dict(hp=str(derived.hp_max), energies={k: str(v) for k, v in derived.energy_max.items()}),
+        resources=dict(
+            hp=str(derived.hp_max), energies={k: str(v) for k, v in derived.energy_max.items()}, admission_pending=True
+        ),
     )
     session.add(copied)
     await session.flush()

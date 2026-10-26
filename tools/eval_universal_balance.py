@@ -7,6 +7,7 @@ All means/probabilities are exact Fractions. Seed controls illustrative die trac
 from __future__ import annotations
 
 import argparse
+import json
 from fractions import Fraction
 from pathlib import Path
 
@@ -24,6 +25,8 @@ from app.rules.universal.profiles import (
     resolve_resistance,
     resource_cost,
 )
+from tools.universal_growth_balance import growth_report
+from tools.universal_growth_balance import simulate_build as simulate_build
 
 
 def _build(level: int, build: str) -> UniversalSheet:
@@ -286,7 +289,11 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=47)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
-    report = render_report(evaluate_balance(args.seed))
+    report = (
+        json.dumps(growth_report(args.seed), ensure_ascii=False, indent=2)
+        if args.output and args.output.suffix == ".json"
+        else render_report(evaluate_balance(args.seed))
+    )
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(report, encoding="utf-8")

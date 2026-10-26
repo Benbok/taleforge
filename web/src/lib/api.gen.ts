@@ -1212,6 +1212,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaign_id}/characters/{character_id}/allocate-points": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Allocate Earned Points */
+        post: operations["allocate_earned_points_api_campaigns__campaign_id__characters__character_id__allocate_points_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaign_id}/characters/{character_id}/bonds": {
         parameters: {
             query?: never;
@@ -1364,6 +1381,23 @@ export interface paths {
          * @description «Проверить»: три пробные сцены — спор в отряде, соблазн, опасность.
          */
         post: operations["test_persona_api_campaigns__campaign_id__characters__character_id__persona_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/characters/{character_id}/resume-admission": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resume Hero Admission */
+        post: operations["resume_hero_admission_api_campaigns__campaign_id__characters__character_id__resume_admission_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7040,6 +7074,17 @@ export interface components {
             /** Structure Id */
             structure_id?: string | null;
         };
+        /** PointAllocation */
+        PointAllocation: {
+            /** Allocations */
+            allocations: {
+                [key: string]: string;
+            };
+            /** Expected Revision */
+            expected_revision: number;
+            /** Request Key */
+            request_key: string;
+        };
         /** PortraitIn */
         PortraitIn: {
             /** Expected Revision */
@@ -8083,6 +8128,13 @@ export interface components {
              * @default null
              */
             portrait_url?: string | null;
+            /**
+             * Progression
+             * @default null
+             */
+            progression?: {
+                [key: string]: unknown;
+            } | null;
             /** Revision */
             revision: number;
             /** Seat Id */
@@ -8716,6 +8768,7 @@ export type PersonaIn = components['schemas']['PersonaIn'];
 export type PersonaSettingsIn = components['schemas']['PersonaSettingsIn'];
 export type Place = components['schemas']['Place'];
 export type PlanRequestIn = components['schemas']['PlanRequestIn'];
+export type PointAllocation = components['schemas']['PointAllocation'];
 export type PortraitIn = components['schemas']['PortraitIn'];
 export type PreparationView = components['schemas']['PreparationView'];
 export type PrepareRequest = components['schemas']['PrepareRequest'];
@@ -11376,6 +11429,44 @@ export interface operations {
             };
         };
     };
+    allocate_earned_points_api_campaigns__campaign_id__characters__character_id__allocate_points_post: {
+        parameters: {
+            query?: {
+                as_seat?: string | null;
+            };
+            header?: never;
+            path: {
+                campaign_id: string;
+                character_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PointAllocation"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversalGameCard"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_bonds_api_campaigns__campaign_id__characters__character_id__bonds_get: {
         parameters: {
             query?: {
@@ -11742,6 +11833,40 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_hero_admission_api_campaigns__campaign_id__characters__character_id__resume_admission_post: {
+        parameters: {
+            query?: {
+                as_seat?: string | null;
+            };
+            header?: never;
+            path: {
+                campaign_id: string;
+                character_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversalGameCard"];
                 };
             };
             /** @description Validation Error */

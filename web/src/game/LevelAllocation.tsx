@@ -10,6 +10,19 @@ export default function LevelAllocation({campaignId,card,onUpdated}:{campaignId:
  const available=BigInt(card.sheet.unspent_points ?? '0');
  const spent=Object.values(choice).reduce((sum,v)=>sum+BigInt(v ?? '0'),0n);
  const left=available-spent;
+ const admissionPending=!!(card as HeroCard & {progression?:{admission_pending?:boolean}}).progression?.admission_pending;
+ async function resume(){
+  setBusy(true);setError('');
+  try{onUpdated(await api(`/api/campaigns/${campaignId}/characters/${card.id}/resume-admission`,{method:'POST'}));}
+  catch(e){setError(e instanceof Error?e.message:'Не удалось завершить вступление. Повторите запрос.');}
+  finally{setBusy(false);}
+ }
+ if(admissionPending)return <section aria-label='Вступление героя' className='space-y-2 rounded-xl border border-accent/40 p-3 text-xs'>
+  <h3 className='font-semibold'>Завершите вступление в группу</h3>
+  <p className='text-muted'>Герой создан на первом уровне. Отдельное событие повысит копию до уровня группы и выдаст очки развития.</p>
+  {error&&<p role='alert'>{error}</p>}
+  <button disabled={busy} className='btn-primary px-3 py-2' onClick={resume}>Завершить вступление</button>
+ </section>;
  if(available===0n)return null;
  function change(key:AbilityKey,delta:bigint){
   setChoice(old=>{const next={...old};const value=BigInt(old[key]??'0')+delta;if(value===0n)delete next[key];else next[key]=String(value);return next;});

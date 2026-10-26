@@ -104,3 +104,21 @@ def test_allocation_api_rejects_overspend_and_stale_revision(client, root, monke
     assert client.post(endpoint, headers=root, json=body).status_code == 200
     body["request_key"] = "stale"
     assert client.post(endpoint, headers=root, json=body).status_code == 409
+
+
+def test_revoked_controller_is_rechecked_inside_growth_lock(tmp_path):
+    from app.core.campaigns import AccessDenied
+    from app.db.models import Seat
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            await award_xp(s, "c", "earned", ["hero"], 300)
+            seat = await s.get(Seat, "seat")
+            seat.user_id = None
+            await s.commit()
+            with pytest.raises(AccessDenied):
+                await spend_points(s, "c", "hero", 2, {"wis": 2}, "revoked", user_id="u", seat_id="seat")
+        await engine.dispose()
+
+    asyncio.run(run())

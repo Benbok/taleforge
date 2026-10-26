@@ -6,6 +6,7 @@ export interface CombatView {
   ac: string;
   game_seconds: string;
   active?: boolean;
+  admission_pending?: boolean;
   pending_request?: { kind: string; item_id?: string | null; target_id?: string | null; request_key: string } | null;
   inventory: { id: string; name: string; kind: string; status_name: string; quantity: string;
     equipped: boolean; defense_bonus?: string; attack_bonus?: string; damage_bonus?: string;
@@ -21,7 +22,7 @@ export default function UniversalCombatPanel({ campaignId, heroId, state, onUpda
   const [selected, setSelected] = useState('');
   const retry = useRef<{ kind: string; item_id?: string | null; target_id?: string | null; request_key: string } | null>(null);
   if (!state) return null;
-  const awake = state.life_state === 'conscious';
+  const awake = state.life_state === 'conscious' && !state.admission_pending;
   const enemies = state.enemies.filter(enemy => !enemy.life_state || enemy.life_state === 'conscious');
   const target = enemies.some(enemy => enemy.id === selected) ? selected : enemies[0]?.id;
   const labels = { conscious: 'Готов к действию', unconscious: 'Без сознания', stable: 'Состояние стабильно', dead: 'Герой погиб' };
@@ -47,8 +48,8 @@ export default function UniversalCombatPanel({ campaignId, heroId, state, onUpda
       <h3 className='font-semibold text-ink'>Снаряжение и защита</h3>
       <span className='rounded border border-accent/30 px-2 py-1 font-mono text-accent'>КД {state.ac}</span>
     </div>
-    <p className={awake ? 'text-muted' : 'font-semibold text-accent'}>{labels[state.life_state]}</p>
-    {!awake && <p className='leading-relaxed text-muted'>Пока герой не может действовать. Мастер сохраняет необходимые события состояния; чтение страницы не запускает новые проверки.</p>}
+    <p className={awake ? 'text-muted' : 'font-semibold text-accent'}>{state.admission_pending ? 'Завершается вступление героя' : labels[state.life_state]}</p>
+    {!awake && !state.admission_pending && <p className='leading-relaxed text-muted'>Пока герой не может действовать. Мастер сохраняет необходимые события состояния; чтение страницы не запускает новые проверки.</p>}
     <div className='space-y-2'>
       {state.inventory.map(item => <div key={item.id} className='rounded-lg border border-line-soft bg-bg/30 p-2.5'>
         <div className='flex items-start justify-between gap-2'>

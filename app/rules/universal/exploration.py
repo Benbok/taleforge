@@ -9,6 +9,7 @@ from pydantic import Field, model_validator
 
 from app.rules.universal.contracts import AbilityKey, ClosedModel, Count
 from app.rules.universal.profiles import ActionOutcome, CheckNarration
+from app.rules.universal.progression import RewardIntent
 
 SourceKind = Literal["mundane", "supernatural", "item"]
 ResolutionKind = Literal["automatic", "check", "attack", "resistance"]
@@ -193,6 +194,7 @@ class IntentV2(ClosedModel):
     duration_seconds: Count = Field(default=18, ge=1, le=600)
     elapsed_game_seconds: Count = Field(default=6, ge=0, le=3600)
     public_reason: str = Field(default="", max_length=4000)
+    reward: RewardIntent | None = None
     check_outcomes: CheckNarration | None = None
     known_profile_id: str | None = Field(default=None, max_length=128)
     known_revision: Count = Field(default=1, ge=1)
@@ -221,6 +223,7 @@ class ExplorationAction(ClosedModel):
     elapsed_game_seconds: Count
     check_outcomes: CheckNarration | None = None
     public_reason: str = Field(default="", max_length=4000)
+    reward: RewardIntent | None = None
 
 
 class EffectChange(ClosedModel):
@@ -338,10 +341,24 @@ def clean_model_intent(raw):
     changes in meaning. Slips in the cross references are mended too: a requirement the model forgot to link
     is linked to the effect of its own kind, a repeated requirement id is made unique, a link to nothing is
     dropped. Whether the words are really covered stays for the independent review and the compiler.
-    Stage 2A acts on the hero alone, so listed targets are dropped."""
+    Ordinary self actions discard model target noise; actor-targeted combat retains its targets."""
     if not isinstance(raw, dict):
         return raw
     cleaned = {k: v for k, v in raw.items() if not _empty(v) and k != "targets"}
+    targeted = {
+        "damage",
+        "heal",
+        "weapon_attack",
+        "cannot_move",
+        "cannot_act",
+        "cannot_target",
+        "check_bonus",
+        "defense_bonus",
+        "damage_over_time",
+        "consume",
+    }
+    if raw.get("targets") and any(isinstance(e, dict) and e.get("kind") in targeted for e in raw.get("effects") or []):
+        cleaned["targets"] = raw["targets"]
     effects = []
     for effect in raw.get("effects") or []:
         if not isinstance(effect, dict):

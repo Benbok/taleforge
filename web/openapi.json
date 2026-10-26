@@ -12384,6 +12384,49 @@
     "title": "PlanRequestIn",
     "type": "object"
    },
+   "PointAllocation": {
+    "additionalProperties": false,
+    "properties": {
+     "allocations": {
+      "additionalProperties": {
+       "pattern": "^(0|[1-9][0-9]*)$",
+       "type": "string"
+      },
+      "maxProperties": 6,
+      "minProperties": 1,
+      "propertyNames": {
+       "enum": [
+        "str",
+        "dex",
+        "con",
+        "int",
+        "wis",
+        "cha"
+       ]
+      },
+      "title": "Allocations",
+      "type": "object"
+     },
+     "expected_revision": {
+      "minimum": 1.0,
+      "title": "Expected Revision",
+      "type": "integer"
+     },
+     "request_key": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Request Key",
+      "type": "string"
+     }
+    },
+    "required": [
+     "expected_revision",
+     "allocations",
+     "request_key"
+    ],
+    "title": "PointAllocation",
+    "type": "object"
+   },
    "PortraitIn": {
     "additionalProperties": false,
     "properties": {
@@ -15527,6 +15570,19 @@
       ],
       "default": null,
       "title": "Portrait Url"
+     },
+     "progression": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Progression"
      },
      "revision": {
       "title": "Revision",
@@ -20705,6 +20761,88 @@
     ]
    }
   },
+  "/api/campaigns/{campaign_id}/characters/{character_id}/allocate-points": {
+   "post": {
+    "operationId": "allocate_earned_points_api_campaigns__campaign_id__characters__character_id__allocate_points_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "character_id",
+      "required": true,
+      "schema": {
+       "title": "Character Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "as_seat",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "As Seat"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PointAllocation"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UniversalGameCard"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Allocate Earned Points",
+    "tags": [
+     "characters"
+    ]
+   }
+  },
   "/api/campaigns/{campaign_id}/characters/{character_id}/bonds": {
    "get": {
     "description": "Вопросы о связях. Первое открытие игроком даёт вопросы по умолчанию; ИИ-мастер с каркасом в фоне\nзаменяет их своими, пока на них не ответили.",
@@ -21505,6 +21643,78 @@
      }
     ],
     "summary": "Test Persona",
+    "tags": [
+     "characters"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/characters/{character_id}/resume-admission": {
+   "post": {
+    "operationId": "resume_hero_admission_api_campaigns__campaign_id__characters__character_id__resume_admission_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "character_id",
+      "required": true,
+      "schema": {
+       "title": "Character Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "as_seat",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "As Seat"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UniversalGameCard"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Resume Hero Admission",
     "tags": [
      "characters"
     ]
