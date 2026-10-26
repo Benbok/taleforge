@@ -73,3 +73,29 @@ def test_master_ask_forwards_explicit_call_options():
     )
     assert captured["tool_choice"] == "required" and captured["max_tokens"] == 512
     assert captured["thinking"] is False
+
+
+@pytest.mark.parametrize(
+    "model,thinking,tool_choice,disabled",
+    [
+        ("deepseek/deepseek-flash", True, "required", True),
+        ("deepseek/deepseek-flash", False, None, True),
+        ("deepseek/deepseek-flash", True, "auto", False),
+        ("deepseek/deepseek-flash", True, None, False),
+        ("gemini/gemini-3.5-flash-lite", True, "required", False),
+    ],
+)
+def test_deepseek_thinking_is_off_when_the_api_would_reject_it(monkeypatch, model, thinking, tool_choice, disabled):
+    import litellm
+
+    captured = {}
+
+    async def complete(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(choices=[], usage=None, model=model)
+
+    monkeypatch.setattr(litellm, "acompletion", complete)
+    monkeypatch.setattr(litellm, "completion_cost", lambda **_: 0)
+    tools = [{"type": "function", "function": {"name": "t", "parameters": {"type": "object"}}}]
+    asyncio.run(LiteLLMClient().complete([], model=model, tools=tools, tool_choice=tool_choice, thinking=thinking))
+    assert captured.get("extra_body") == ({"thinking": {"type": "disabled"}} if disabled else None)

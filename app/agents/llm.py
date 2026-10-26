@@ -327,6 +327,9 @@ class LiteLLMClient:
             kwargs["temperature"] = temperature
         if not thinking and can_disable_thinking(model):
             kwargs["reasoning_effort"] = "disable"
+        # DeepSeek thinks by default, and in thinking mode the API rejects a forced tool_choice.
+        if model.startswith("deepseek/") and (not thinking or tool_choice not in (None, "auto")):
+            kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
         if stream_callback:
             kwargs["stream"] = True
             kwargs["stream_options"] = {"include_usage": True}  # без этого поток не несёт токены и цену
