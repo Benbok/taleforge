@@ -7,7 +7,7 @@ from sqlalchemy import select
 from app.agents.llm import ScriptedLLM
 from app.agents.master.service import MasterService
 from app.core.universal.profiles import load_actor
-from app.db.models import CampaignSecret, Entity, Event, HeroAbility, MasterTurn, RuntimeProfile
+from app.db.models import Campaign, CampaignSecret, Entity, Event, HeroAbility, MasterTurn, RuntimeProfile
 from app.db.session import make_engine, make_sessionmaker
 from app.rules.dice import FixedDice
 from tests.test_universal_master import Bus, Provider
@@ -16,7 +16,7 @@ from tests.test_ws import connect, wait_message_result
 from tests.universal_helpers import create_hero, ready_reply, set_replies
 
 
-def test_first_adventure_survives_restart_and_failed_narration(client, root, settings, monkeypatch):
+def first_adventure_scenario(client, root, settings, monkeypatch, voice_capture=None):
     # No worker races and no external calls: the real turn executor is driven explicitly below.
     monkeypatch.setattr(client.app.state.master, "notify", lambda *_: None)
     monkeypatch.setattr(client.app.state.master, "schedule_session_open", lambda *_: None)
@@ -152,7 +152,33 @@ def test_first_adventure_survives_restart_and_failed_narration(client, root, set
     restarted_engine = make_engine(settings.database_url)
     restarted_maker = make_sessionmaker(restarted_engine)
     narrator = Provider(["Vines trace the hidden path beyond the gate.", dict(verdict="pass")])
-    restarted = MasterService(restarted_maker, Bus(), narrator, dice_factory=lambda: FixedDice([10]))
+
+    class CapturedVoice:
+        enabled = True
+
+        async def voice_for_narration(self, media_dir, cid, text, **kwargs):
+            voice_capture.append(text)
+            return None
+
+    if voice_capture is not None:
+
+        async def enable_voice():
+            async with restarted_maker() as s:
+                campaign = await s.get(Campaign, cid)
+                campaign.settings = {**campaign.settings, "tts_enabled": True, "tts_text_enabled": True}
+                await s.commit()
+
+        asyncio.run(enable_voice())
+    from pathlib import Path
+
+    restarted = MasterService(
+        restarted_maker,
+        Bus(),
+        narrator,
+        dice_factory=lambda: FixedDice([10]),
+        tts=CapturedVoice() if voice_capture is not None else None,
+        media_dir=Path("."),
+    )
     assert asyncio.run(restarted.run_turn(cid)) == tid
     assert asyncio.run(restarted.run_turn(cid)) is None
     _, restored, restored_events, restored_learned = asyncio.run(inspect(restarted_maker))
@@ -186,6 +212,11 @@ def test_first_adventure_survives_restart_and_failed_narration(client, root, set
         await restarted_engine.dispose()
 
     asyncio.run(isolated())
+    return cid, second_id, hero_id, library_before
+
+
+def test_first_adventure_survives_restart_and_failed_narration(client, root, settings, monkeypatch):
+    first_adventure_scenario(client, root, settings, monkeypatch)
 
 
 def test_universal_turn_uses_campaign_selected_model_and_endpoint(tmp_path):

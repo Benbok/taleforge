@@ -1,6 +1,6 @@
 # Maps and Narration Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Довести ориентацию, память и повествование в уже работающей игре.
 
@@ -44,30 +44,34 @@ Task22 (полная карта), оставшаяся часть Task23 и по
 **Files:** Modify web/src/game/{LocationMap,MapWindow,BookMap,PassageBar}.tsx, app/core/{map,map_projection,reach,positions}.py, app/tools/{movement,grapples}.py, app/tools/master/{places,travel,checks,entities}.py; Test tests/test_universal_map.py, web/src/game/LocationMap.test.tsx.
 **Interfaces:** Saved location/knowledge projection retains known entities/places and optional visual coordinates. Existing resolve_action already accepts no-cell actions from Node2; map does not mutate game state.
 
-- [ ] **Step 1: Write failing tests.** Ground/passage click: assert moveRequest not called; pan/zoom/entity inspection work. assert exchange_after_inspection == exchange_before. Secret/foreign objects hidden; valid move/action without cell accepted.
-- [ ] **Step 2: Run RED.** python -m pytest -n 0 tests/test_universal_map.py -q; npm --prefix web test -- src/game/LocationMap.test.tsx. Expected missing new contract or required behavior, not an environment failure.
-- [ ] **Step 3: Implement.** Remove onCell/onPassage game commands and movement draft coupling, keep visual geometry optional. Audit leftover mandatory feet/cell/line-of-sight checks in active universal paths; retain world membership and master-confirmed reachability.
-- [ ] **Step 4: Run GREEN.** python -m pytest -n 0 tests/test_universal_map.py -q; npm --prefix web test -- src/game/LocationMap.test.tsx. Author map inspection/generation still usable; missing coordinates do not create invisible fictional walls. Existing adventures and known location state survive.
-- [ ] **Step 5: Commit.** feat: present maps as non-tactical scene orientation. Stage only this task's files.
+- [x] **Step 1: Write failing tests.** Ground/passage click: assert moveRequest not called; pan/zoom/entity inspection work. assert exchange_after_inspection == exchange_before. Secret/foreign objects hidden; valid move/action without cell accepted.
+- [x] **Step 2: Run RED.** python -m pytest -n 0 tests/test_universal_map.py -q; npm --prefix web test -- src/game/LocationMap.test.tsx. Expected missing new contract or required behavior, not an environment failure.
+- [x] **Step 3: Implement.** Remove onCell/onPassage game commands and movement draft coupling, keep visual geometry optional. Audit leftover mandatory feet/cell/line-of-sight checks in active universal paths; retain world membership and master-confirmed reachability.
+- [x] **Step 4: Run GREEN.** python -m pytest -n 0 tests/test_universal_map.py -q; npm --prefix web test -- src/game/LocationMap.test.tsx. Author map inspection/generation still usable; missing coordinates do not create invisible fictional walls. Existing adventures and known location state survive.
+- [x] **Step 5: Commit.** feat: present maps as non-tactical scene orientation. Stage only this task's files.
 
 ### Task 23: Richer narration, public context and memory
 
 **Files:** Modify app/agents/master/{narration,helpers,finish,prompt_context}.py, app/agents/prompts/{narrate,narrator_system}.j2, app/gateway/protocol.py; Test tests/test_universal_narration.py.
 **Interfaces:** Extend Task10 public_turn_view(ctx,audience)->dict. Existing narrator/retrieval/voice consume public outcomes and relevant memory; no new mechanics executor.
 
-- [ ] **Step 1: Write failing tests.** test_public_narration_excludes_saves — assert 'death_failures' not in payload. Vine resisted bind: damage present, cannot_move absent. Context preserves relevant world/hero facts and excludes other hero's secrets. Retry narration never adds a second spend/tick.
-- [ ] **Step 2: Run RED.** python -m pytest -n 0 tests/test_universal_narration.py -q. Expected missing new contract or required behavior, not an environment failure.
-- [ ] **Step 3: Implement.** Supply scene details, dialogue, atmosphere and relevant retrieved facts rather than impose terse2–4 sentences. Preserve player agency, distinguish denial/miss/damage/resistance and unknown facts. Private adaptations/rescue counters never enter narrator/voice payload. Keep mechanics commit separate from text publication.
-- [ ] **Step 4: Run GREEN.** python -m pytest -n 0 tests/test_universal_narration.py -q. Reconnect before publication, changed audience, privacy in voice and no hidden automatic rest. ScriptedLLM proves filtering/context; assess actual literary quality separately in a configured manual run.
-- [ ] **Step 5: Commit.** feat: enrich public narration with grounded world memory. Stage only this task's files.
+- [x] **Step 1: Write failing tests.** test_public_narration_excludes_saves — assert 'death_failures' not in payload. Vine resisted bind: damage present, cannot_move absent. Context preserves relevant world/hero facts and excludes other hero's secrets. Retry narration never adds a second spend/tick.
+- [x] **Step 2: Run RED.** python -m pytest -n 0 tests/test_universal_narration.py -q. Expected missing new contract or required behavior, not an environment failure.
+- [x] **Step 3: Implement.** Supply scene details, dialogue, atmosphere and relevant retrieved facts rather than impose terse2–4 sentences. Preserve player agency, distinguish denial/miss/damage/resistance and unknown facts. Private adaptations/rescue counters never enter narrator/voice payload. Keep mechanics commit separate from text publication.
+- [x] **Step 4: Run GREEN.** python -m pytest -n 0 tests/test_universal_narration.py -q. Reconnect before publication, changed audience, privacy in voice and no hidden automatic rest. ScriptedLLM proves filtering/context; assess actual literary quality separately in a configured manual run.
+- [x] **Step 5: Commit.** feat: enrich public narration with grounded world memory. Stage only this task's files.
 
 ### Task 24: Whole-adventure node acceptance
 
 **Files:** Create tests/test_universal_playthrough.py, web/src/pages/UniversalPlaythrough.test.tsx; Modify app/core/views.py or frontend reducers only for reproduced integration defects.
 **Interfaces:** Consumes all existing endpoints and view contracts; no new gameplay function.
 
-- [ ] **Step 1: Write failing tests.** Author accepted→two launches→library copy→invented ability→combat→effects/potion→XP300 each→level choices→map inspection→reconnect. Assert original/second game unchanged and all receipts replay once. Player and voice payload exclude foreign/private secrets.
-- [ ] **Step 2: Run RED.** python -m pytest -n 0 tests/test_universal_playthrough.py -q; npm --prefix web test -- src/pages/UniversalPlaythrough.test.tsx. Expected missing new contract or required behavior, not an environment failure.
-- [ ] **Step 3: Implement.** Compose existing services in scenario fixtures; use real migrations and lifespan for at least one path. Fix only demonstrated integration gaps in their owning modules, not a new feature set.
+- [x] **Step 1: Write failing tests.** Author accepted→two launches→library copy→invented ability→combat→effects/potion→XP300 each→level choices→map inspection→reconnect. Assert original/second game unchanged and all receipts replay once. Player and voice payload exclude foreign/private secrets.
+- [x] **Step 2: Run RED.** python -m pytest -n 0 tests/test_universal_playthrough.py -q; npm --prefix web test -- src/pages/UniversalPlaythrough.test.tsx. Expected missing new contract or required behavior, not an environment failure.
+- [x] **Step 3: Implement.** Compose existing services in scenario fixtures; use real migrations and lifespan for at least one path. Fix only demonstrated integration gaps in their owning modules, not a new feature set.
 - [ ] **Step 4: Run GREEN.** python -m pytest -n 0 tests/test_universal_playthrough.py -q; npm --prefix web test -- src/pages/UniversalPlaythrough.test.tsx. Run node demo in browser, retain a created hero/campaign across upgrade from Node1 schema through current head. Record usability and prose observations before final cleanup.
-- [ ] **Step 5: Commit.** test: verify the complete persistent universal adventure. Stage only this task's files.
+- [x] **Step 5: Commit.** test: verify the complete persistent universal adventure. Stage only this task's files.
+
+Implementation and verification: [Node5 report](../../universal-maps-and-memory.md). Active-module task mapping: [execution plan](2026-10-26-universal-maps-and-memory.md). Local runtime selection remains a separate delivery preference because the running container was moved to a parallel combined worktree.
+
+Task24 Step4 automated checks are GREEN (310 backend /385 frontend); browser demonstration of this branch awaits runtime selection. No gameplay actions were sent to the existing combined runtime.

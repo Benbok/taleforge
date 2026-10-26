@@ -4,6 +4,7 @@ import {LocationMap} from './LocationMap';
 import {useMapWindow,type MapLocationPlan,type MapState} from './map';
 import {useDraft} from './draft';
 import {useInspector} from './inspector';
+import OrientationMap from './OrientationMap';
 afterEach(()=>{cleanup();vi.restoreAllMocks();});
 
 it('orientation map keeps ground and passage clicks free of game commands and draft edits',()=>{
@@ -17,5 +18,17 @@ it('orientation map keeps ground and passage clicks free of game commands and dr
  fireEvent.click(screen.getByRole('button',{name:'Проход: Арка'}));
  expect(screen.queryByRole('button',{name:'Перейти'})).toBeNull();
  expect(step).not.toHaveBeenCalled();expect(traverse).not.toHaveBeenCalled();expect(insert).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Увеличить'}));
+ expect(screen.getByText('125%')).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:'Зал'}));expect(inspect).toHaveBeenCalled();
+});
+
+it('keeps known landmarks inspectable when no geometric map exists',()=>{
+ const inspect=vi.fn(),step=vi.fn(),traverse=vi.fn();useInspector.setState({open:inspect});useMapWindow.setState({stepTo:step,traverseTo:traverse});
+ const map={here:{id:'here',name:'Берег'},around:[{id:'bell',name:'Колокол'}],exits:[{id:'grove',name:'Роща'}]} as unknown as MapState;
+ render(<OrientationMap map={map}/>);
+ expect(screen.getByText(/Точная схема ещё не известна/)).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Колокол'}));
+ fireEvent.click(screen.getByRole('button',{name:'Роща'}));
+ expect(inspect).toHaveBeenCalledTimes(2);expect(step).not.toHaveBeenCalled();expect(traverse).not.toHaveBeenCalled();
 });

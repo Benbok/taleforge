@@ -195,3 +195,35 @@ def test_roll_card_does_not_share_one_heros_revealed_secret(tmp_path):
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_narration_does_not_show_arrival_scene_to_left_behind_recipient(tmp_path):
+    async def run():
+        from app.agents.master.public_context import public_context
+
+        engine, maker = await setup(tmp_path)
+        await place(maker)
+        async with maker() as s:
+            s.add(Seat(id="second", campaign_id="c", role="player", position=2, occupant_type="human"))
+            await s.flush()
+            (await s.get(Character, "target")).seat_id = "second"
+            (await s.get(Character, "target")).location_id = "elsewhere"
+            s.add(
+                Entity(
+                    id="arrival",
+                    campaign_id="c",
+                    kind="object",
+                    name="Treasure",
+                    description="UNSEEN-ARRIVAL",
+                    location_id="gorge",
+                    state={},
+                )
+            )
+            await s.flush()
+            scene = {"location": {"id": "gorge", "name": "Gorge"}, "entities": [{"id": "arrival", "name": "Treasure"}]}
+            context = await public_context(s, await s.get(Campaign, "c"), 10, ["seat", "second"], scene, {})
+            assert context["scene"]["entities"] == []
+            assert "UNSEEN-ARRIVAL" not in str(context)
+        await engine.dispose()
+
+    asyncio.run(run())

@@ -195,7 +195,7 @@ def test_map_read_does_not_create_scene_for_an_unstarted_campaign(tmp_path):
     asyncio.run(run())
 
 
-@pytest.mark.parametrize("variant", ["missing", "foreign", "private", "unlinked", "locked"])
+@pytest.mark.parametrize("variant", ["missing", "foreign", "private", "unlinked", "locked", "hidden_locked"])
 def test_chat_travel_rejects_unreachable_destination_before_dice(tmp_path, variant):
     from app.core.universal.interpretation import compile_exploration
     from app.core.universal.resolution import ResolutionContext
@@ -208,7 +208,7 @@ def test_chat_travel_rejects_unreachable_destination_before_dice(tmp_path, varia
         async with maker() as s:
             s.add(Scene(campaign_id="c", location_id="entry"))
             state = {"links": [{"to": "next"}]} if variant != "unlinked" else {}
-            if variant == "locked":
+            if variant in {"locked", "hidden_locked"}:
                 state["sketch"] = {
                     "shape": "room",
                     "cols": 2,
@@ -217,7 +217,15 @@ def test_chat_travel_rejects_unreachable_destination_before_dice(tmp_path, varia
                     "walls": [],
                     "features": [],
                     "exits": [
-                        {"name": "Locked door", "side": "e", "at": 0, "kind": "door", "state": "locked", "to": "next"}
+                        {
+                            "name": "Locked door",
+                            "side": "e",
+                            "at": 0,
+                            "kind": "door",
+                            "state": "locked",
+                            "to": "next",
+                            "hidden": variant == "hidden_locked",
+                        }
                     ],
                 }
             s.add(Entity(id="entry", campaign_id="c", kind="location", name="Entry", state=state))

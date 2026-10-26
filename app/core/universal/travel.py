@@ -28,9 +28,19 @@ async def destination_view(ctx, destination_id):
     candidates = [exit for exit in view["exits"] if exit.get("id") == destination_id]
     if not candidates or not any(exit.get("state") not in {"closed", "locked"} for exit in candidates):
         raise ValueError("Нет известного открытого пути к выбранному месту")
-    passages = [exit for exit in (view.get("sketch") or {}).get("exits", []) if exit.get("to") == destination_id]
-    if passages and all(exit.get("state") in {"closed", "locked"} for exit in passages):
-        raise ValueError("Известный проход закрыт; сначала его нужно открыть")
+    source = await ctx.session.get(Entity, (view.get("here") or {}).get("id"))
+    sketch = (source.state.get("sketch") or {}) if source else {}
+    # A display projection omits hidden doors. Validate authoritative passages
+    # before falling back to geometry-free adjacency; omission is not permission.
+    passages = [
+        exit
+        for exit in [*sketch.get("exits", []), *sketch.get("unplaced_exits", [])]
+        if exit.get("to") == destination_id
+    ]
+    if passages and not any(
+        not exit.get("hidden") and exit.get("state") not in {"closed", "locked"} for exit in passages
+    ):
+        raise ValueError("Нет известного открытого прохода к выбранному месту")
     return actor, place, view
 
 

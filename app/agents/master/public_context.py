@@ -30,7 +30,9 @@ async def public_context(session, campaign, upto_seq, audience, scene, outcomes)
         row = await session.get(Entity, item["id"])
         if row is None or not heroes:
             continue
-        visible = [await visible_entity(session, campaign.id, h.id, row) for h in heroes]
+        visible = [
+            row.location_id == h.location_id and await visible_entity(session, campaign.id, h.id, row) for h in heroes
+        ]
         if not all(visible):
             continue
         subjects.add(row.id)
