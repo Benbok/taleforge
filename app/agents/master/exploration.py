@@ -163,6 +163,18 @@ async def store(service, tid, trace):
         await s.commit()
 
 
+async def journal(service, campaign, kind, mid, context, detail):
+    """Note an unusual request in the journal; it is evidence for the owner, never a reason to stop the turn."""
+    from app.core.universal.journal import record_journal
+
+    try:
+        async with service.maker() as s:
+            await record_journal(s, campaign.id, kind, mid, context.get("source", ""), detail)
+            await s.commit()
+    except Exception:  # noqa: BLE001
+        log.exception("journal entry failed")
+
+
 async def obtain_exploration_action(service, campaign, tid, mid, trace, context, scope, ask):
     prepared = trace.setdefault("prepared", {})
     binding = hashlib.sha256(
@@ -282,6 +294,8 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                         ),
                     )
                 )
+                if review.verdict == "forbidden":
+                    await journal(service, campaign, "forbidden", mid, context, {"reason": review.message})
                 result = PreparedExploration(failure=failure)
                 prepared[mid] = result.model_dump(mode="json")
                 await store(service, tid, trace)
@@ -333,6 +347,8 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
         raw = None
         trace.get("admissions", {}).pop(mid, None)
         await store(service, tid, trace)
+    if last_failure.code == "not_realised":
+        await journal(service, campaign, "exhausted", mid, context, {"hint": hint or ""})
     result = PreparedExploration(failure=last_failure)
     prepared[mid] = result.model_dump(mode="json")
     await store(service, tid, trace)

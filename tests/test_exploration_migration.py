@@ -57,3 +57,34 @@ def test_upgrade_existing_universal_database_preserves_saved_game(tmp_path):
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_the_journal_migration_only_adds_a_table_and_keeps_the_saved_game(tmp_path):
+    async def run():
+        engine = make_engine(f"sqlite+aiosqlite:///{tmp_path / 'journal.db'}")
+
+        def migrate(connection, target):
+            config = Config("alembic.ini")
+            config.attributes["connection"] = connection
+            command.upgrade(config, target)
+
+        async with engine.begin() as connection:
+            await connection.run_sync(lambda conn: migrate(conn, "universal_0005"))
+        maker = make_sessionmaker(engine)
+        async with maker() as s:
+            s.add(User(id="owner", name="Owner", password_hash="test"))
+            await s.flush()
+            s.add(
+                Campaign(id="game", owner_id="owner", name="W", ruleset_id="universal", ruleset_version="universal.v1")
+            )
+            await s.commit()
+        async with engine.begin() as connection:
+            assert "universal_journal" not in await connection.run_sync(lambda c: inspect(c).get_table_names())
+            await connection.run_sync(lambda conn: migrate(conn, "head"))
+            tables = await connection.run_sync(lambda c: inspect(c).get_table_names())
+        assert "universal_journal" in tables
+        async with maker() as s:
+            assert (await s.get(Campaign, "game")).name == "W"
+        await engine.dispose()
+
+    asyncio.run(run())

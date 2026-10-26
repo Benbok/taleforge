@@ -1107,3 +1107,17 @@ class HeroAbility(Base):
     definition: Mapped[dict[str, Any]] = mapped_column(default=dict)
     source_event_id: Mapped[str] = mapped_column(ForeignKey("events.id", ondelete="CASCADE"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class UniversalJournal(Base):
+    """What players asked for that the engine has no ready mechanics for, kept to decide which to build next."""
+
+    __tablename__ = "universal_journal"
+    __table_args__ = (UniqueConstraint("campaign_id", "kind", "source_key"),)
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("uj"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(16))  # free_effect | creature | forbidden | exhausted
+    source_key: Mapped[str] = mapped_column(String(128))
+    source_text: Mapped[str] = mapped_column(Text, default="")
+    detail: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

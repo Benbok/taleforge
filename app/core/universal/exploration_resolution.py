@@ -10,6 +10,7 @@ from app.core.universal.definitions import admit_definition
 from app.core.universal.discovery import learned_abilities
 from app.core.universal.effects import dismiss_effect, start_effect
 from app.core.universal.interpretation import validate_exploration
+from app.core.universal.journal import record_journal
 from app.core.universal.objects import apply_object_operation, introduce_object
 from app.core.universal.profiles import save_actor
 from app.core.universal.validation import authorize_actor
@@ -246,6 +247,8 @@ async def _execute(ctx, action, key):
     result.description = " ".join(c.description for c in result.changes if not c.private) or _outcome_hint(
         action, result
     )
+    if result.success:
+        await _journal_unusual(ctx, action)
     event.payload = dict(
         schema_version=2, proposal=action.model_dump(mode="json"), outcome=result.model_dump(mode="json")
     )
@@ -272,3 +275,18 @@ def _outcome_hint(action, result):
         if result.success
         else "Попытка не удалась; задуманные эффекты не возникли."
     )
+
+
+async def _journal_unusual(ctx, action):
+    """Free effects and created beings are what the ready mechanics do not cover: note them with the words used."""
+    source = await ctx.session.get(Message, action.source_message_id)
+    for op in action.operations:
+        if op.kind == "free_effect" or (op.kind == "create_object" and op.template == "creature"):
+            await record_journal(
+                ctx.session,
+                ctx.campaign_id,
+                "free_effect" if op.kind == "free_effect" else "creature",
+                action.source_message_id,
+                source.content if source is not None else "",
+                {"label": op.label, "scale": op.scale, "abilities": op.abilities, "appearance": op.appearance},
+            )

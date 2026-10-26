@@ -36,6 +36,8 @@ async def verify_universal_schema(engine: AsyncEngine) -> None:
             raise RuntimeError("Expected universal action storage; run alembic upgrade head")
         if not {"universal_clocks", "universal_steps", "universal_effects"} <= tables:
             raise RuntimeError("Expected universal exploration storage; run alembic upgrade head")
+        if "universal_journal" not in tables:
+            raise RuntimeError("Expected the universal journal; run alembic upgrade head")
 
     async with engine.begin() as connection:
         await connection.run_sync(verify)
