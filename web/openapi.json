@@ -10411,7 +10411,8 @@
         "enum": [
          "claude",
          "gemini",
-         "local"
+         "local",
+         "deepseek"
         ],
         "type": "string"
        },
@@ -10490,7 +10491,8 @@
         "enum": [
          "claude",
          "gemini",
-         "local"
+         "local",
+         "deepseek"
         ],
         "type": "string"
        },

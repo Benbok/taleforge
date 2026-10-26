@@ -146,7 +146,7 @@ export interface ModelCheck {
 export interface ModelProfile {
   id: string;
   name: string;
-  provider: "claude" | "gemini" | "local";
+  provider: "claude" | "gemini" | "local" | "deepseek";
   model: string;
   resolved_model: string | null;
   api_base: string | null;
@@ -178,7 +178,7 @@ export interface Pack {
   is_base?: boolean;
 }
 
-export const PROVIDER_RU: Record<string, string> = { claude: "Claude", gemini: "Gemini", local: "LM Studio" };
+export const PROVIDER_RU: Record<string, string> = { claude: "Claude", gemini: "Gemini", deepseek: "DeepSeek", local: "LM Studio" };
 export const ROLE_RU: Record<string, string> = { super_admin: "Суперадмин", admin: "Админ", player: "Игрок" };
 export const DIFFICULTY_RU: Record<string, string> = {
   easy: "Лёгкая",

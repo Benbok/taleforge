@@ -109,6 +109,8 @@ class Settings:
     claude_technical_model: str = "anthropic/claude-haiku-4-5"
     local_main_model: str = "qwen2.5-14b"
     local_technical_model: str = "qwen2.5-7b"
+    deepseek_main_model: str = "deepseek/deepseek-flash"
+    deepseek_technical_model: str = "deepseek/deepseek-flash"
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -165,11 +167,13 @@ class Settings:
             claude_technical_model=_env("CLAUDE_TECHNICAL_MODEL", cls.claude_technical_model),
             local_main_model=_env("LOCAL_MAIN_MODEL", cls.local_main_model),
             local_technical_model=_env("LOCAL_TECHNICAL_MODEL", cls.local_technical_model),
+            deepseek_main_model=_env("DEEPSEEK_MAIN_MODEL", cls.deepseek_main_model),
+            deepseek_technical_model=_env("DEEPSEEK_TECHNICAL_MODEL", cls.deepseek_technical_model),
         )
 
 
 LLM_FIELDS = ("llm_provider", "decide_model") + tuple(
-    f"{p}_{kind}_model" for p in ("gemini", "claude", "local") for kind in ("main", "technical")
+    f"{p}_{kind}_model" for p in ("gemini", "claude", "local", "deepseek") for kind in ("main", "technical")
 )
 
 

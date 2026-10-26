@@ -17,6 +17,7 @@ LM_STUDIO_DEFAULT_BASE = "http://localhost:1234/v1"
 PROVIDER_INFO = {
     "claude": {"title": "Claude (Anthropic)", "key_env": ("ANTHROPIC_API_KEY",)},
     "gemini": {"title": "Gemini (Google)", "key_env": ("GEMINI_API_KEY", "GOOGLE_API_KEY")},
+    "deepseek": {"title": "DeepSeek", "key_env": ("DEEPSEEK_API_KEY",)},
     "local": {"title": "Локальная модель (LM Studio)", "key_env": ()},
 }
 CHECK_PROMPT = "Проверка связи. Ответь одним словом: «готов»."
@@ -63,6 +64,9 @@ def provider_status() -> list[dict[str, Any]]:
         elif pid == "gemini":
             main_model = settings.gemini_main_model
             technical_model = settings.gemini_technical_model
+        elif pid == "deepseek":
+            main_model = settings.deepseek_main_model
+            technical_model = settings.deepseek_technical_model
         elif pid == "local":
             main_model = settings.local_main_model
             technical_model = settings.local_technical_model

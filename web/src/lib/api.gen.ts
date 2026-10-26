@@ -6395,7 +6395,7 @@ export interface components {
             /** Preset Id */
             preset_id?: string | null;
             /** Provider */
-            provider?: ("claude" | "gemini" | "local") | null;
+            provider?: ("claude" | "gemini" | "local" | "deepseek") | null;
             /** Style */
             style?: string | null;
             /** Temperature */
@@ -6417,7 +6417,7 @@ export interface components {
             /** Model Profile Id */
             model_profile_id?: string | null;
             /** Provider */
-            provider?: ("claude" | "gemini" | "local") | null;
+            provider?: ("claude" | "gemini" | "local" | "deepseek") | null;
             /** Temperature */
             temperature?: number | null;
         };

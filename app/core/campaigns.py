@@ -27,7 +27,7 @@ from app.db.models import (
 
 MAX_PLAYERS = 6
 DIFFICULTIES = ("easy", "normal", "hard", "deadly")
-PROVIDERS = ("claude", "gemini", "local")
+PROVIDERS = ("claude", "gemini", "local", "deepseek")
 DEFAULT_PARTY = {"min": 3, "recommended": 4, "max": 6}  # бюджет встреч SRD рассчитан на отряд из 4
 DEFAULT_SETTINGS = {
     "turn_timeout_sec": 300,  # ход до 5 минут, игра вживую

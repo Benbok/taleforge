@@ -63,7 +63,7 @@ class UserCreateIn(BaseModel):
     platform_role: Literal["admin", "player"] = "admin"
 
 
-Provider = Literal["claude", "gemini", "local"]
+Provider = Literal["claude", "gemini", "local", "deepseek"]
 TtsProvider = Literal["gemini", "voicestudio"]  # облачный и локальный синтез речи (app/agents/voicing.py)
 
 

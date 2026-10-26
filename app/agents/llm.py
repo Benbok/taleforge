@@ -185,7 +185,7 @@ def _get_provider() -> str:
 
 
 def _ensure_prefix(p: str, m: str) -> str:
-    prefixes = {"claude": "anthropic/", "gemini": "gemini/", "local": "lm_studio/"}
+    prefixes = {"claude": "anthropic/", "gemini": "gemini/", "local": "lm_studio/", "deepseek": "deepseek/"}
     prefix = prefixes.get(p, "")
     if prefix and not m.startswith(prefix):
         return prefix + m
@@ -204,6 +204,8 @@ def model_for(provider: str | None = None, model: str | None = None) -> str:
         return _ensure_prefix(p, settings.claude_main_model)
     elif p == "local":
         return _ensure_prefix(p, settings.local_main_model)
+    elif p == "deepseek":
+        return _ensure_prefix(p, settings.deepseek_main_model)
     raise LLMError(f"Unknown provider '{p}'")
 
 
@@ -219,6 +221,8 @@ def parser_model_for(provider: str | None = None, model: str | None = None) -> s
         return _ensure_prefix(p, settings.claude_technical_model)
     elif p == "local":
         return _ensure_prefix(p, settings.local_technical_model)
+    elif p == "deepseek":
+        return _ensure_prefix(p, settings.deepseek_technical_model)
     raise LLMError(f"Unknown provider '{p}'")
 
 
