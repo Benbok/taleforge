@@ -57,10 +57,19 @@ a user playtest with the configured model. Node6 cleanup remains separate.
 
 ## Local runtime
 
-The existing `taleforge-app-1` container is currently mounted from the parallel
-`.worktrees/combined` tree. Its API/library smoke passed after restart. The browser
-confirmed the existing game, combat panel and XP indicator, but correctly found no
-Node5 map entry in that different frontend. No switch of mounts or edits to combined
-were performed. The user explicitly chose to retain the combined runtime and leave
-the completed implementation on feature/universal-creative-studio. Deployment and
-browser demonstration of Node5 are deferred; they were not claimed as verified.
+The user subsequently requested integration into `feature/combined`, where they are
+playtesting. Node5 was merged with its existing free-creation/model changes retained.
+The same `taleforge-app-1` container continues to mount `.worktrees/combined`, using
+the existing `taleforge_universal` database and media volumes.
+
+Combined verification: 354 backend tests and 385 frontend tests passed; TypeScript
+and production build passed. The obsolete legacy revision0025 migration test remains
+excluded. Ruff passes for the merged Node5 Python files; the existing parallel
+`test_exploration_master.py` has an unused import and two long lines outside Node5.
+AST-only graph update completed (13,942 nodes /46,950 edges).
+
+After rebuilding the combined frontend and restarting the same app container,
+authenticated API/library smoke passed. Headless Chrome opened campaign
+`c_d31978690fbfe4bd`, found the header map button, opened the orientation map and
+confirmed that it exposes no tactical gameplay commands. No gameplay actions or
+paid model calls were sent. Live prose quality remains a user playtest check.

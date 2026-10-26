@@ -69,9 +69,11 @@ Task22 (полная карта), оставшаяся часть Task23 и по
 - [x] **Step 1: Write failing tests.** Author accepted→two launches→library copy→invented ability→combat→effects/potion→XP300 each→level choices→map inspection→reconnect. Assert original/second game unchanged and all receipts replay once. Player and voice payload exclude foreign/private secrets.
 - [x] **Step 2: Run RED.** python -m pytest -n 0 tests/test_universal_playthrough.py -q; npm --prefix web test -- src/pages/UniversalPlaythrough.test.tsx. Expected missing new contract or required behavior, not an environment failure.
 - [x] **Step 3: Implement.** Compose existing services in scenario fixtures; use real migrations and lifespan for at least one path. Fix only demonstrated integration gaps in their owning modules, not a new feature set.
-- [ ] **Step 4: Run GREEN.** python -m pytest -n 0 tests/test_universal_playthrough.py -q; npm --prefix web test -- src/pages/UniversalPlaythrough.test.tsx. Run node demo in browser, retain a created hero/campaign across upgrade from Node1 schema through current head. Record usability and prose observations before final cleanup.
+- [x] **Step 4: Run GREEN.** python -m pytest -n 0 tests/test_universal_playthrough.py -q; npm --prefix web test -- src/pages/UniversalPlaythrough.test.tsx. Run node demo in browser, retain a created hero/campaign across upgrade from Node1 schema through current head. Record usability and prose observations before final cleanup.
 - [x] **Step 5: Commit.** test: verify the complete persistent universal adventure. Stage only this task's files.
 
 Implementation and verification: [Node5 report](../../universal-maps-and-memory.md). Active-module task mapping: [execution plan](2026-10-26-universal-maps-and-memory.md). Local runtime selection remains a separate delivery preference because the running container was moved to a parallel combined worktree.
 
 Task24 Step4 automated checks are GREEN (310 backend /385 frontend); the user chose to retain combined and defer browser demonstration of this branch. No gameplay actions were sent to the existing combined runtime.
+
+Subsequent user request: integrated into combined. Same-container deployment and browser map demonstration passed; see updated Node5 report.

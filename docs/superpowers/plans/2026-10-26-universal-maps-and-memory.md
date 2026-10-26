@@ -26,3 +26,5 @@ Keep feature/universal-creative-studio and the existing worktree/database. Prese
 - [x] Compose existing services with actual migrations/lifespan in at least one path. Fix demonstrated integration gaps in owning modules; no new feature set or general editor.
 - [x] GREEN complete Universal/exploration suites plus affected map/memory/socket tests, frontend/tests/types/build, own-contract verification where applicable. Independent final review and one Important fix pass; graphify update after final code.
 - [x] Delivery recorded: the user chose to retain the combined runtime. Implementation, verification report and commits remain on this branch. Node5 deployment/browser demonstration is deferred by that choice; user playtest remains before cleanup.
+
+Delivery update: user requested Node5 in combined. Merged, verified (354 backend /385 frontend), rebuilt and restarted the same combined container. Browser opened the orientation map in the existing campaign without gameplay actions.
