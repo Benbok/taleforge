@@ -75,18 +75,17 @@ async def move_hero(ctx, destination_id):
 
     await ensure_map(ctx.session, ctx.campaign_id, place.id)
     await remember_place(ctx, actor)
+    text = (place.description or "")[:300]  # known_facts.text is VARCHAR(300); prepared scenes run much longer
     fact = await ctx.session.scalar(
         select(KnownFact).where(
             KnownFact.campaign_id == ctx.campaign_id,
             KnownFact.character_id == actor.id,
             KnownFact.subject_id == place.id,
-            KnownFact.text == place.description,
+            KnownFact.text == text,
         )
     )
-    if not fact and place.description:
-        ctx.session.add(
-            KnownFact(campaign_id=ctx.campaign_id, character_id=actor.id, subject_id=place.id, text=place.description)
-        )
+    if not fact and text:
+        ctx.session.add(KnownFact(campaign_id=ctx.campaign_id, character_id=actor.id, subject_id=place.id, text=text))
     await ctx.session.flush()
     return EffectChange(
         kind="location_changed",

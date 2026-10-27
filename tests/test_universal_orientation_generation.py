@@ -273,3 +273,26 @@ def test_shared_scene_heroes_get_the_same_current_location_semantics_as_the_map(
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_travel_into_a_place_with_a_long_prepared_description_keeps_a_bounded_known_fact(tmp_path):
+    async def run():
+        from app.core.universal.resolution import ResolutionContext
+        from app.core.universal.travel import move_hero
+        from app.db.models import KnownFact
+        from app.rules.dice import FixedDice
+
+        engine, maker = await setup(tmp_path)
+        await place(maker)
+        async with maker() as s:
+            (await s.get(Entity, "gorge")).state = {"links": [{"to": "next"}]}
+            s.add(Entity(id="next", campaign_id="c", kind="location", name="Forest", description="Тёмный ход. " * 80))
+            await s.flush()
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
+            await move_hero(ctx, "next")
+            await s.commit()
+            facts = list(await s.scalars(select(KnownFact).where(KnownFact.subject_id == "next")))
+            assert len(facts) == 1 and len(facts[0].text) <= 300
+        await engine.dispose()
+
+    asyncio.run(run())
