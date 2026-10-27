@@ -38,7 +38,7 @@ SCENE = {
     "entities": [{"id": "en_bones", "name": "Костяные силуэты в тоннеле"}],
 }
 FREE = {"form": None, "can_move": True, "can_speak": True, "can_manipulate": True, "can_dismiss": True}
-IN_FORM = {"form": "plant_bush", "can_move": False, "can_speak": False, "can_manipulate": False, "can_dismiss": True}
+IN_FORM = {"form": "Форма куста", "can_dismiss": True}
 BUSH = {
     "name": "Превращение в куст и наблюдение",
     "profile_id": "ability2-891868717c5dea784f393f0b",
@@ -105,6 +105,7 @@ def case(
     none_of=None,
     dismiss=None,
     automatic=False,
+    attribute_in=None,
     scale_in=None,
     leads=False,
     over=None,
@@ -123,6 +124,7 @@ def case(
         none_of=none_of,
         dismiss=dismiss,
         automatic=automatic,
+        attribute_in=attribute_in,
         scale_in=scale_in,
         leads=leads,
         over=over,
@@ -150,6 +152,36 @@ CASES = [
     case("base", "не буду колдовать, просто тихо пройду мимо", source="mundane", none_of=MAGIC_KINDS),
     case("base", "делаю вид, что колдую", source="mundane", request={"pretend", "ordinary"}, none_of=MAGIC_KINDS),
     case("base", "делаю вид, что ищу кружку", source="mundane", none_of=MAGIC_KINDS),
+    # Ordinary feats of any ability: a roll on the ability the deed needs, no magic, no energy.
+    case(
+        "base", "перепрыгиваю через трещину в полу", source="mundane", none_of=MAGIC_KINDS, attribute_in={"dex", "str"}
+    ),
+    case(
+        "base",
+        "пробегаю по стене, чтобы обойти завал",
+        source="mundane",
+        none_of=MAGIC_KINDS,
+        attribute_in={"dex", "str"},
+    ),
+    case("base", "выбиваю плечом ветхую дверь", source="mundane", none_of=MAGIC_KINDS, attribute_in={"str"}),
+    case(
+        "base",
+        "убеждаю стражу пропустить нас без боя",
+        source="mundane",
+        none_of=MAGIC_KINDS,
+        any_of={"speak"},
+        attribute_in={"cha"},
+    ),
+    case(
+        "base",
+        "пою старую балладу, чтобы подбодрить спутников",
+        source="mundane",
+        none_of=MAGIC_KINDS,
+        attribute_in={"cha"},
+    ),
+    case(
+        "base", "разбираюсь, как устроен рычажный механизм", source="mundane", none_of=MAGIC_KINDS, attribute_in={"int"}
+    ),
     # Magic is paid and must be recognised as magic.
     case("base", "кастую свет на ладони", source="supernatural", request={"supernatural"}, any_of={"illumination"}),
     case("base", "освещаю тоннель светлячками", source="supernatural", any_of={"illumination"}),
@@ -338,6 +370,8 @@ def meaning_problems(intent, c):
         out.append(f"магический вид {sorted(kinds & c['none_of'])}")
     if c["automatic"] and intent.resolution != "automatic":
         out.append("нужен resolution=automatic: бросок для обычного действия")
+    if c["attribute_in"] and (intent.resolution != "check" or intent.attribute not in c["attribute_in"]):
+        out.append(f"нужна проверка на {sorted(c['attribute_in'])}: {intent.resolution} {intent.attribute}")
     made = [e for e in intent.effects if e.kind == "create_object"]
     if c["scale_in"] and not any(e.scale in c["scale_in"] for e in made):
         out.append(f"размер {[e.scale for e in made]}, нужен один из {sorted(c['scale_in'])}")
