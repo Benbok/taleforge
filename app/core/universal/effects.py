@@ -7,7 +7,7 @@ from app.db.models import Character, Entity, Event, UniversalEffect
 from app.rules.universal.exploration import EffectChange, EffectIntentV2
 
 EFFECT_LABELS = {
-    "change_form": "Форма куста",
+    "change_form": "Превращение",
     "camouflage": "Маскировка",
     "illumination": "Освещение",
     "hold_breath": "Задержка дыхания",
@@ -126,9 +126,14 @@ async def active_effects(session, campaign_id, target_id=None, *, at_seconds=Non
     ]
 
 
+def effect_label(definition):
+    """The one name an effect goes by: its own words, else the kind's default."""
+    return definition.get("label") or EFFECT_LABELS.get(definition["kind"], "Эффект")
+
+
 async def _end(session, row, status):
     row.status = status
-    label = row.definition.get("label") or EFFECT_LABELS.get(row.definition["kind"], "Эффект")
+    label = effect_label(row.definition)
     changes = [
         EffectChange(
             kind="effect_ended",

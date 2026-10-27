@@ -89,7 +89,7 @@ def test_cup_light_form_and_reconnect_are_real_scoped_state(tmp_path):
             assert len(view["learned_abilities"]) == 2
             assert await clock_view(s, "c") == before
             await act([EffectIntentV2(kind="change_form"), EffectIntentV2(kind="camouflage")], "supernatural")
-            assert not (await exploration_game_card(s, hero))["exploration"]["constraints"]["can_speak"]
+            assert (await exploration_game_card(s, hero))["exploration"]["constraints"]["form"] == "Превращение"
             await act([EffectIntentV2(kind="wait")], elapsed=18)
             assert not (await exploration_game_card(s, hero))["exploration"]["effects"]
             # light and form are over; only the cup, made for a longer term, is still within its own

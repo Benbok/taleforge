@@ -2,7 +2,7 @@
 
 from app.core.universal.clock import clock_view
 from app.core.universal.discovery import learned_abilities
-from app.core.universal.effects import EFFECT_LABELS, active_effects
+from app.core.universal.effects import active_effects, effect_label
 from app.core.universal.objects import visible_objects
 from app.core.universal.perception import actor_constraints
 from app.core.universal.state import game_card_of
@@ -30,7 +30,7 @@ async def exploration_game_card(session, hero):
             dict(
                 id=e["id"],
                 kind=e["kind"],
-                label=e["definition"].get("label") or EFFECT_LABELS.get(e["kind"], "Эффект"),
+                label=effect_label(e["definition"]),
                 remaining_seconds=e["remaining_seconds"],
             )
             for e in await active_effects(session, hero.campaign_id, hero.id)

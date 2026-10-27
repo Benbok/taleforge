@@ -50,7 +50,7 @@ def test_form_light_and_private_detection_survive_and_expire(tmp_path):
             )
             await start_effect(s, "c", "hero", "hero", event.id, "light", EffectIntentV2(kind="illumination"), 0, 18)
             constraints = await actor_constraints(s, "c", "hero")
-            assert not constraints["can_move"] and not constraints["can_speak"] and constraints["can_see"]
+            assert constraints["form"] == "Превращение" and constraints["can_see"]
             assert constraints["needs_air"] and not constraints["immune"]
             assert (await illumination_view(s, "c", "hero"))["magical_light"]
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([1, 20]))
@@ -63,7 +63,7 @@ def test_form_light_and_private_detection_survive_and_expire(tmp_path):
             ctx.dice = FixedDice([20])
             assert not (await assess_detection(ctx, "observer", "hero", "detection2")).data["concealed"]
             await dismiss_effect(s, "c", "hero", form.id)
-            assert (await actor_constraints(s, "c", "hero"))["can_speak"]
+            assert (await actor_constraints(s, "c", "hero"))["form"] is None
             assert [e["kind"] for e in await active_effects(s, "c", "hero")] == ["illumination"]
             await complete_step(s, "c", "wait", 18)
             assert not (await illumination_view(s, "c", "hero"))["magical_light"]

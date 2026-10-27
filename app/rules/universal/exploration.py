@@ -65,10 +65,6 @@ class InsufficientEnergy(ValueError):
         super().__init__(f"Недостаточно энергии: нужно {need}, есть {have}")
 
 
-class FormBlocked(ValueError):
-    """The hero's current form forbids the action; the reason is safe and useful to show the player."""
-
-
 TIMED_KINDS = frozenset(
     {
         "guard",
@@ -153,7 +149,6 @@ class EffectIntentV2(ClosedModel):
     lifetime: Literal["instant", "timed"] = "instant"
     template: ObjectTemplate = "vessel"
     material: MATERIALS = "wood"
-    form: Literal["plant_bush"] = "plant_bush"
     aspect: Literal["general", "sight", "hearing"] = "general"
     capacity_ml: int = Field(default=300, ge=1, le=2000, strict=True)
     amount: Count = Field(default=300, ge=1, le=1_000_000)
@@ -164,6 +159,15 @@ class EffectIntentV2(ClosedModel):
     leads_to: str = Field(default="", max_length=128)
     leads_view: str = Field(default="", max_length=300)
     abilities: str = Field(default="", max_length=500)
+
+    @model_validator(mode="before")
+    @classmethod
+    def without_retired_form(cls, data):
+        """Saved definitions and old model habits carry a ``form`` key that no longer means anything: a
+        transformation is named by its own label and appearance."""
+        if isinstance(data, dict) and "form" in data:
+            data = {k: v for k, v in data.items() if k != "form"}
+        return data
 
     @model_validator(mode="after")
     def lifetime_supported(self):
@@ -300,7 +304,7 @@ def definition_key(definition: AbilityDefinitionV2) -> str:
             "leads_to",
         },
         "free_effect": {"scale", "sturdiness", "label"},  # the words are all the meaning it has
-        "change_form": {"form", "quantity"},
+        "change_form": {"label", "quantity"},  # the form named in the words is the whole meaning
         "observe": {"aspect"},
         "fill": {"amount"},
         "pour": {"amount"},
@@ -313,7 +317,7 @@ def definition_key(definition: AbilityDefinitionV2) -> str:
             for k, v in effect.model_dump(
                 mode="json",
                 include={"kind"} | meaningful.get(effect.kind, {"lifetime", "quantity"}),
-                exclude=bindings - ({"label"} if effect.kind == "free_effect" else set()),
+                exclude=bindings - ({"label"} if effect.kind in {"free_effect", "change_form"} else set()),
             ).items()
             if defaults.get(k, object()) != v
         }
@@ -374,7 +378,7 @@ _RELEVANT = {
         "abilities",
     },
     "free_effect": {"scale", "sturdiness", "lifetime"},
-    "change_form": {"form", "lifetime", "quantity"},
+    "change_form": {"lifetime", "quantity"},
     "observe": {"aspect", "lifetime"},
     "fill": {"amount"},
     "pour": {"amount"},
@@ -399,6 +403,17 @@ def _exact_count(value):
 def _empty(value):
     """A missing value as a model spells it: null, or the word "null" in quotes."""
     return value is None or (isinstance(value, str) and value.strip().lower() in {"null", "none"})
+
+
+def _told_as_a_check(cleaned):
+    """A check carries four outcomes the model wrote; a model that wrote them meant a roll (a jump is a move, a
+    persuasion is speech). Without them a "check" is only the default left on a plain walk."""
+    outcomes = cleaned.get("check_outcomes")
+    return (
+        cleaned.get("resolution", "check") == "check"
+        and isinstance(outcomes, dict)
+        and all(isinstance(outcomes.get(k), str) and outcomes[k].strip() for k in CheckNarration.model_fields)
+    )
 
 
 def clean_model_intent(raw):
@@ -442,6 +457,9 @@ def clean_model_intent(raw):
                 keep = keep - {"leads_to", "leads_view"}  # only a large creation can lead somewhere
         if effect.get("lifetime") == "permanent":
             effect = {**effect, "lifetime": "timed"}  # nothing the engine keeps is eternal
+        if "duration_seconds" in effect and not _empty(effect["duration_seconds"]):
+            cleaned.setdefault("duration_seconds", effect["duration_seconds"])  # the term belongs to the whole action
+        effect = {k: v for k, v in effect.items() if k != "duration_seconds"}
         mended = {k: v for k, v in effect.items() if not _empty(v) and (k in keep or k not in known)}
         if str(mended.get("amount", "1")).strip() in {"0", "-0"}:
             mended.pop("amount")  # "nothing" is how a model says it was not given an amount
@@ -465,12 +483,13 @@ def clean_model_intent(raw):
         and effects
         and all(isinstance(e, dict) and e.get("kind") in _NO_RISK for e in effects)
         and not any(isinstance(e, dict) and e.get("kind") == "move" and e.get("object_id") for e in effects)
+        and not _told_as_a_check(cleaned)
     ):
         cleaned["resolution"] = "automatic"  # walking, speaking or waiting has no uncertain outcome to roll for
     for key in ("elapsed_game_seconds", "duration_seconds"):
         if key in cleaned:
             exact = _exact_count(cleaned[key])
-            if exact is None:
+            if exact is None or (key == "duration_seconds" and exact == "0"):  # "0" is how a model says "no term"
                 cleaned.pop(key)
             else:
                 cleaned[key] = exact
@@ -514,6 +533,5 @@ def exploration_capabilities():
         item_statuses=["common", "rare", "unique", "epic"],
         damage_dice="1d6",
         resistance="d20+M(target_attribute) vs 10+M(source_attribute)",
-        forms=["plant_bush"],
         object_templates=["vessel", "wood_source", "water_source", "energy_tonic", "observer"],
     )

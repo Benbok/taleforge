@@ -107,10 +107,10 @@ def test_a_term_is_eighteen_seconds_unless_the_player_names_another(tmp_path):
     asyncio.run(run())
 
 
-def test_moving_in_bush_form_is_blocked_with_the_form_reason_before_any_cost(tmp_path):
+def test_an_altered_form_does_not_make_the_code_refuse_actions(tmp_path):
+    """What a form allows is for the world's laws and the master to say; the engine only counts and executes."""
     from app.core.universal.effects import start_effect
     from app.db.models import Event
-    from app.rules.universal.exploration import FormBlocked
 
     async def run():
         engine, maker = await setup(tmp_path)
@@ -123,17 +123,8 @@ def test_moving_in_bush_form_is_blocked_with_the_form_reason_before_any_cost(tmp
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
             source = dict(source_message_id="m", source_text="я иду к выходу", evidence="")
             walking = IntentV2(source="mundane", resolution="automatic", effects=[EffectIntentV2(kind="move")])
-            with pytest.raises(FormBlocked, match="форме куста"):
-                await compile_exploration(ctx, walking, IntentReview(verdict="pass"), source)
-            # Magic invented for the same walk is refused for the same reason, not for a lack of energy.
-            invented = IntentV2(
-                source="supernatural",
-                resolution="automatic",
-                intensity="strong",
-                effects=[EffectIntentV2(kind="cosmetic")],
-            )
-            with pytest.raises(FormBlocked):
-                await compile_exploration(ctx, invented, IntentReview(verdict="pass"), source)
+            action = await compile_exploration(ctx, walking, IntentReview(verdict="pass"), source)
+            assert [op.kind for op in action.operations] == ["move"]
         await engine.dispose()
 
     asyncio.run(run())

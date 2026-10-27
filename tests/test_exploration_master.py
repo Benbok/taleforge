@@ -197,41 +197,6 @@ def test_unavailable_object_reference_is_repaired_not_reported_as_provider_failu
     asyncio.run(run())
 
 
-def test_walking_in_bush_form_gets_the_form_reason_without_extra_model_calls(tmp_path):
-    from app.core.universal.effects import start_effect
-    from app.rules.universal.exploration import EffectIntentV2
-
-    async def run():
-        engine, maker = await setup(tmp_path)
-        await prepare(maker)
-        async with maker() as s:
-            s.add(Event(id="form", campaign_id="c", actor_id="hero", tool="universal_action", payload={}))
-            await s.flush()
-            await start_effect(
-                s, "c", "hero", "hero", "form", "0", EffectIntentV2(kind="change_form", lifetime="timed"), 0, 18
-            )
-            await s.commit()
-        walking = dict(
-            schema_version=2,
-            source="mundane",
-            player_request="ordinary",
-            resolution="automatic",
-            effects=[{"kind": "move"}],
-        )
-        provider = Provider([walking, "Куст шелестит, но с места не сдвигается.", {"verdict": "pass"}])
-        tid = await MasterService(maker, Bus(), provider).run_turn("c")
-        async with maker() as s:
-            turn = await s.get(MasterTurn, tid)
-            message = await s.get(Message, turn.narration_message_id)
-            assert message.content == "Куст шелестит, но с места не сдвигается."
-            assert "форме куста" in narrate_prompt(provider)  # the reason is a fact for the story
-            assert list(await s.scalars(select(Event).where(Event.id != "form"))) == []
-        assert len(provider.prompts) == 3  # the decision, the story and its check: no repair, no meaning review
-        await engine.dispose()
-
-    asyncio.run(run())
-
-
 def test_only_the_models_ordinary_declaration_with_ordinary_effects_skips_the_review(tmp_path):
     from app.core.universal.interpretation import is_plain_action
     from app.rules.universal.exploration import EffectIntentV2, IntentV2
@@ -524,7 +489,6 @@ def test_an_unsupported_verdict_asks_the_model_to_use_a_free_effect(tmp_path):
 
 
 def test_a_reviewer_who_finds_the_scale_implausible_stops_the_spell_and_tells_the_model_why(tmp_path):
-    from app.db.models import Character
 
     async def run():
         engine, maker = await setup(tmp_path)
@@ -770,6 +734,23 @@ def test_an_ordinary_request_the_model_cannot_shape_is_a_plain_turn_that_costs_n
             # The deed leaves a remembered note, and costs nothing: it is not magic.
             assert [op["kind"] for op in events[0].payload["proposal"]["operations"]] == ["free_effect"]
             assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "24"
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_an_ordinary_deed_the_model_cannot_shape_is_still_rolled_on_the_ability_it_named(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        broken = {**unrealisable("mundane"), "attribute": "str", "difficulty": 15}
+        review = {"verdict": "pass", "covered_requirements": ["r"]}
+        provider = Provider([broken, review, broken, "Камень не уступил.", {"verdict": "pass"}])
+        await MasterService(maker, Bus(), provider).run_turn("c")
+        async with maker() as s:
+            proposal = (await s.scalars(select(Event))).one().payload["proposal"]
+            assert proposal["resolution"] == "check"  # a risky deed never succeeds just because the model slipped
+            assert proposal["attribute"] == "str" and proposal["difficulty"] == 15
         await engine.dispose()
 
     asyncio.run(run())

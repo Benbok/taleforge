@@ -8,11 +8,11 @@ from app.core.campaigns import AccessDenied, NotFound
 from app.core.universal.clock import clock_view, complete_step, lock_campaign
 from app.core.universal.definitions import admit_definition
 from app.core.universal.discovery import learned_abilities
-from app.core.universal.effects import dismiss_effect, start_effect
+from app.core.universal.effects import dismiss_effect, effect_label, start_effect
 from app.core.universal.interpretation import validate_exploration
 from app.core.universal.journal import record_journal
 from app.core.universal.objects import apply_object_operation, introduce_object
-from app.core.universal.profiles import save_actor
+from app.core.universal.profiles import load_actor, save_actor
 from app.core.universal.validation import authorize_actor
 from app.db.models import Entity, Event, HeroAbility, Message
 from app.rules.universal.exploration import TIMED_KINDS, EffectChange, ExplorationAction, ExplorationOutcome
@@ -110,6 +110,18 @@ async def _objects(ctx, action, event):
                     f"item-{event.id}-{index}",
                 )
                 changes.extend(used.changes)
+                continue
+        if actual.kind == "take":
+            item = await ctx.session.get(Entity, actual.object_id or "")
+            if item is not None and "universal_item" in item.state:
+                # Own gear is drawn, not picked up: it is the hero's already, so nothing is moved.
+                changes.append(
+                    EffectChange(
+                        kind="item_in_hand",
+                        subject_id=item.id,
+                        description=f"«{item.name}» у героя в руках.",
+                    )
+                )
                 continue
         change = await apply_object_operation(ctx, actual, event, component=str(index))
         bindings[f"created:{index}"] = change.subject_id
@@ -247,14 +259,7 @@ async def _execute(ctx, action, key):
                     action.definition.duration_seconds,
                     context=context,
                 )
-                label = {
-                    "change_form": "Форма куста",
-                    "camouflage": "Маскировка",
-                    "illumination": "Освещение",
-                    "hold_breath": "Задержка дыхания",
-                }.get(op.kind, "Временный эффект")
-                if op.kind == "free_effect":
-                    label = op.label or "Эффект"
+                label = op.label or effect_label({"kind": op.kind})
                 result.changes.append(
                     EffectChange(
                         kind=op.kind,
@@ -290,6 +295,8 @@ async def _execute(ctx, action, key):
                 result.changes.extend(await observe_known_scene(ctx, op.aspect, op.target_id or op.object_id))
             elif op.kind == "speak":
                 result.changes.extend(await _addressee(ctx, state.actor, op))
+    if action.resolution == "check" and result.critical_failure:
+        result.changes.append(await _fumble(ctx, action, event))
     for observer in await s.scalars(
         select(Entity).where(
             Entity.campaign_id == ctx.campaign_id,
@@ -322,9 +329,10 @@ async def _execute(ctx, action, key):
     from app.core.universal.effects import scope_changes
 
     result.changes = await scope_changes(ctx, result.changes)
-    result.description = " ".join(c.description for c in result.changes if not c.private) or _outcome_hint(
-        action, result
-    )
+    told = _told_outcome(action, result)
+    changed = " ".join(c.description for c in result.changes if not c.private)
+    # What the hero did comes first, in the model's own words; the changes it caused follow as facts.
+    result.description = " ".join(part for part in (told, changed) if part) or _outcome_hint(action, result)
     if result.success:
         await _journal_unusual(ctx, action)
     event.payload = dict(
@@ -338,17 +346,19 @@ async def _execute(ctx, action, key):
     return result
 
 
-def _outcome_hint(action, result):
-    """With nothing changed in the world, the outcome the model wrote for this result is all there is to tell."""
+def _told_outcome(action, result):
+    """The outcome the model wrote for this check result, if it wrote one."""
     hints = action.check_outcomes
-    if action.resolution == "check" and hints is not None:
-        if result.success:
-            text = (hints.critical_success if result.critical else None) or hints.success
-        else:
-            text = (hints.critical_failure if result.critical_failure else None) or hints.failure
-        if text:
-            return text
-    return (
+    if action.resolution not in {"check", "automatic"} or hints is None:
+        return None  # an automatic deed always succeeds: its success words are still the story of it
+    if result.success:
+        return (hints.critical_success if result.critical else None) or hints.success or None
+    return (hints.critical_failure if result.critical_failure else None) or hints.failure or None
+
+
+def _outcome_hint(action, result):
+    """With nothing told and nothing changed, a plain statement of the result is all there is."""
+    return _told_outcome(action, result) or (
         "Проверка успешна; новых подтверждённых наблюдений нет."
         if result.success
         else "Попытка не удалась; задуманные эффекты не возникли."
@@ -368,6 +378,23 @@ async def _journal_unusual(ctx, action):
                 source.content if source is not None else "",
                 {"label": op.label, "scale": op.scale, "abilities": op.abilities, "appearance": op.appearance},
             )
+
+
+async def _fumble(ctx, action, event):
+    """A natural one on a check is a real mishap: fixed at one HP, bounded and saved with the same receipt, so a
+    replay cannot hurt twice. The model's critical_failure outcome tells how it happened."""
+    from app.core.universal.combat_actions import synchronize_vitality
+
+    sheet, resources = await load_actor(ctx.session, ctx.campaign_id, action.actor_id)
+    resources.hp = max(0, resources.hp - 1)
+    await save_actor(ctx.session, ctx.campaign_id, action.actor_id, sheet, resources)
+    await synchronize_vitality(ctx, action.actor_id, event.id)
+    return EffectChange(
+        kind="damage",
+        subject_id=action.actor_id,
+        description="Неудача стоит здоровья: герой теряет 1 HP.",
+        data={"amount": "1"},
+    )
 
 
 async def _addressee(ctx, actor, op):

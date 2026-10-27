@@ -17,7 +17,6 @@ from app.rules.universal.exploration import (
     ORDINARY_KINDS,
     AbilityDefinitionV2,
     ExplorationAction,
-    FormBlocked,
     InsufficientEnergy,
     IntentReview,
     IntentV2,
@@ -160,12 +159,6 @@ async def validate_exploration(ctx, action):
         or a.cost != exploration_cost(a.definition, sheet.level)
     ):
         raise ValueError("Несогласованное определение действия")
-    # Persistent form restrictions come first: they explain the refusal better than energy or targets do.
-    from app.core.universal.effects import active_effects
-
-    if any(e["kind"] == "change_form" for e in await active_effects(ctx.session, ctx.campaign_id, actor.id)):
-        if any(op.kind not in {"observe", "wait", "hold_breath", "dismiss"} for op in a.operations):
-            raise FormBlocked("В форме куста нельзя говорить, двигаться или действовать руками; сначала снимите форму.")
     from app.core.universal.combat_actions import COMBAT_KINDS, effective_actor, scoped_targets
 
     combat = any(op.kind in COMBAT_KINDS or op.kind == "consume" for op in a.operations)
@@ -246,7 +239,9 @@ async def validate_exploration(ctx, action):
             if obj is not None and "universal_item" in obj.state:
                 from app.core.universal.inventory import _owned
 
-                if op.kind not in {"weapon_attack", "equip", "unequip", "consume"}:
+                # A deed may be done with one's own gear (drawn, or named in what is done); only raw-material uses
+                # such as placing, giving or pouring it are refused.
+                if op.kind not in {"weapon_attack", "equip", "unequip", "consume", "free_effect", "take"}:
                     raise ValueError("Снаряжение не является обычным материалом")
                 _, _, item = await _owned(ctx.session, ctx.campaign_id, a.actor_id, ref)
                 if op.kind == "weapon_attack" and (

@@ -5,7 +5,7 @@ import hashlib
 from sqlalchemy import select
 
 from app.core.campaigns import AccessDenied
-from app.core.universal.effects import active_effects
+from app.core.universal.effects import active_effects, effect_label
 from app.core.universal.profiles import load_actor
 from app.db.models import Character, Entity, Event, KnownFact, Message
 from app.rules.universal.exploration import EffectChange
@@ -69,12 +69,9 @@ async def introduce_observer(ctx, spec):
 
 
 async def actor_constraints(session, campaign_id, actor_id):
-    form = any(e["kind"] == "change_form" for e in await active_effects(session, campaign_id, actor_id))
+    forms = [e for e in await active_effects(session, campaign_id, actor_id) if e["kind"] == "change_form"]
     return dict(
-        form="plant_bush" if form else None,
-        can_move=not form,
-        can_speak=not form,
-        can_manipulate=not form,
+        form=effect_label(forms[0]["definition"]) if forms else None,
         can_see=True,
         can_hear=True,
         needs_air=True,

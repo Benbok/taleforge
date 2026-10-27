@@ -91,8 +91,8 @@ def test_failed_attempt_spends_but_does_not_apply_or_learn(tmp_path):
             assert result.status == "applied" and not result.success and result.cost == 1
             assert result.critical_failure and not result.ability_ref
             assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "11"  # 10 - 1 + 2 of regeneration
-            assert (await s.get(Character, "hero")).resources["hp"] == "22"
-            assert not result.changes
+            assert (await s.get(Character, "hero")).resources["hp"] == "21"  # a natural one costs one HP
+            assert [c.kind for c in result.changes] == ["damage"]  # and nothing else is applied or learned
         await engine.dispose()
 
     asyncio.run(run())
@@ -205,7 +205,8 @@ def test_a_failed_check_is_described_by_the_outcome_the_model_wrote_for_it(tmp_p
                 action = await prepare(s, ctx, "observe", source="mundane", resolution="check")
                 result = await resolve_exploration(ctx, action, "m")
                 assert not result.success
-                assert result.description == expected  # not the same blank line for every failure
+                # not the same blank line for every failure; a natural one adds the cost in health after the story
+                assert result.description.startswith(expected)
             await engine.dispose()
 
     asyncio.run(run())

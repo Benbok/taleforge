@@ -52,7 +52,7 @@ async def effective_actor(session, campaign_id, actor_id, *, at_seconds=None, pe
     return dict(
         derived=derived.model_copy(update={"ac": derived.ac + defense}),
         effects=effects,
-        cannot_move="cannot_move" in kinds or "change_form" in kinds,
+        cannot_move="cannot_move" in kinds,
         cannot_act="cannot_act" in kinds,
         cannot_target="cannot_target" in kinds,
         check_bonus=check_bonus,

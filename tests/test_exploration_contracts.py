@@ -30,8 +30,11 @@ def test_semantic_identity_is_not_just_numeric_parameters_or_display_name():
     form, light = definition("change_form"), definition("illumination")
     assert definition_key(form) != definition_key(light)
     assert definition_key(form) == definition_key(form.model_copy(update={"name": "Красивый куст"}))
-    renamed_effect = form.effects[0].model_copy(update={"label": "Зелёная листва", "target_id": "other"})
-    assert definition_key(form) == definition_key(form.model_copy(update={"effects": [renamed_effect]}))
+    retargeted = form.effects[0].model_copy(update={"target_id": "other"})
+    assert definition_key(form) == definition_key(form.model_copy(update={"effects": [retargeted]}))
+    # The form named in the words is the meaning of a transformation: a rat is not a wolf.
+    wolf = form.effects[0].model_copy(update={"label": "Облик волка"})
+    assert definition_key(form) != definition_key(form.model_copy(update={"effects": [wolf]}))
 
 
 def test_a_created_object_is_a_paid_timed_creation_not_an_infinite_buff():
@@ -78,9 +81,7 @@ def test_camouflage_is_part_of_the_form_and_not_charged_twice():
             source="supernatural",
             intensity="normal",
             duration_seconds=18,
-            effects=[
-                EffectIntentV2(kind=kind, **({"form": "plant_bush"} if kind == "change_form" else {})) for kind in kinds
-            ],
+            effects=[EffectIntentV2(kind=kind) for kind in kinds],
         )
 
     assert exploration_cost(spell("change_form"), 1) == 9
@@ -114,12 +115,12 @@ def test_model_filler_for_unrelated_effect_fields_is_dropped_before_validation()
         }
     )
     assert fill.effects[0].lifetime == "instant" and fill.effects[0].amount == 200
-    bush = parsed({"kind": "change_form", "form": "plant_bush", "template": "vessel"})
-    assert bush.effects[0].form == "plant_bush"
+    shape = parsed({"kind": "change_form", "label": "Облик крысы", "form": "plant_bush", "template": "vessel"})
+    assert shape.effects[0].label == "Облик крысы" and not hasattr(shape.effects[0], "form")  # retired key is dropped
     assert parsed({"kind": "observe", "aspect": "hearing", "form": "vessel"}).effects[0].aspect == "hearing"
     assert parsed({"kind": "move"}, targets=["loc1"]).targets == []  # stage 2A acts on the hero alone
     with pytest.raises(ValidationError):  # a wrong value in a field that does matter is still refused
-        parsed({"kind": "change_form", "form": "vessel"})
+        parsed({"kind": "change_form", "lifetime": "forever"})
     with pytest.raises(ValidationError):  # unknown fields are not silently swallowed
         parsed({"kind": "move", "invented": 1})
 
@@ -269,7 +270,7 @@ def test_the_tolerant_parser_keeps_the_scale_and_drops_a_destination_a_small_cre
         ],
     }
     effect = clean_model_intent(raw)["effects"][0]
-    assert effect["scale"] == "small" and "leads_to" not in effect and "form" not in effect
+    assert effect["scale"] == "small" and "leads_to" not in effect
     big = clean_model_intent({**raw, "effects": [{**raw["effects"][0], "scale": "huge"}]})["effects"][0]
     assert big["leads_to"] == "Берег"
 
@@ -339,3 +340,46 @@ def test_a_term_named_by_the_player_is_priced_by_its_six_second_units():
     assert exploration_cost(spell(61), 1) == 44  # a started unit is paid for
     with pytest.raises(ValidationError):
         spell(604801)
+
+
+def test_a_duration_the_model_put_inside_an_effect_is_lifted_to_the_action_not_refused():
+    from app.rules.universal.exploration import clean_model_intent
+
+    raw = {
+        "schema_version": 2,
+        "source": "mundane",
+        "effects": [{"kind": "free_effect", "label": "Зацеп на своде", "duration_seconds": "30"}],
+    }
+    intent = IntentV2.model_validate(clean_model_intent(raw))
+    assert intent.duration_seconds == 30
+    # The action's own term wins over a slip inside an effect.
+    both = IntentV2.model_validate(clean_model_intent({**raw, "duration_seconds": "60"}))
+    assert both.duration_seconds == 60
+
+
+def test_a_plain_walk_is_never_rolled_but_a_feat_the_model_told_in_four_outcomes_is():
+    from app.rules.universal.exploration import clean_model_intent
+
+    outcomes = {
+        "success": "Вышло.",
+        "failure": "Не вышло.",
+        "critical_success": "Блестяще.",
+        "critical_failure": "Упал.",
+    }
+
+    def parsed(effect, **top):
+        raw = {"schema_version": 2, "source": "mundane", "resolution": "check", "effects": [effect], **top}
+        return IntentV2.model_validate(clean_model_intent(raw))
+
+    assert parsed({"kind": "move"}).resolution == "automatic"  # a walk the model forgot to mark
+    assert parsed({"kind": "speak"}).resolution == "automatic"  # no outcomes written: not a real check
+    for kind in ("move", "speak"):  # a jump, a persuasion: the model wrote all four outcomes, so it meant a roll
+        assert parsed({"kind": kind}, check_outcomes=outcomes, attribute="dex", difficulty=15).resolution == "check"
+    assert parsed({"kind": "move"}, resolution="automatic", check_outcomes=outcomes).resolution == "automatic"
+
+
+def test_a_zero_term_is_how_the_model_says_no_term_and_is_dropped_not_refused():
+    from app.rules.universal.exploration import clean_model_intent
+
+    raw = {"schema_version": 2, "source": "mundane", "duration_seconds": "0", "effects": [{"kind": "observe"}]}
+    assert IntentV2.model_validate(clean_model_intent(raw)).duration_seconds == 18  # the default term

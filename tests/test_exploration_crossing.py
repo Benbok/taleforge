@@ -4,13 +4,11 @@ import pytest
 from sqlalchemy import func, select
 
 from app.core.campaigns import AccessDenied
-from app.core.universal.effects import start_effect
-from app.core.universal.interpretation import compile_exploration
 from app.core.universal.objects import object_state, store
 from app.core.universal.resolution import ResolutionContext
-from app.db.models import Character, Entity, Event
+from app.db.models import Character, Entity
 from app.rules.dice import FixedDice
-from app.rules.universal.exploration import EffectIntentV2, FormBlocked, IntentReview, IntentV2
+from app.rules.universal.exploration import EffectIntentV2, IntentV2
 from app.rules.universal.profiles import CheckNarration
 from tests.test_exploration_resolution import build, structure
 from tests.test_universal_resolution import setup
@@ -143,32 +141,6 @@ def test_a_structure_that_leads_nowhere_cannot_be_crossed(tmp_path):
             _, result = await build(ctx, s, walk(row.id), "m2", 2)
             assert result.status == "denied" and await location_of(s) == "loc_origin"
             assert await s.scalar(select(func.count()).select_from(Entity).where(Entity.kind == "location")) == 1
-        await engine.dispose()
-
-    asyncio.run(run())
-
-
-def test_crossing_is_blocked_in_bush_form(tmp_path):
-    async def run():
-        engine, maker = await setup(tmp_path)
-        await origin(maker)
-        async with maker() as s:
-            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
-            await build(ctx, s, bridge())
-            row = await the_object(s)
-            s.add(Event(id="form", campaign_id="c", actor_id="hero", tool="universal_action", payload={}))
-            await s.flush()
-            await start_effect(
-                s, "c", "hero", "hero", "form", "0", EffectIntentV2(kind="change_form", lifetime="timed"), 0, 18
-            )
-            with pytest.raises(FormBlocked):
-                await compile_exploration(
-                    ctx,
-                    walk(row.id),
-                    IntentReview(verdict="pass"),
-                    dict(source_message_id="m9", source_text="иду", evidence=""),
-                )
-            assert await location_of(s) == "loc_origin"
         await engine.dispose()
 
     asyncio.run(run())
