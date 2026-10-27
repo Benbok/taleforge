@@ -59,7 +59,7 @@ it("показывает активные эффекты, форму куста 
           { id: "camouflage", kind: "camouflage", label: "Маскировка в тени руин", remaining_seconds: "18" },
           { id: "light", kind: "illumination", label: "Светлячки", remaining_seconds: "45" },
         ],
-        constraints: { form: "plant_bush", can_speak: false },
+        constraints: { form: "Облик крысы" },
       },
     } as never,
     myPending: null,
@@ -69,7 +69,7 @@ it("показывает активные эффекты, форму куста 
   expect(screen.getByText(/18 с/)).toBeDefined();
   expect(screen.getByText("Светлячки")).toBeDefined();
   expect(screen.getByText(/45 с/)).toBeDefined();
-  expect(screen.getByText("Форма куста")).toBeDefined();
+  expect(screen.queryByText(/без движений и речи/)).toBeNull(); // what a form allows is not the UI's call
 });
 
 it("открывает меню быстрых действий по кнопке ⚡ и вставляет выбранное действие", () => {

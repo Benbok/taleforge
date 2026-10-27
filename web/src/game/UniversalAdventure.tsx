@@ -306,28 +306,15 @@ export default function UniversalAdventure({
                     )}
                   </button>
                 )}
-                {exploration && (exploration.effects?.length > 0 || exploration.constraints?.form) && (
+                {exploration && exploration.effects?.length > 0 && (
                   <div
                     className='flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent'
-                    title={
-                      exploration.constraints?.form === 'plant_bush'
-                        ? 'Вы в форме куста: нельзя двигаться и говорить'
-                        : exploration.effects?.map(e => `${e.label} (${e.remaining_seconds} с)`).join(', ')
-                    }
+                    title={exploration.effects?.map(e => `${e.label} (${e.remaining_seconds} с)`).join(', ')}
                   >
-                    {exploration.constraints?.form === 'plant_bush' ? (
-                      <>
-                        <span aria-hidden='true'>🌿</span>
-                        <span>В форме куста</span>
-                      </>
-                    ) : (
-                      <>
-                        <span aria-hidden='true'>✦</span>
-                        <span>
-                          {exploration.effects.length} {exploration.effects.length === 1 ? 'эффект' : 'эффекта'}
-                        </span>
-                      </>
-                    )}
+                    <span aria-hidden='true'>✦</span>
+                    <span>
+                      {exploration.effects.length} {exploration.effects.length === 1 ? 'эффект' : 'эффекта'}
+                    </span>
                   </div>
                 )}
               </div>

@@ -3,7 +3,7 @@ export interface ExplorationState {
   effects: { id: string; kind: string; label: string; remaining_seconds: string }[];
   objects: { id: string; name: string; template: string; owner_id?: string | null;
     capacity_ml: string; contents_ml: string; temporary?: boolean }[];
-  constraints: { form: string | null; can_speak: boolean };
+  constraints: { form: string | null };
 }
 
 // Один короткий ход игры равен 6 секундам; срок в ходах понятнее секунд.
@@ -19,26 +19,9 @@ export default function ExplorationPanel({ state }: { state?: ExplorationState |
   if (!state) return null;
   const hasEffects = Boolean(state.effects && state.effects.length > 0);
   const hasObjects = Boolean(state.objects && state.objects.length > 0);
-  const isBush = state.constraints?.form === 'plant_bush';
 
   return (
     <section className='space-y-2.5 rounded-xl border border-line-soft bg-surface-2/40 p-3 text-xs' aria-label='Состояние приключения'>
-      {/* Ограничение формы (например, форма куста) */}
-      {isBush && (
-        <div className='rounded-lg border border-accent/40 bg-accent/10 p-2.5 text-ink'>
-          <div className='flex items-center gap-1.5 font-bold text-accent'>
-            <span aria-hidden='true'>🌿</span>
-            <span>Вы в форме куста</span>
-          </div>
-          <p className='mt-1 text-[11px] leading-relaxed text-ink-2'>
-            Вы сохраняете чувства, но не можете двигаться, говорить и действовать руками. Дыхание по-прежнему необходимо.
-          </p>
-          <p className='mt-1.5 text-[10px] text-muted'>
-            Чтобы снять превращение раньше срока, напишите об этом мастеру.
-          </p>
-        </div>
-      )}
-
       {/* Заголовок со сводкой */}
       <div className='flex items-center justify-between text-[11px]'>
         <span className='font-bold uppercase tracking-wider text-patina flex items-center gap-1'>

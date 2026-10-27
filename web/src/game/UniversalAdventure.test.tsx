@@ -116,25 +116,24 @@ it('отображает активные эффекты и форму куст�
       sheet: { rules_version: 'universal.v1' },
       exploration: {
         game_seconds: '24',
-        effects: [{ id: 'bush_ef', kind: 'camouflage', label: 'Превращение в куст', remaining_seconds: '18' }],
+        effects: [{ id: 'bush_ef', kind: 'camouflage', label: 'Облик крысы', remaining_seconds: '18' }],
         objects: [{ id: 'cup', name: 'Кружка', template: 'vessel', owner_id: 'hero', capacity_ml: '300', contents_ml: '200' }],
-        constraints: { form: 'plant_bush', can_speak: false },
+        constraints: { form: 'Облик крысы' },
       },
     } as never,
   });
 
   render(<MemoryRouter><UniversalAdventure campaignId='c' /></MemoryRouter>);
 
-  // В панели героя отображаются форма куста, эффект и предметы
-  expect(screen.getByText('Вы в форме куста')).toBeDefined();
-  expect(screen.getByText('Превращение в куст')).toBeDefined();
+  // В панели героя отображаются эффект (облик) и предметы
+  expect(screen.getByText('Облик крысы')).toBeDefined();
   expect(screen.getByText(/18 с/)).toBeDefined();
   expect(screen.getByText('Кружка')).toBeDefined();
   expect(screen.getByText(/200 из 300 мл/)).toBeDefined();
 
   // Раскрываем чат на весь экран
   fireEvent.click(screen.getByRole('button', { name: 'Раскрыть чат на весь экран' }));
-  expect(screen.getByText('В форме куста')).toBeDefined();
+  expect(screen.getByText('1 эффект')).toBeDefined();
 });
 
 it('кнопка «Кабинет» стоит в шапке игры для владельца стола и скрыта от остальных', () => {

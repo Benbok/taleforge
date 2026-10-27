@@ -130,7 +130,6 @@ export default function Composer() {
     };
   } | null;
   const exploration = sheet?.exploration;
-  const isBush = exploration?.constraints?.form === "plant_bush";
   const expEffects = exploration?.effects ?? [];
   const derivedEffects = (sheet?.derived?.effects ?? []).filter(
     (e) => !expEffects.some((x) => x.id === e.id || x.label === e.name)
@@ -392,7 +391,7 @@ export default function Composer() {
       )}
 
       {/* Активные эффекты и состояния героя над строкой ввода */}
-      {(hasExpEffects || isBush || derivedEffects.length > 0) && (
+      {(hasExpEffects || derivedEffects.length > 0) && (
         <div
           className="tf-composer-effects flex flex-wrap items-center gap-1.5 rounded-lg border border-line-soft bg-surface-2/40 px-2.5 py-1.5 text-xs"
           aria-label="Активные эффекты героя"
@@ -401,17 +400,6 @@ export default function Composer() {
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent animate-pulse" aria-hidden="true" />
             <span>Эффекты:</span>
           </div>
-
-          {isBush && (
-            <div
-              className="inline-flex items-center gap-1.5 rounded-md border border-accent/50 bg-accent/15 px-2 py-0.5 text-xs font-semibold text-accent shadow-xs"
-              title="Вы в форме куста: нельзя двигаться, говорить и действовать руками. Чтобы снять досрочно, напишите мастеру."
-            >
-              <span aria-hidden="true">🌿</span>
-              <span>Форма куста</span>
-              <span className="text-[10px] font-normal text-ink-2 hidden sm:inline">· без движений и речи</span>
-            </div>
-          )}
 
           {expEffects.map((ef) => (
             <div
