@@ -380,12 +380,12 @@ def _efficiency_instrumentation(request, monkeypatch):
         return
     config = ExperimentConfig(kind, (selected,))
     context_variant = selected if kind == "context" else None
-    from app.agents.master import optimization, review, turn
+    from app.agents.master import finish, narration, optimization, turn
     from app.core.world_generation import policy
 
     if kind == "product":
         flags = dict.fromkeys(optimization.FLAGS, variant == "optimized")
-        for module in (optimization, review, turn):
+        for module in (optimization, finish, narration):
             monkeypatch.setattr(module, "optimization_flags", lambda settings: flags.copy())
     elif kind == "tools":
         original_flags = optimization.optimization_flags
@@ -393,7 +393,7 @@ def _efficiency_instrumentation(request, monkeypatch):
         def tools_flags(settings):
             return {**original_flags(settings), "tool_profiles": selected == "profile"}
 
-        for module in (optimization, review, turn):
+        for module in (optimization, finish, narration):
             monkeypatch.setattr(module, "optimization_flags", tools_flags)
     monkeypatch.setattr(policy, "root_seed", lambda campaign_id, target_id, phase: 0)
     random.seed(0)

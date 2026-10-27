@@ -26,7 +26,6 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app.rules.dnd5e.tables import CONDITIONS, DAMAGE_TYPES, SKILLS  # noqa: E402
 
 from app.rules.dice import DiceError, parse  # noqa: E402
 from tools.srd_blurbs import CLASS_BLURBS, RACE_BLURBS  # noqa: E402
@@ -37,6 +36,66 @@ BASE_URL = f"https://raw.githubusercontent.com/5e-bits/5e-database/{SHA}/src/201
 FILES = ("Monsters", "Classes", "Levels", "Races", "Subraces", "Traits", "Equipment", "Proficiencies", "Features")
 CACHE = Path(__file__).resolve().parent / ".cache"
 DATA = ROOT / "content" / "dnd5e-srd" / "data"
+
+# Reference tables of the retired dnd5e rules package: the SRD pack generator needs them, the game no longer does.
+SKILLS: dict[str, str] = {
+    "acrobatics": "dex",
+    "animal_handling": "wis",
+    "arcana": "int",
+    "athletics": "str",
+    "deception": "cha",
+    "history": "int",
+    "insight": "wis",
+    "intimidation": "cha",
+    "investigation": "int",
+    "medicine": "wis",
+    "nature": "int",
+    "perception": "wis",
+    "performance": "cha",
+    "persuasion": "cha",
+    "religion": "int",
+    "sleight_of_hand": "dex",
+    "stealth": "dex",
+    "survival": "wis",
+}
+
+DAMAGE_TYPES = frozenset(
+    {
+        "acid",
+        "bludgeoning",
+        "cold",
+        "fire",
+        "force",
+        "lightning",
+        "necrotic",
+        "piercing",
+        "poison",
+        "psychic",
+        "radiant",
+        "slashing",
+        "thunder",
+    }
+)
+
+CONDITIONS = frozenset(
+    {
+        "blinded",
+        "charmed",
+        "deafened",
+        "exhaustion",
+        "frightened",
+        "grappled",
+        "incapacitated",
+        "invisible",
+        "paralyzed",
+        "petrified",
+        "poisoned",
+        "prone",
+        "restrained",
+        "stunned",
+        "unconscious",
+    }
+)
 
 ATTRIBUTION = (
     '# This work includes material taken from the System Reference Document 5.1 ("SRD 5.1") by Wizards of the\n'

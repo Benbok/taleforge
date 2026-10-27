@@ -45,7 +45,8 @@ class ScalarRules:
         success = critical == "success" if critical else roll.total >= dc
         return CheckResult(roll, dc, success, critical)
 
-    saving_throw = check
+    def saving_throw(self, dice, modifier, dc, mode=RollMode.NORMAL, crits=False):
+        return self.check(dice, modifier, dc, mode, crits)
 
     def attack(self, dice, attack_bonus, target_ac, mode=RollMode.NORMAL):
         roll = self.roll_d20(dice, attack_bonus, mode)

@@ -125,3 +125,9 @@ def test_heal():
     dead = HitPoints(current=0, maximum=10, dead=True)
     E.heal(dead, 5)
     assert dead.current == 0
+
+
+def test_saving_throw_has_no_natural_20_unless_asked():
+    assert not E.saving_throw(FixedDice([20]), 0, 25).success
+    assert not E.saving_throw(FixedDice([1]), 20, 5, crits=True).success
+    assert E.saving_throw(FixedDice([1]), 20, 5).success

@@ -197,8 +197,8 @@ def _universal_actor(row, entities=()):
         if e.state.get("universal_item") and e.state["universal_item"].get("owner_id") == row.id
     ]
     bonuses = [item.profile.defense_bonus for item in items if item.equipped and item.profile.kind == "armor"]
-    d = derive(sheet, bonuses if items else starting_defense_bonuses(sheet))
     data = row.resources if isinstance(row, Character) else row.state.get("resources", {})
+    d = derive(sheet, bonuses if data.get("inventory_initialized") else starting_defense_bonuses(sheet))
     vitality = data.get("vitality", {})
     hp = _hp_from({**data, "hp_max": d.hp_max, "dead": vitality.get("state") == "dead"}, d.hp_max)
     return Actor(
