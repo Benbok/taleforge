@@ -118,7 +118,7 @@ export interface SketchExit {
   side: "n" | "e" | "s" | "w";
   at: number;
   kind: "door" | "bars" | "window" | "arch" | "stairs" | "hatch" | "gap" | "passage";
-  state?: "open" | "closed" | "locked";
+  state?: "open" | "closed" | "locked" | "blocked" | null;
   to?: string | null;
   room_ref?: string | null;
   beyond?: string | null;
@@ -127,6 +127,7 @@ export interface SketchExit {
   passage_ref?: string | null;
   route_ref?: string | null; // авторский маршрут к участку другого места
   cells?: number[][] | null;
+  orientation?: { quote?: string; approximate?: boolean; destination?: string };
 }
 
 export interface SketchEdge {
@@ -227,7 +228,7 @@ const COVERS: Cover[] = ["none", "half", "three_quarters", "total"];
 const SHAPES: Sketch["shape"][] = ["room", "corridor", "cave", "street", "open"];
 const EXIT_KINDS: SketchExit["kind"][] = ["door", "bars", "window", "arch", "stairs", "hatch", "gap", "passage"];
 const FEATURE_KINDS: SketchFeature["kind"][] = ["furniture", "cover", "hazard", "light", "object", "nature"];
-const EXIT_STATES: NonNullable<SketchExit["state"]>[] = ["open", "closed", "locked"];
+const EXIT_STATES: NonNullable<SketchExit["state"]>[] = ["open", "closed", "locked", "blocked"];
 
 function listed<T extends string>(value: string | null | undefined, values: readonly T[], fallback: T): T {
   return values.find((v) => v === value) ?? fallback;
@@ -246,7 +247,7 @@ export function mapForDisplay(data: GeneratedMapState): MapState {
     exits: data.sketch.exits.map((e) => ({
       ...e,
       kind: listed(e.kind, EXIT_KINDS, "passage"),
-      state: e.state ? listed(e.state, EXIT_STATES, "open") : undefined,
+      state: EXIT_STATES.find(state=>state===e.state),
     })),
     features: data.sketch.features.map((feature) => ({
       ...feature,

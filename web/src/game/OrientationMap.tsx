@@ -1,5 +1,6 @@
 ﻿import {LocationMap} from './LocationMap';
-import type {MapState,MapLocationPlan} from './map';
+import type {MapState} from './map';
+import {orientationPlan} from './orientationPassages';
 import {useInspector} from './inspector';
 import {useState} from 'react';
 import {api,ApiError} from '../lib/api';
@@ -28,9 +29,7 @@ function GenerateMap({locationId}:{locationId:string}){
 
 export default function OrientationMap({map}:{map:MapState}){
  const inspect=useInspector(s=>s.open);
- const visual:MapLocationPlan|null=map.location_map ?? (map.here && map.sketch ? {
-  root_id:map.here.id,here_id:map.here.id,areas:[{id:map.here.id,name:map.here.name,offset:[0,0],level:0,status:'here',revision:1,sketch:map.sketch}],
- }:null);
+ const visual=orientationPlan(map);
  return <section className='space-y-4' aria-label='Ориентирующая карта'>
   <p className='rounded-lg border border-line-soft bg-raised p-3 text-sm text-muted'>Карта показывает известное окружение. Осмотр и масштаб не расходуют время. Действия и перемещения описывайте в чате.</p>
   {visual ? <><p className='text-xs text-muted'>Ориентирующая схема: масштаб и положение ориентиров условны.</p><LocationMap map={visual} m={map} orientationOnly /></> : <div className='space-y-3'><p className='text-sm text-muted'>Точная схема ещё не известна. Для игры достаточно описания и известных ориентиров. Схема создаётся при первом входе; для уже начатой игры её можно создать здесь.</p>{map.here&&<GenerateMap key={map.here.id} locationId={map.here.id}/>}</div>}

@@ -14,6 +14,7 @@ export interface SketchSurfaceProps {
   onFeature?: (id: string, name: string) => void;
   pickedExit?: SketchExit | null;
   pickedPassageRef?: string | null;
+  showPassageLabels?: boolean;
   children?: ReactNode;
 }
 
@@ -25,7 +26,7 @@ export function terrainCells(rects: number[][]): [number, number][] {
       Array.from({ length: x1 - x0 + 1 }, (_, x) => [x0 + x, y0 + y] as [number, number])).flat());
 }
 
-export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, onFeature, pickedExit, pickedPassageRef, children }: SketchSurfaceProps) {
+export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, onFeature, pickedExit, pickedPassageRef, showPassageLabels=false, children }: SketchSurfaceProps) {
   const area: MapKnownArea = { id: areaId, name: areaId, offset: [0, 0], level: 0, status: "here", revision: 0, sketch };
   const geometry = surfaceGeometry(area);
   const torchMounts = wallTorchMounts(sketch, geometry.floor, geometry.contours);
@@ -85,6 +86,13 @@ export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, on
       {children}
       {sketch.exits.map((exit, i) => {
         const segs = exitSegments(area, exit);
+         const first = segs[0];
+         const x = first ? (first.from[0]+first.to[0])/2 : 0;
+         const y = first ? (first.from[1]+first.to[1])/2 : 0;
+         const blocked = exit.state==='blocked';
+         const symbol = blocked?'×':exit.state==='locked'?'◆':exit.state==='closed'?'−':exit.state==='open'?'↔':'?';
+         const color = blocked?'var(--color-danger, #c87970)':exit.state==='locked'?'var(--color-warn, #c99a56)':'var(--tf-accent)';
+         const label = exit.name.length>24?exit.name.slice(0,22)+'…':exit.name;
         const isPicked = Boolean(
           (pickedPassageRef && exit.passage_ref === pickedPassageRef) ||
           (pickedExit && (
@@ -92,12 +100,19 @@ export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, on
             (exit.name === pickedExit.name && exit.side === pickedExit.side && exit.at === pickedExit.at)
           ))
         );
-        return <g key={`exit-${i}`} data-passage-ref={exit.passage_ref ?? undefined} onClick={onPassage ? () => onPassage(exit) : undefined}
+        return <g key={`exit-${i}`} data-passage-ref={exit.passage_ref ?? undefined} data-exit-state={exit.state??'unknown'} onClick={onPassage ? () => onPassage(exit) : undefined}
           role={onPassage ? "button" : undefined} tabIndex={onPassage ? 0 : undefined} aria-label={onPassage ? `Проход: ${exit.name}` : undefined}
           className={onPassage ? `tf-map-passage cursor-pointer ${isPicked ? "is-picked" : ""}` : undefined}
           onKeyDown={(event) => { if (onPassage && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onPassage(exit); } }}>
           {onPassage && segs.map((segment, j) => <rect key={`hit-${j}`} x={Math.min(segment.from[0], segment.to[0]) - .55} y={Math.min(segment.from[1], segment.to[1]) - .55} width={Math.abs(segment.to[0] - segment.from[0]) + 1.1} height={Math.abs(segment.to[1] - segment.from[1]) + 1.1} fill="transparent" pointerEvents="all" />)}
-          {segs.map((segment, j) => <line key={j} x1={segment.from[0]} y1={segment.from[1]} x2={segment.to[0]} y2={segment.to[1]} data-opening="true" stroke={isPicked ? "var(--tf-accent)" : "var(--tf-map-opening, #e9d8a6)"} strokeWidth={isPicked ? ".34" : ".2"} />)}
+          {segs.map((segment, j) => <line key={j} x1={segment.from[0]} y1={segment.from[1]} x2={segment.to[0]} y2={segment.to[1]} data-opening="true" stroke={showPassageLabels?color:isPicked ? "var(--tf-accent)" : "var(--tf-map-opening, #e9d8a6)"} strokeWidth={isPicked ? ".34" : ".2"} strokeDasharray={showPassageLabels&&blocked?'.16 .1':undefined} />)}
+          {showPassageLabels&&first&&<g pointerEvents="all">
+            <circle cx={x} cy={y} r='.35' fill='var(--tf-surface)' stroke={color} strokeWidth='.06'/>
+            <text x={x} y={y+.14} textAnchor='middle' fontSize='.43' fontWeight='700' fill={color}>{symbol}</text>
+            <text x={x+(exit.side==='e'?-.5:exit.side==='w'?.5:0)} y={y+(exit.side==='n'?.85:exit.side==='s'?-.5:.14)}
+              textAnchor={exit.side==='e'?'end':exit.side==='w'?'start':'middle'} fontSize='.4' fontWeight='600'
+              fill='var(--tf-ink, #e9e0ce)' stroke='var(--tf-surface)' strokeWidth='.12' paintOrder='stroke'>{label}</text>
+          </g>}
           <title>{exit.name}</title>
         </g>;
       })}

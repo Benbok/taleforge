@@ -17,12 +17,13 @@ export interface LocationMapSvgProps {
   idPrefix: string;
   pickedExit?: SketchExit | null;
   pickedPassageRef?: string | null;
+  showPassageLabels?: boolean;
   onCell?: (areaId: string, cell: [number, number]) => void;
   onPassage?: (exit: SketchExit, areaId: string) => void;
   onEntity?: (id: string, name: string, anchor: Element) => void;
 }
 
-export function LocationMapSvg({ map, liveSketch, tokens = [], activeLevel, idPrefix, pickedExit, pickedPassageRef, onPassage, onCell, onEntity }: LocationMapSvgProps) {
+export function LocationMapSvg({ map, liveSketch, tokens = [], activeLevel, idPrefix, pickedExit, pickedPassageRef, showPassageLabels=false, onPassage, onCell, onEntity }: LocationMapSvgProps) {
   const level = activeLevel ?? map.areas.find((area) => area.status === "here")?.level ?? 0;
   const areas = map.areas.filter((area) => area.level === level);
   const bounds = overviewBounds(knownBounds(map, level));
@@ -46,6 +47,7 @@ export function LocationMapSvg({ map, liveSketch, tokens = [], activeLevel, idPr
               sketch={isCurrent ? liveSketch ?? area.sketch : area.sketch}
               areaId={area.id}
               idPrefix={`${idPrefix}-${area.id}`}
+              showPassageLabels={showPassageLabels}
               pickedExit={isCurrent ? pickedExit : undefined}
               pickedPassageRef={isCurrent ? (pickedPassageRef ?? pickedExit?.passage_ref) : undefined}
               onPassage={isCurrent ? (exit) => onPassage?.(exit, area.id) : undefined}
@@ -109,6 +111,11 @@ export function LocationMap({ map, m, activeLevel, idPrefix = "location-map", or
   }, [picked]);
 
   const current = map.areas.find((area) => area.id === map.here_id);
+  useEffect(()=>{
+    setPicked(previous=>previous ? current?.sketch.exits.find(e=>previous.passage_ref
+      ? e.passage_ref===previous.passage_ref
+      : e.name===previous.name&&e.side===previous.side&&e.at===previous.at)??null : null);
+  },[current?.sketch]);
   // механические клетки считаются от живого строя: так же их рисует LocationMapSvg для токенов
   const party = m?.sketch?.party ?? current?.sketch.party ?? [0, 0];
   return (
@@ -135,7 +142,7 @@ export function LocationMap({ map, m, activeLevel, idPrefix = "location-map", or
         )}
         <div ref={z.box} {...z.pan} className="max-h-[50dvh] overflow-auto p-2">
           <div style={{ width: `${z.zoom * 100}%`, minWidth: "100%" }}>
-            <LocationMapSvg map={map} liveSketch={m?.sketch} tokens={m ? locationTokens(m) : []} activeLevel={level} idPrefix={idPrefix}
+            <LocationMapSvg map={map} liveSketch={orientationOnly ? current?.sketch : m?.sketch} tokens={m ? locationTokens(m) : []} activeLevel={level} idPrefix={idPrefix} showPassageLabels={orientationOnly}
               pickedExit={picked} pickedPassageRef={picked?.passage_ref}
               onCell={!orientationOnly && m && current ? (_, cell) => stepTo({ cell: planToMechanical(current, party, cell) }) : undefined}
               onEntity={m ? (id, name, anchor) => inspect(id, name, anchor) : undefined}

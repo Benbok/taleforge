@@ -33,6 +33,7 @@ from app.core.positions import bearing_of_cell, zone_of_cell
 from app.core.preparation import container_rows, container_view
 from app.core.scene_view import visible_scene
 from app.core.topology import location_exits
+from app.core.universal.map import exit_details, route_is_known
 from app.core.world import PLAYABLE, ZONE_NAMES
 from app.core.world_objects import is_nested
 from app.db.models import Character, Entity, Knowledge, Message, Scene
@@ -162,6 +163,12 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         for pid in list(visited):
             p = places[pid]
             near = {x.target_id for x in location_exits(p, catalog, places, blueprint_cache) if x.target_id}
+            if universal:
+                near = {
+                    target
+                    for target in near
+                    if target in places and route_is_known(p, target) and route_is_known(places[target], p.id)
+                }
             if p.location_id:
                 near.add(p.location_id)  # группировка; не выход из комнаты книги
             shown |= {n for n in near if n in places and not (places[n].state or {}).get("secret")}
@@ -331,6 +338,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
                     "via": via,
                     "bearing": (link or {}).get("bearing") or (places[pid].state or {}).get("bearing"),
                     "visited": p["status"] != "known",
+                    **(exit_details(here, pid) if universal else {}),
                 }
             )
     if here is not None and adventure.room_of(here) and catalog is not None:
@@ -491,6 +499,21 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
         )
         for place in out_places:
             place["name"] = public_location_name(viewer.campaign, places[place["id"]], place["name"])
+    if universal and not master:
+        exits = (
+            [
+                e
+                for e in exits
+                if not e.get("id") or (route_is_known(here, e["id"]) and route_is_known(places[e["id"]], here.id))
+            ]
+            if here
+            else exits
+        )
+        links = [
+            edge
+            for edge in links
+            if route_is_known(places[edge["a"]], edge["b"]) and route_is_known(places[edge["b"]], edge["a"])
+        ]
     return {
         "book": book,
         "sketch": projected_sketch,
