@@ -26,10 +26,16 @@ it('показывает сохранённое состояние, полное
   render(<MemoryRouter><UniversalAdventure campaignId='c' /></MemoryRouter>);
   expect(screen.getByText('Перед вами ворота и мост над туманом.')).toBeDefined();
   expect(screen.getByText('HP 19 / 22')).toBeDefined();
+  expect(screen.getByText('Освоена 1 способность.')).toBeDefined();
+
+  // Открываем модальное окно способностей
+  fireEvent.click(screen.getByRole('button', { name: '✦ Открыть способности (1)' }));
+  expect(screen.getByRole('dialog', { name: 'Изученные способности' })).toBeDefined();
   expect(screen.getByText('Цена: 3 · Мудрость')).toBeDefined();
   expect(screen.getByText(/Целей: 1 · Длительность: 1 сек/)).toBeDefined();
   fireEvent.click(screen.getByRole('button', { name: 'Зелёный свет' }));
   expect(useDraft.getState().text).toBe('Применяю способность «Зелёный свет».');
+  expect(screen.queryByRole('dialog', { name: 'Изученные способности' })).toBeNull();
 });
 
 it('открывает и закрывает полную карточку героя в модальном окне', () => {
