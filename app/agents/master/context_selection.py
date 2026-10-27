@@ -110,4 +110,3 @@ async def collect_decision_facts(ctx, cfg, inputs: dict) -> tuple[ContextFact, .
             )
         )
     return tuple(facts)
-

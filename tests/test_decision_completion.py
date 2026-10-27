@@ -153,7 +153,12 @@ def test_early_finish_stays_gated_until_quality_review(game_client, admin_g, llm
 @pytest.mark.parametrize("empty_parts", [False, True])
 @pytest.mark.parametrize("obsolete_flags", [False, True])
 def test_creative_talk_finishes_without_automatic_cancellation(
-    game_client, admin_g, llm, settings, empty_parts, obsolete_flags,
+    game_client,
+    admin_g,
+    llm,
+    settings,
+    empty_parts,
+    obsolete_flags,
 ):
     import json
 

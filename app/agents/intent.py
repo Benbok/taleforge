@@ -298,12 +298,8 @@ def card_pickup(text: str, world: World, ch: Character) -> ParseResult | None:
     return check({"actions": [{"verb": "pick_up", "target_id": matches[0].id}]}, world, ch)
 
 
-def _castable(world: World, ch: Character) -> list[tuple[str, str, int]]:
-    """Заклинания, которые герой может сотворить: заговоры, известные и подготовленные."""
-    from app.core.spells import book_view
-
-    b = book_view(ch.sheet or {}, ch.resources or {}, world.catalog)
-    return [(x["id"], x["name"], x["level"]) for x in (b or {}).get("spells", []) if x["prepared"]]
+def _castable(world, ch):
+    return []
 
 
 def check(
@@ -612,7 +608,7 @@ def routable_tool_call(intent: dict[str, Any] | None, world: World | None = None
 
     if verb in SKILL_VERB_MAP:
         stat, dc = SKILL_VERB_MAP[verb]
-        from app.rules.dnd5e.tables import ABILITIES, SKILLS
+        from app.rules.attributes import ABILITIES, SKILLS
 
         if a.get("skill") and (a["skill"] in SKILLS or a["skill"] in ABILITIES):
             stat = a["skill"]

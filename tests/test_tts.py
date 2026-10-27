@@ -537,9 +537,7 @@ def test_master_turn_voices_line_then_full_narration(settings, tmp_path, monkeyp
                 transport=httpx.ASGITransport(app=client.app), base_url="http://testserver"
             ) as browser:
                 for clip in message.data.get("voices", []):
-                    response = await browser.get(
-                        f"/api/campaigns/{c['id']}/voice/{clip['id']}", headers=p1
-                    )
+                    response = await browser.get(f"/api/campaigns/{c['id']}/voice/{clip['id']}", headers=p1)
                     published_recordings.append((response.status_code, response.content.startswith(b"RIFF")))
             await publish(bus, message)
 

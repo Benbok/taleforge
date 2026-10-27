@@ -89,10 +89,14 @@ async def location_plan(
         hero_id = viewer
     rows = []
     if root_id:
-        shared_q = select(PartyMapMemory).where(
-            PartyMapMemory.campaign_id == root.campaign_id,
-            PartyMapMemory.root_id == root.id,
-        ).order_by(PartyMapMemory.updated_at.desc())
+        shared_q = (
+            select(PartyMapMemory)
+            .where(
+                PartyMapMemory.campaign_id == root.campaign_id,
+                PartyMapMemory.root_id == root.id,
+            )
+            .order_by(PartyMapMemory.updated_at.desc())
+        )
         shared_rows = list((await session.scalars(shared_q)).all())
         # Legacy personal rows remain a read fallback during migration/backfill.
         personal_q = (
@@ -128,14 +132,18 @@ async def location_plan(
     current = None
     if here.id != root.id:
         current = map_memory.static_snapshot(
-            here, root, (root.state or {}).get("blueprint"), entities,
+            here,
+            root,
+            (root.state or {}).get("blueprint"),
+            entities,
             discovered_passages=permitted if hero_id else frozenset((root.id, p.passage_ref) for p in bp.passages),
             revealed=frozenset(),
         )
         if current is None:
             return None
         current["geometry"]["exits"] = [
-            x for x in current["geometry"].get("exits", [])
+            x
+            for x in current["geometry"].get("exits", [])
             if not x.get("passage_ref") or (root.id, x["passage_ref"]) in permitted or not hero_id
         ]
     ids = store.area_ids(root)

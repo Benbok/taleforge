@@ -59,4 +59,3 @@ def unresolved_searches(ctx: ToolContext) -> list[Any]:
 
         return multipart_searches(ctx)
     return legacy_unresolved_searches(ctx)
-

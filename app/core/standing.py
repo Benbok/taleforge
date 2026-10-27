@@ -17,7 +17,7 @@ from collections.abc import Callable
 from typing import Any
 
 from app.rules.base import RollMode
-from app.rules.dnd5e.modifiers import sources
+from app.rules.modifiers import sources
 
 # ступени отношения: как у отношений между фракциями в пакете (attitude −3…+3)
 TIER_RU = {

@@ -194,7 +194,7 @@ def test_only_search_left_names_search(game, monkeypatch):
         assert prose in text
         assert audit.get("partial_cancel")
         # Notice must specifically name the search, NOT generic "часть заявки мастер не обработал"
-        assert ("поиск" in text.lower() or "осмотр" in text.lower())
+        assert "поиск" in text.lower() or "осмотр" in text.lower()
         assert "часть заявки мастер не обработал" not in text
 
     play(settings, campaign_id, [], scenario)
@@ -363,7 +363,7 @@ def test_one_denial_preserves_other_committed_facts(game, monkeypatch):
         # Committed fact of goodberry is preserved
         assert "добрые ягоды" in text
         # Denial notice is included
-        assert ("отклон" in text.lower() or "не" in text.lower())
+        assert "отклон" in text.lower() or "не" in text.lower()
         assert not audit.get("cancel_fallback")
 
     play(settings, campaign_id, [], scenario)

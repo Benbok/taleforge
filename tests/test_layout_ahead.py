@@ -1,7 +1,6 @@
 # ruff: noqa: F811
 """Подготовка вперёд (спецификация 2026-10-12, §8): геометрия до двух соседей, без модели и без раскрытия."""
 
-
 from app.core.world_generation import storage
 from app.core.world_generation.service import Orchestrator
 from app.db.models import MapMemory, WorldGenerationState

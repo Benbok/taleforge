@@ -147,9 +147,7 @@ def test_concurrent_expansion_at_limit(client, admin, database_url, monkeypatch)
     c = make_campaign(client, admin, players=5)
 
     async def concurrent_expand():
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=client.app), base_url="http://testserver"
-        ) as ac:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=client.app), base_url="http://testserver") as ac:
             return await asyncio.gather(
                 ac.post(f"/api/campaigns/{c['id']}/seats", headers=admin),
                 ac.post(f"/api/campaigns/{c['id']}/seats", headers=admin),
@@ -170,9 +168,7 @@ def test_concurrent_expansion_preserves_unique_positions(client, admin, database
     c = make_campaign(client, admin, players=4)
 
     async def concurrent_expand():
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=client.app), base_url="http://testserver"
-        ) as ac:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=client.app), base_url="http://testserver") as ac:
             return await asyncio.gather(
                 ac.post(f"/api/campaigns/{c['id']}/seats", headers=admin),
                 ac.post(f"/api/campaigns/{c['id']}/seats", headers=admin),

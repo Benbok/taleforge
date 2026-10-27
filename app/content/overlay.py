@@ -60,13 +60,19 @@ async def add_record(session, campaign: Campaign, kind: str, record: dict) -> Ca
     )
     for r in old:
         session.add(
-            ContentRecord(pack_id=pid, pack_version=version, id=r.id, kind=r.kind, status=r.status, name=r.name,
-                          data=r.data)  # fmt: skip
+            ContentRecord(
+                pack_id=pid, pack_version=version, id=r.id, kind=r.kind, status=r.status, name=r.name, data=r.data
+            )  # fmt: skip
         )
     session.add(
         ContentRecord(
-            pack_id=pid, pack_version=version, id=record["id"], kind=kind, status="proposal",
-            name=str(record["name"])[:255], data=record,
+            pack_id=pid,
+            pack_version=version,
+            id=record["id"],
+            kind=kind,
+            status="proposal",
+            name=str(record["name"])[:255],
+            data=record,
         )  # fmt: skip
     )
     campaign.content_chain = [list(x) for x in campaign.content_chain or [] if x[0] != pid] + [[pid, version]]

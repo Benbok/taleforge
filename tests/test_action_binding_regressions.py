@@ -23,10 +23,18 @@ def test_unlock_matches_requested_passage():
 
 
 def test_binding_enforces_dependency_before_execution():
-    message = Message(id="m", campaign_id="c", kind="action", seat_id="seat", intent={"actions": [
-        {"verb": "interact"},
-        {"verb": "search", "depends_on": [{"part": 0, "requires": "success"}]},
-    ]})
+    message = Message(
+        id="m",
+        campaign_id="c",
+        kind="action",
+        seat_id="seat",
+        intent={
+            "actions": [
+                {"verb": "interact"},
+                {"verb": "search", "depends_on": [{"part": 0, "requires": "success"}]},
+            ]
+        },
+    )
     refs = bind_message_actions(message, "hero")
 
     class Session:
@@ -39,9 +47,13 @@ def test_binding_enforces_dependency_before_execution():
         campaign=SimpleNamespace(id="c", settings={}),
         world=SimpleNamespace(
             characters={"hero": SimpleNamespace(id="hero", seat_id="seat")},
-            entities={}, place_of=lambda hero: None, in_fight=lambda ident: False,
+            entities={},
+            place_of=lambda hero: None,
+            in_fight=lambda ident: False,
         ),
-        session=Session(), required_actions=refs, action_progress={},
+        session=Session(),
+        required_actions=refs,
+        action_progress={},
     )
 
     async def check():
@@ -59,14 +71,27 @@ def test_binding_enforces_dependency_before_execution():
 def test_finalization_keeps_dependency_reason(monkeypatch):
     from app.agents.master.action_progress import finalize_action_parts
 
-    message = Message(id="m", campaign_id="c", intent={"actions": [
-        {"verb": "interact"}, {"verb": "search", "depends_on": [{"part": 0, "requires": "success"}]},
-    ]})
+    message = Message(
+        id="m",
+        campaign_id="c",
+        intent={
+            "actions": [
+                {"verb": "interact"},
+                {"verb": "search", "depends_on": [{"part": 0, "requires": "success"}]},
+            ]
+        },
+    )
     refs = bind_message_actions(message, "hero")
-    ctx = SimpleNamespace(required_actions=refs, events=[], turn_diagnostics={}, turn_id=None,
-        session=SimpleNamespace(identity_map={"m": message}), action_progress={
+    ctx = SimpleNamespace(
+        required_actions=refs,
+        events=[],
+        turn_diagnostics={},
+        turn_id=None,
+        session=SimpleNamespace(identity_map={"m": message}),
+        action_progress={
             action_key(refs[0]): ActionProgress(status="denied"),
-        })
+        },
+    )
 
     async def save(ctx, ref, progress):
         ctx.action_progress[action_key(ref)] = progress
@@ -83,8 +108,12 @@ def test_discovery_does_not_close_another_bound_part(monkeypatch):
 
     message = Message(id="m", campaign_id="c", intent={"actions": [{"verb": "search"}, {"verb": "search"}]})
     refs = bind_message_actions(message, "hero")
-    ctx = SimpleNamespace(required_actions=refs, events=[], action_progress={},
-        turn_diagnostics={"search_checks": {action_key(refs[0]): "check0", action_key(refs[1]): "check1"}})
+    ctx = SimpleNamespace(
+        required_actions=refs,
+        events=[],
+        action_progress={},
+        turn_diagnostics={"search_checks": {action_key(refs[0]): "check0", action_key(refs[1]): "check1"}},
+    )
     saved = []
 
     async def save(ctx, ref, progress):
@@ -92,9 +121,18 @@ def test_discovery_does_not_close_another_bound_part(monkeypatch):
 
     monkeypatch.setattr("app.agents.master.action_progress.set_action_progress", save)
     monkeypatch.setattr("app.agents.master.action_progress.mark_resolved", lambda *args: None)
-    asyncio.run(apply_tool_progress(ctx, ToolActionBinding(ref=refs[1], role="consequence"), {
-        "ok": True, "tool": "place_item", "event_id": "found", "result": {"discovery_check_event_id": "check0"},
-    }))
+    asyncio.run(
+        apply_tool_progress(
+            ctx,
+            ToolActionBinding(ref=refs[1], role="consequence"),
+            {
+                "ok": True,
+                "tool": "place_item",
+                "event_id": "found",
+                "result": {"discovery_check_event_id": "check0"},
+            },
+        )
+    )
     assert saved == []
 
 

@@ -210,25 +210,20 @@ it('binds unsaved form values to their original revision across background refre
   expect((screen.getByLabelText('Как он выглядит?') as HTMLTextAreaElement).value).toBe('Мой черновик');
 });
 
-it('takes an independent universal library copy without a legacy submit or editor', async () => {
-  let copy: unknown = null;
+it('starts a compatibility dialogue before adding the library copy', async () => {
   const writes: string[] = [];
   vi.stubGlobal('fetch', async (path: string, init: RequestInit) => {
     if (init.method !== 'GET') writes.push(path);
-    if (path === '/api/campaigns/c1') return response({ id: 'c1', name: 'Тест', my_seat_id: 's1', my_role: 'player' });
-    if (path === '/api/campaigns/c1/character-options') return response({});
+    if (path === '/api/campaigns/c1') return response({ id: 'c1', name: 'Тест', ruleset_id: 'universal', my_seat_id: 's1', my_role: 'player' });
     if (path === '/api/me/characters') return response([original]);
-    if (path === '/api/campaigns/c1/characters') return response(copy ? [copy] : []);
-    if (path === '/api/campaigns/c1/characters/from-library/lc1') {
-      copy = { ...original, id: 'ch1', editable: false, seat_id: 's1', status: 'approved' };
-      return response(copy, 201);
-    }
-    if (path === '/api/campaigns/c1/characters/ch1') return response(copy);
+    if (path === '/api/campaigns/c1/characters') return response([]);
+    if (path === '/api/hero-creation/dialogues') return response([]);
+    if (path.endsWith('/from-library/lc1/admission')) return response({ id: 'admission1' }, 201);
+    if (path === '/api/hero-creation/dialogues/admission1') return response({ id: 'admission1', status: 'questions', revision: 1, description: original.sheet.description, transcript: [{ role: 'assistant', content: 'Как герой оказался здесь?' }], proposal: null });
     throw new Error(`Unexpected ${init.method} ${path}`);
   });
   open('/c/c1/hero');
-  fireEvent.click(await screen.findByRole('button', { name: 'ВЗЯТЬ КОПИЮ В КАМПАНИЮ' }));
-  expect(await screen.findByRole('heading', { name: 'Ива', level: 2 })).toBeTruthy();
-  expect(writes).toEqual(['/api/campaigns/c1/characters/from-library/lc1']);
-  expect(screen.queryByLabelText('Как он выглядит?')).toBeNull();
+  fireEvent.click(await screen.findByRole('button', { name: 'Ива: проверить совместимость' }));
+  expect(await screen.findByText('Как герой оказался здесь?')).toBeTruthy();
+  expect(writes).toEqual(['/api/campaigns/c1/characters/from-library/lc1/admission']);
 });

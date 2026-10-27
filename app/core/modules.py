@@ -28,7 +28,7 @@ from app.content.vocab import CUSTOM_OP, MODIFIER_OPS
 from app.core import plot
 from app.core.narrative.contracts import FactRef, NarrativePermissions, NarrativeSnapshot
 from app.core.rolls import SKILL_RU
-from app.rules.dnd5e.tables import ABILITIES, SKILLS
+from app.rules.attributes import ABILITIES, SKILLS
 
 TOOL = "submit_adventure_module"
 MAP_TOOL = "submit_map_marks"

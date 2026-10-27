@@ -395,4 +395,3 @@ def test_overlong_review_message_and_destination_are_clipped_not_rejected():
     assert review.verdict == "revise" and len(review.message) == 1500
     passage = WorldPassage.model_validate({"ref": "tunnel", "name": "Туннель", "destination": "y" * 300})
     assert len(passage.destination) == 100
-

@@ -66,7 +66,7 @@ def test_private_fact_is_not_visible_to_narrator():
 
 
 def test_decision_request_does_not_duplicate_action_refs():
-    text = "scene\nТекущие части заявок (используй точный action_ref):\n[{\"ref\": \"a\"}]\ncreative"
+    text = 'scene\nТекущие части заявок (используй точный action_ref):\n[{"ref": "a"}]\ncreative'
     assert without_action_context(text) == "scene\ncreative"
 
 

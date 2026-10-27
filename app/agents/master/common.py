@@ -9,7 +9,6 @@ from typing import Any
 
 import jinja2
 
-from app.agents import intent as intents
 from app.config import Settings
 from app.core import adventure, audio, plot
 from app.core.chat import TURN_KINDS
@@ -75,28 +74,12 @@ def render(name: str, **kw: Any) -> str:
     return _env.get_template(name).render(**kw).strip()
 
 
-def _routable_cast(ctx: ToolContext, intent: dict | None) -> dict | None:
-    """Заклинание из книги героя с ясной целью сервер творит сам; площадные остаются мастеру (кто в области)."""
-    from app.core.spells import spell_catalog
-    from app.rules.dnd5e.spells import target_kind
-
-    args = intents.routable_cast(intent)
-    if args is None:
-        return None
-    chosen = args.pop("area_chosen", False)  # окно сотворения: кого накрывает область, игрок отметил сам
-    spell = spell_catalog(ctx.world.catalog).spells.get(args["spell_id"])
-    if spell is None or (target_kind(spell) == "area" and not chosen):
-        return None
-    if target_kind(spell) == "enemy" and not args.get("target_ids"):
-        return None
-    return args
+def _routable_cast(ctx, intent):
+    return None
 
 
-def _world_choices(cat) -> str:
-    """Классы и происхождения мира кампании — рамка, по которой ИИ-мастер сверяет историю героя."""
-    origins = ", ".join(e.name for e in cat.by_kind("origin")) or "—"
-    classes = ", ".join(e.name for e in cat.by_kind("class")) or "—"
-    return f"Происхождения мира: {origins}. Классы мира: {classes}."
+def _world_choices(cat):
+    return "Герои определяются описанием и законами авторского мира."
 
 
 def declared_cast(messages: list, char_by_seat: dict, caster_id: str, spell_name: str) -> bool:

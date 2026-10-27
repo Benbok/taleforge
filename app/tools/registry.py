@@ -23,8 +23,8 @@ from app.content.catalog import CatalogError
 from app.core.resolution.contracts import ActionProgress, ActionRef, FailureCategory, FailureInfo, ToolActionBinding
 from app.core.world import World, WorldError, load_world
 from app.db.models import Campaign, Entity, Event
+from app.rules.common import RulesError
 from app.rules.dice import Dice, DiceError, DiceRoll
-from app.rules.dnd5e.engine import RulesError
 
 log = logging.getLogger(__name__)
 

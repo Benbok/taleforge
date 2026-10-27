@@ -104,7 +104,7 @@ def test_campaign_card_edit_forbidden(client, root):
         == 404
     )
     legacy = f"/api/campaigns/{campaign['id']}/characters/{hero_id}"
-    assert client.put(legacy, headers=root, json={"name": "Hack"}).status_code == 409
+    assert client.put(legacy, headers=root, json={"name": "Hack"}).status_code == 405
     card = client.get(legacy, headers=root)
     assert card.status_code == 200, card.text
     assert card.json()["editable"] is False

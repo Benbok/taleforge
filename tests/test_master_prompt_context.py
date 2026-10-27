@@ -116,10 +116,12 @@ def test_parallel_narrator_and_voice_use_snapshot_after_session_closes(game, mon
             raise AssertionError("Narrator/voice reopened the closed session")
 
         monkeypatch.setattr(prompt_context, "master_prompt_values", forbidden_reads)
-        narrator, voice = await asyncio.gather(*(
-            prompt_context.build_prompt_bundle(ctx, cfg, role=role, inputs={"request": "confirmed result"})
-            for role in ("narrate", "voice_line")
-        ))
+        narrator, voice = await asyncio.gather(
+            *(
+                prompt_context.build_prompt_bundle(ctx, cfg, role=role, inputs={"request": "confirmed result"})
+                for role in ("narrate", "voice_line")
+            )
+        )
         assert "confirmed result" in str(narrator.messages)
         assert "confirmed result" in str(voice.messages)
         assert not ctx.session.in_transaction()

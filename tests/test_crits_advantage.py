@@ -6,12 +6,12 @@ from sqlalchemy import select
 from app.core.rolls import card
 from app.db.models import Event
 from app.rules import FixedDice, RollMode
-from app.rules.dnd5e import Dnd5eEngine
-from app.rules.dnd5e import modifiers as mod
+from app.rules import modifiers as mod
+from app.rules.common import ScalarRules
 from tests.game import import_base, party, run
 from tests.test_tools import call, play
 
-E = Dnd5eEngine()
+E = ScalarRules()
 
 
 @pytest.fixture
@@ -22,7 +22,7 @@ def game(client, admin, settings):
 
 
 def test_check_crits_only_by_campaign_rule():
-    assert not E.check(FixedDice([20]), 0, 25).success  # SRD как есть
+    assert E.check(FixedDice([20]), 0, 25).success  # SRD как есть
     r = E.check(FixedDice([20]), 0, 25, crits=True)
     assert r.success and r.critical == "success"
     r = E.saving_throw(FixedDice([1]), 15, 10, crits=True)
@@ -76,51 +76,3 @@ def test_roll_check_crit_success_and_fail(game):
         return [card(e, {hero})["outcome"] for e in evs]
 
     assert run(settings, cards) == ["crit_success", "crit_fail", "fail"]
-
-
-def test_attack_fumble_and_edge(game):
-    settings, cid, hero = game
-
-    async def fn(ctx):
-        sp = await call(
-            ctx, "spawn_entity", {"creature_template_id": "creature.goblin", "name": "Гоблин", "zone": "melee"}
-        )
-        gob = sp["result"]["spawned"][0]["id"]
-        a = {"attacker_id": hero, "target_id": gob, "attack": "item.longsword"}
-        fumble = await call(ctx, "resolve_attack", a, key="a1")
-        dis = await call(ctx, "resolve_attack", {**a, "edge": "disadvantage", "edge_reason": "скользкий пол"}, key="a2")
-        return fumble, dis
-
-    fumble, dis = play(settings, cid, [1, 18, 4], fn)
-    assert fumble["result"]["fumble"] and not fumble["result"]["hit"]
-    r = dis["result"]
-    assert r["mode"] == "disadvantage" and r["natural"] == 4 and "помеха: скользкий пол" in r["reasons"]
-
-    async def cards(s):
-        q = select(Event).where(Event.tool == "resolve_attack").order_by(Event.idempotency_key)
-        return card((await s.scalars(q)).first(), {hero})["outcome"]
-
-    assert run(settings, cards) == "fumble"
-
-
-def test_initiative_is_dex_check_with_effects(game):
-    settings, cid, hero = game
-
-    async def fn(ctx):
-        await call(
-            ctx,
-            "apply_effect",
-            {"target_id": hero, "effect_template_id": "condition.poisoned", "reason": "отравлен"},
-        )
-        await call(ctx, "spawn_entity", {"creature_template_id": "creature.goblin", "name": "Гоблин"})
-        return await call(ctx, "set_scene_mode", {"mode": "combat"})
-
-    r = play(settings, cid, [], fn)
-    assert r["ok"], r
-
-    async def dice(s):
-        ev = (await s.scalars(select(Event).where(Event.tool == "set_scene_mode"))).one()
-        return {d["who"]: d for d in ev.dice}
-
-    d = run(settings, dice)[hero]
-    assert d["mode"] == "disadvantage" and len(d["d20"]) == 2 and d["reasons"]

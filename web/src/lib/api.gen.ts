@@ -1102,43 +1102,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/campaigns/{campaign_id}/character-options": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Character Options */
-        get: operations["character_options_api_campaigns__campaign_id__character_options_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/campaigns/{campaign_id}/character-preview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Character Preview
-         * @description Живой лист конструктора по правилам кампании: ничего не сохраняет.
-         */
-        post: operations["character_preview_api_campaigns__campaign_id__character_preview_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/campaigns/{campaign_id}/characters": {
         parameters: {
             query?: never;
@@ -1149,8 +1112,7 @@ export interface paths {
         /** List Characters */
         get: operations["list_characters_api_campaigns__campaign_id__characters_get"];
         put?: never;
-        /** Create Character */
-        post: operations["create_character_api_campaigns__campaign_id__characters_post"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1203,8 +1165,7 @@ export interface paths {
         };
         /** Get Character */
         get: operations["get_character_api_campaigns__campaign_id__characters__character_id__get"];
-        /** Update Character */
-        put: operations["update_character_api_campaigns__campaign_id__characters__character_id__put"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1247,40 +1208,6 @@ export interface paths {
          * @description Ответы игрока. Открытые ответы видят все за столом, личные — только игрок и мастер.
          */
         put: operations["answer_bonds_api_campaigns__campaign_id__characters__character_id__bonds_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/campaigns/{campaign_id}/characters/{character_id}/claim": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Claim */
-        post: operations["claim_api_campaigns__campaign_id__characters__character_id__claim_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/campaigns/{campaign_id}/characters/{character_id}/equipment": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Change Equipment */
-        put: operations["change_equipment_api_campaigns__campaign_id__characters__character_id__equipment_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1398,117 +1325,6 @@ export interface paths {
         put?: never;
         /** Resume Hero Admission */
         post: operations["resume_hero_admission_api_campaigns__campaign_id__characters__character_id__resume_admission_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/campaigns/{campaign_id}/characters/{character_id}/review": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Review */
-        post: operations["review_api_campaigns__campaign_id__characters__character_id__review_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/campaigns/{campaign_id}/characters/{character_id}/review/retry-ai": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Retry Ai Review
-         * @description Ещё раз отдать героя на проверку ИИ-мастеру, например после смены модели.
-         */
-        post: operations["retry_ai_review_api_campaigns__campaign_id__characters__character_id__review_retry_ai_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/campaigns/{campaign_id}/characters/{character_id}/roll-abilities": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Roll Abilities */
-        post: operations["roll_abilities_api_campaigns__campaign_id__characters__character_id__roll_abilities_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/campaigns/{campaign_id}/characters/{character_id}/spells": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Update Spells
-         * @description Книга заклинаний в игре: выучить открывшееся с уровнем, сменить подготовленные после отдыха.
-         */
-        put: operations["update_spells_api_campaigns__campaign_id__characters__character_id__spells_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/campaigns/{campaign_id}/characters/{character_id}/spells/options": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Spell Options
-         * @description Что герой может выучить или подготовить: заклинания его класса до доступного круга.
-         */
-        get: operations["spell_options_api_campaigns__campaign_id__characters__character_id__spells_options_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/campaigns/{campaign_id}/characters/{character_id}/submit": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Submit */
-        post: operations["submit_api_campaigns__campaign_id__characters__character_id__submit_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1859,26 +1675,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/campaigns/{campaign_id}/party-roles": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Party Roles
-         * @description Каких ролей не хватает отряду и какие классы их закроют — подсказка перед тем, как сажать ИИ-игрока.
-         */
-        get: operations["get_party_roles_api_campaigns__campaign_id__party_roles_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/campaigns/{campaign_id}/plan": {
         parameters: {
             query?: never;
@@ -1915,41 +1711,6 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/campaigns/{campaign_id}/premades": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create Premade */
-        post: operations["create_premade_api_campaigns__campaign_id__premades_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/campaigns/{campaign_id}/premades/{character_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Update Premade */
-        put: operations["update_premade_api_campaigns__campaign_id__premades__character_id__put"];
-        post?: never;
-        /** Delete Premade */
-        delete: operations["delete_premade_api_campaigns__campaign_id__premades__character_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2395,46 +2156,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/me/character-options": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Character Options
-         * @description Варианты конструктора для мира героя: без pack — базовые правила SRD, иначе классы и происхождения мира.
-         */
-        get: operations["character_options_api_me_character_options_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/me/character-preview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Character Preview
-         * @description Живой лист героя профиля по правилам его мира: ничего не сохраняет.
-         */
-        post: operations["character_preview_api_me_character_preview_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/me/characters": {
         parameters: {
             query?: never;
@@ -2445,8 +2166,7 @@ export interface paths {
         /** List Heroes */
         get: operations["list_heroes_api_me_characters_get"];
         put?: never;
-        /** Create Hero */
-        post: operations["create_hero_api_me_characters_post"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2479,8 +2199,7 @@ export interface paths {
         };
         /** Get Hero */
         get: operations["get_hero_api_me_characters__library_id__get"];
-        /** Update Hero */
-        put: operations["update_hero_api_me_characters__library_id__put"];
+        put?: never;
         post?: never;
         /**
          * Delete Hero
@@ -2538,23 +2257,6 @@ export interface paths {
         put?: never;
         /** Propose Equipment */
         post: operations["propose_equipment_api_me_characters__library_id__equipment_proposals_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/me/characters/{library_id}/roll-abilities": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Roll Abilities */
-        post: operations["roll_abilities_api_me_characters__library_id__roll_abilities_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2700,26 +2402,6 @@ export interface paths {
         };
         /** Profile */
         get: operations["profile_api_me_profile_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/me/worlds": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Worlds
-         * @description Миры, для которых можно собрать героя профиля: базовые правила и загруженные пакеты миров.
-         */
-        get: operations["list_worlds_api_me_worlds_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3577,47 +3259,6 @@ export interface components {
             /** Character Id */
             character_id: string;
         };
-        /** CharacterIn */
-        CharacterIn: {
-            /** Abilities */
-            abilities?: {
-                [key: string]: number;
-            } | null;
-            /** Ability Choice */
-            ability_choice?: string[] | null;
-            /** Ability Method */
-            ability_method?: ("standard_array" | "point_buy" | "roll") | null;
-            /** Cantrips */
-            cantrips?: string[] | null;
-            /** Class Id */
-            class_id?: string | null;
-            /** Equipment Choices */
-            equipment_choices?: {
-                [key: string]: unknown;
-            }[] | null;
-            /** Expertise */
-            expertise?: string[] | null;
-            /** Fighting Style */
-            fighting_style?: string | null;
-            /** Name */
-            name?: string | null;
-            /** Origin Id */
-            origin_id?: string | null;
-            /** Personality */
-            personality?: {
-                [key: string]: string;
-            } | null;
-            /** Prepared */
-            prepared?: string[] | null;
-            /** Private Backstory */
-            private_backstory?: string | null;
-            /** Public Bio */
-            public_bio?: string | null;
-            /** Skills */
-            skills?: string[] | null;
-            /** Spells */
-            spells?: string[] | null;
-        };
         /** CharacterReviewFailed */
         CharacterReviewFailed: {
             /**
@@ -3646,11 +3287,8 @@ export interface components {
              * @default null
              */
             attempt_id?: string;
-            /**
-             * Character
-             * @default null
-             */
-            character?: components["schemas"]["HeroSheet"] | components["schemas"]["UniversalGameCard"];
+            /** @default null */
+            character?: components["schemas"]["UniversalGameCard"];
             /** Comment */
             comment: string | null;
             /** Status */
@@ -3658,8 +3296,7 @@ export interface components {
         };
         /** CharacterSheet */
         CharacterSheet: {
-            /** Character */
-            character: components["schemas"]["HeroSheet"] | components["schemas"]["UniversalGameCard"];
+            character: components["schemas"]["UniversalGameCard"];
             /**
              * Event Id
              * @default null
@@ -3672,97 +3309,33 @@ export interface components {
         };
         /**
          * CharacterView
-         * @description Герой в ответе REST: полный лист, если его можно видеть, иначе публичная часть; плюс имена из каталога и
-         *     состояние проверки.
+         * @description Public campaign character; owners receive UniversalGameCard separately.
          */
         CharacterView: {
             /** Bonds */
             bonds: components["schemas"]["Bond"][];
-            /** Class Features */
-            class_features?: components["schemas"]["ClassFeature"][];
-            /** Class Id */
-            class_id: string | null;
-            /** Class Name */
-            class_name?: string | null;
             /** Companions */
             companions: components["schemas"]["CompanionPublic"][];
             /** Dead */
             dead: boolean;
-            /** Death Saves */
-            death_saves: [
-                number,
-                number
-            ] | null;
-            derived?: components["schemas"]["Derived"];
-            equipment?: components["schemas"]["EquipmentState"];
-            /** Errors */
-            errors?: string[];
-            /** Features */
-            features?: components["schemas"]["FeatureUses"][];
             /** Hp */
             hp: number | null;
             /** Hp Max */
             hp_max: number | null;
             /** Id */
             id: string;
-            /** Inventory */
-            inventory?: components["schemas"]["InventoryRow"][];
             /** Level */
             level: number;
-            lineage?: components["schemas"]["Lineage"];
             /** Name */
             name: string;
-            /** Origin Id */
-            origin_id: string | null;
-            /** Origin Name */
-            origin_name?: string | null;
-            /** Personality */
-            personality?: {
-                [key: string]: unknown;
-            };
             /** Portrait Url */
             portrait_url?: string | null;
-            /** Private Backstory */
-            private_backstory?: string;
-            progress?: components["schemas"]["Progress"];
             /** Public Bio */
             public_bio: string;
-            /** Resources */
-            resources?: {
-                [key: string]: unknown;
-            };
-            /** Review Attempt Id */
-            review_attempt_id?: string | null;
-            /** Review Comment */
-            review_comment?: string | null;
-            /** Review Error */
-            review_error?: string | null;
-            /**
-             * Review Status
-             * @enum {string}
-             */
-            review_status?: "queued" | "running" | "failed" | "interrupted";
-            /**
-             * Reviewer
-             * @enum {string}
-             */
-            reviewer?: "ai" | "master";
             /** Seat Id */
             seat_id: string | null;
-            /** Sheet */
-            sheet?: {
-                [key: string]: unknown;
-            };
-            /** Spellbook */
-            spellbook?: {
-                [key: string]: unknown;
-            };
-            /** Stand In */
-            stand_in?: boolean;
             /** Status */
             status: string;
-            /** Wild Shape Forms */
-            wild_shape_forms?: components["schemas"]["WildShapeForm"][];
         };
         /** ChatEditIn */
         ChatEditIn: {
@@ -3805,62 +3378,6 @@ export interface components {
             state: ("pending" | "processing" | "answered" | "failed") | null;
             /** Whisper */
             whisper: boolean;
-        };
-        /**
-         * ClassFeature
-         * @description Умение класса в листе игрока: что даёт, как применить и кто его исполняет (``mode``): сервер сам,
-         *     игрок заявляет в ходе фразой ``say`` или мастер по описанию.
-         */
-        ClassFeature: {
-            /**
-             * Detail
-             * @default null
-             */
-            detail?: string;
-            /**
-             * How
-             * @default null
-             */
-            how?: string;
-            /** Key */
-            key: string;
-            /** Level */
-            level: number;
-            /**
-             * Mode
-             * @enum {string}
-             */
-            mode: "auto" | "declare" | "master";
-            /** Name */
-            name: string;
-            /**
-             * Say
-             * @default null
-             */
-            say?: string;
-            /**
-             * Skills
-             * @default null
-             */
-            skills?: string[];
-            /**
-             * Text Ru
-             * @default null
-             */
-            text_ru?: string;
-            /** @default null */
-            uses?: components["schemas"]["ClassFeatureUses"];
-        };
-        /** ClassFeatureUses */
-        ClassFeatureUses: {
-            /** Left */
-            left: number;
-            /** Max */
-            max: number;
-            /** Per Ru */
-            per_ru: string;
-            /** Unit */
-            unit: string;
         };
         /** ClassItem */
         ClassItem: {
@@ -3998,37 +3515,6 @@ export interface components {
             /** Tags */
             tags?: string[];
         };
-        /** Derived */
-        Derived: {
-            /** Abilities */
-            abilities: {
-                [key: string]: number;
-            };
-            /** Ac */
-            ac: number;
-            /** Attacks */
-            attacks: components["schemas"]["HeroAttack"][];
-            /** Effects */
-            effects: components["schemas"]["HeroEffect"][];
-            /** Hp Max */
-            hp_max: number;
-            /** Mods */
-            mods: {
-                [key: string]: number;
-            };
-            /** Pb */
-            pb: number;
-            /** Saves */
-            saves: {
-                [key: string]: number;
-            };
-            /** Skills */
-            skills: {
-                [key: string]: number;
-            };
-            /** Speed */
-            speed: number;
-        };
         /** DraftPatch */
         DraftPatch: {
             /** Operations */
@@ -4130,49 +3616,10 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** EquipmentChangeView */
-        EquipmentChangeView: {
-            /**
-             * Action Cost
-             * @default 0
-             */
-            action_cost?: number;
-            /** Allowed */
-            allowed: boolean;
-            /** Displaced Ids */
-            displaced_ids?: string[];
-            /**
-             * Interaction Count
-             * @default 0
-             */
-            interaction_count?: number;
-            /**
-             * Reason
-             * @default null
-             */
-            reason?: string | null;
-        };
-        /** EquipmentResponse */
-        EquipmentResponse: {
-            character: components["schemas"]["CharacterView"];
-            economy?: components["schemas"]["TurnEconomy"] | null;
-        };
-        /** EquipmentState */
-        EquipmentState: {
-            /**
-             * Can Manage
-             * @default false
-             */
-            can_manage?: boolean;
-            /** Changes */
-            changes?: {
-                [key: string]: components["schemas"]["EquipmentChangeView"];
-            };
-            /**
-             * In Combat
-             * @default false
-             */
-            in_combat?: boolean;
+        /** EquipmentIn */
+        EquipmentIn: {
+            /** Expected Revision */
+            expected_revision: number;
         };
         /** Error */
         Error: {
@@ -4584,32 +4031,6 @@ export interface components {
              */
             type: "reaction.prompt";
         };
-        /** Event_rest_ended */
-        Event_rest_ended: {
-            /** Campaign Id */
-            campaign_id: string | null;
-            payload: components["schemas"]["RestEnded"];
-            /** Seq */
-            seq: number | null;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "rest.ended";
-        };
-        /** Event_rest_vote */
-        Event_rest_vote: {
-            /** Campaign Id */
-            campaign_id: string | null;
-            payload: components["schemas"]["RestVote"];
-            /** Seq */
-            seq: number | null;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "rest.vote";
-        };
         /** Event_scene_updated */
         Event_scene_updated: {
             /** Campaign Id */
@@ -4813,26 +4234,6 @@ export interface components {
             /** Seat Ref */
             seat_ref?: string | null;
         };
-        /** FeatureUses */
-        FeatureUses: {
-            /** Key */
-            key: string;
-            /** Left */
-            left: number;
-            /** Max */
-            max: number;
-            /** Name */
-            name: string;
-            /**
-             * Per
-             * @enum {string}
-             */
-            per: "short_rest" | "long_rest";
-            /** Per Ru */
-            per_ru: string;
-            /** Unit */
-            unit: string;
-        };
         /** GameItemAction */
         GameItemAction: {
             /** Item Id */
@@ -4895,46 +4296,6 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
-        };
-        /** HeroAttack */
-        HeroAttack: {
-            /** Attack Bonus */
-            attack_bonus: number;
-            /** Damage */
-            damage: string;
-            /** Damage Type */
-            damage_type: string;
-            /**
-             * Inventory Id
-             * @default null
-             */
-            inventory_id?: string;
-            /** Key */
-            key: string;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "melee" | "ranged";
-            /**
-             * Long Ft
-             * @default null
-             */
-            long_ft?: number;
-            /** Name */
-            name: string;
-            /**
-             * Normal Ft
-             * @default null
-             */
-            normal_ft?: number;
-            /**
-             * Reach Ft
-             * @default null
-             */
-            reach_ft?: number;
-        } & {
-            [key: string]: unknown;
         };
         /** HeroBudget */
         HeroBudget: {
@@ -5027,27 +4388,6 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
-        /** HeroEffect */
-        HeroEffect: {
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /**
-             * Reason
-             * @default null
-             */
-            reason?: string | null;
-            /**
-             * Source
-             * @default null
-             */
-            source?: string | null;
-            /** Stacks */
-            stacks: number;
-            /** Template */
-            template: string;
-        };
         /**
          * HeroPublic
          * @description Публичная часть героя: её видят все участники кампании.
@@ -5055,17 +4395,10 @@ export interface components {
         HeroPublic: {
             /** Bonds */
             bonds: components["schemas"]["Bond"][];
-            /** Class Id */
-            class_id: string | null;
             /** Companions */
             companions: components["schemas"]["CompanionPublic"][];
             /** Dead */
             dead: boolean;
-            /** Death Saves */
-            death_saves: [
-                number,
-                number
-            ] | null;
             /** Hp */
             hp: number | null;
             /** Hp Max */
@@ -5076,8 +4409,6 @@ export interface components {
             level: number;
             /** Name */
             name: string;
-            /** Origin Id */
-            origin_id: string | null;
             /**
              * Portrait Url
              * @default null
@@ -5089,140 +4420,6 @@ export interface components {
             seat_id: string | null;
             /** Status */
             status: string;
-        };
-        /**
-         * HeroSheet
-         * @description Полный лист героя (``full_view``).
-         */
-        HeroSheet: {
-            /** Bonds */
-            bonds: components["schemas"]["Bond"][];
-            /**
-             * Class Features
-             * @default null
-             */
-            class_features?: components["schemas"]["ClassFeature"][];
-            /** Class Id */
-            class_id: string | null;
-            /**
-             * Class Name
-             * @default null
-             */
-            class_name?: string | null;
-            /** Companions */
-            companions: components["schemas"]["CompanionPublic"][];
-            /** Dead */
-            dead: boolean;
-            /** Death Saves */
-            death_saves: [
-                number,
-                number
-            ] | null;
-            /** @default null */
-            derived?: components["schemas"]["Derived"];
-            /** @default null */
-            equipment?: components["schemas"]["EquipmentState"];
-            /**
-             * Errors
-             * @default null
-             */
-            errors?: string[];
-            /**
-             * Features
-             * @default null
-             */
-            features?: components["schemas"]["FeatureUses"][];
-            /** Hp */
-            hp: number | null;
-            /** Hp Max */
-            hp_max: number | null;
-            /** Id */
-            id: string;
-            /** Inventory */
-            inventory: components["schemas"]["InventoryRow"][];
-            /** Level */
-            level: number;
-            /** @default null */
-            lineage?: components["schemas"]["Lineage"];
-            /** Name */
-            name: string;
-            /** Origin Id */
-            origin_id: string | null;
-            /**
-             * Origin Name
-             * @default null
-             */
-            origin_name?: string | null;
-            /** Personality */
-            personality: {
-                [key: string]: unknown;
-            };
-            /**
-             * Portrait Url
-             * @default null
-             */
-            portrait_url?: string | null;
-            /**
-             * Private Backstory
-             * @default null
-             */
-            private_backstory?: string;
-            progress: components["schemas"]["Progress"];
-            /** Public Bio */
-            public_bio: string;
-            /** Resources */
-            resources: {
-                [key: string]: unknown;
-            };
-            /**
-             * Review Attempt Id
-             * @default null
-             */
-            review_attempt_id?: string | null;
-            /** Review Comment */
-            review_comment: string | null;
-            /**
-             * Review Error
-             * @default null
-             */
-            review_error?: string | null;
-            /**
-             * Review Status
-             * @default null
-             * @enum {string}
-             */
-            review_status?: "queued" | "running" | "failed" | "interrupted";
-            /**
-             * Reviewer
-             * @default null
-             * @enum {string}
-             */
-            reviewer?: "ai" | "master";
-            /** Seat Id */
-            seat_id: string | null;
-            /** Sheet */
-            sheet: {
-                [key: string]: unknown;
-            };
-            /**
-             * Spellbook
-             * @default null
-             */
-            spellbook?: {
-                [key: string]: unknown;
-            };
-            /**
-             * Stand In
-             * @default null
-             */
-            stand_in?: boolean;
-            /** Status */
-            status: string;
-            /**
-             * Wild Shape Forms
-             * @default null
-             */
-            wild_shape_forms?: components["schemas"]["WildShapeForm"][];
         };
         /** ImportIn */
         ImportIn: {
@@ -5373,58 +4570,6 @@ export interface components {
             /** Id */
             id: string;
         };
-        /** InventoryRow */
-        InventoryRow: {
-            /**
-             * Ac Base
-             * @default null
-             */
-            ac_base?: number | null;
-            /**
-             * Ac Bonus
-             * @default null
-             */
-            ac_bonus?: number | null;
-            /**
-             * Armor Type
-             * @default null
-             */
-            armor_type?: string | null;
-            /**
-             * Category
-             * @default null
-             */
-            category?: string | null;
-            /**
-             * Damage
-             * @default null
-             */
-            damage?: {
-                [key: string]: string;
-            } | null;
-            /**
-             * Dex Cap
-             * @default null
-             */
-            dex_cap?: number | null;
-            /** Equipped */
-            equipped: boolean;
-            /** Id */
-            id: string;
-            /** Item */
-            item: string;
-            /** Name */
-            name: string;
-            /** Properties */
-            properties?: string[];
-            /** Qty */
-            qty: number;
-            /**
-             * Two Handed
-             * @default false
-             */
-            two_handed?: boolean;
-        };
         /** InviteCreateIn */
         InviteCreateIn: {
             /**
@@ -5511,105 +4656,6 @@ export interface components {
             options: components["schemas"]["InstanceOptions"];
             /** Request Key */
             request_key: string;
-        };
-        /** LibraryHeroIn */
-        LibraryHeroIn: {
-            /** Abilities */
-            abilities?: {
-                [key: string]: number;
-            } | null;
-            /** Ability Choice */
-            ability_choice?: string[] | null;
-            /** Ability Method */
-            ability_method?: ("standard_array" | "point_buy" | "roll") | null;
-            /** Cantrips */
-            cantrips?: string[] | null;
-            /** Class Id */
-            class_id?: string | null;
-            /** Equipment Choices */
-            equipment_choices?: {
-                [key: string]: unknown;
-            }[] | null;
-            /** Expertise */
-            expertise?: string[] | null;
-            /** Fighting Style */
-            fighting_style?: string | null;
-            /** Name */
-            name?: string | null;
-            /** Origin Id */
-            origin_id?: string | null;
-            /** Pack Id */
-            pack_id?: string | null;
-            /** Personality */
-            personality?: {
-                [key: string]: string;
-            } | null;
-            /** Prepared */
-            prepared?: string[] | null;
-            /** Private Backstory */
-            private_backstory?: string | null;
-            /** Public Bio */
-            public_bio?: string | null;
-            /** Skills */
-            skills?: string[] | null;
-            /** Spells */
-            spells?: string[] | null;
-        };
-        /** LibraryPreviewIn */
-        LibraryPreviewIn: {
-            /** Abilities */
-            abilities?: {
-                [key: string]: number;
-            } | null;
-            /** Ability Choice */
-            ability_choice?: string[] | null;
-            /** Ability Method */
-            ability_method?: ("standard_array" | "point_buy" | "roll") | null;
-            /** Ability Rolls */
-            ability_rolls?: number[] | null;
-            /** Cantrips */
-            cantrips?: string[] | null;
-            /** Class Id */
-            class_id?: string | null;
-            /** Equipment Choices */
-            equipment_choices?: {
-                [key: string]: unknown;
-            }[] | null;
-            /** Expertise */
-            expertise?: string[] | null;
-            /** Fighting Style */
-            fighting_style?: string | null;
-            /** Name */
-            name?: string | null;
-            /** Origin Id */
-            origin_id?: string | null;
-            /** Pack Id */
-            pack_id?: string | null;
-            /** Personality */
-            personality?: {
-                [key: string]: string;
-            } | null;
-            /** Prepared */
-            prepared?: string[] | null;
-            /** Private Backstory */
-            private_backstory?: string | null;
-            /** Public Bio */
-            public_bio?: string | null;
-            /** Skills */
-            skills?: string[] | null;
-            /** Spells */
-            spells?: string[] | null;
-        };
-        /** Lineage */
-        Lineage: {
-            /** Caste */
-            caste: string | null;
-            /** Features */
-            features: string[];
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
         };
         /** LocationDistrict */
         LocationDistrict: {
@@ -7180,49 +6226,6 @@ export interface components {
              */
             status: "online" | "reconnecting" | "offline";
         };
-        /** PreviewIn */
-        PreviewIn: {
-            /** Abilities */
-            abilities?: {
-                [key: string]: number;
-            } | null;
-            /** Ability Choice */
-            ability_choice?: string[] | null;
-            /** Ability Method */
-            ability_method?: ("standard_array" | "point_buy" | "roll") | null;
-            /** Ability Rolls */
-            ability_rolls?: number[] | null;
-            /** Cantrips */
-            cantrips?: string[] | null;
-            /** Class Id */
-            class_id?: string | null;
-            /** Equipment Choices */
-            equipment_choices?: {
-                [key: string]: unknown;
-            }[] | null;
-            /** Expertise */
-            expertise?: string[] | null;
-            /** Fighting Style */
-            fighting_style?: string | null;
-            /** Name */
-            name?: string | null;
-            /** Origin Id */
-            origin_id?: string | null;
-            /** Personality */
-            personality?: {
-                [key: string]: string;
-            } | null;
-            /** Prepared */
-            prepared?: string[] | null;
-            /** Private Backstory */
-            private_backstory?: string | null;
-            /** Public Bio */
-            public_bio?: string | null;
-            /** Skills */
-            skills?: string[] | null;
-            /** Spells */
-            spells?: string[] | null;
-        };
         /** ProfileOut */
         ProfileOut: {
             /** Can Manage Models */
@@ -7240,15 +6243,6 @@ export interface components {
             };
             user: components["schemas"]["UserOut"];
         };
-        /** Progress */
-        Progress: {
-            /** Level Xp */
-            level_xp: number;
-            /** Next Xp */
-            next_xp: number | null;
-            /** Xp */
-            xp: number;
-        };
         /** ProjectDetail */
         ProjectDetail: {
             brief?: components["schemas"]["BriefIn"];
@@ -7262,7 +6256,7 @@ export interface components {
             latest_version?: number | null;
             /**
              * Ruleset Id
-             * @default dnd5e
+             * @default universal
              */
             ruleset_id?: string;
             /**
@@ -7388,79 +6382,12 @@ export interface components {
             /** Request Key */
             request_key: string;
         };
-        /** RestEnded */
-        RestEnded: {
-            /** Vote Id */
-            vote_id: string;
-        };
-        /** RestHero */
-        RestHero: {
-            /** Choice */
-            choice: ("sleep" | "watch" | "no") | null;
-            /** Hit Dice */
-            hit_dice: number | null;
-            /** Hit Dice Left */
-            hit_dice_left: number;
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Seat Id */
-            seat_id: string | null;
-            /** Voter */
-            voter: boolean;
-        };
-        /** RestVote */
-        RestVote: {
-            /** Choices */
-            choices: ("sleep" | "watch" | "no")[];
-            /** Deadline */
-            deadline: number;
-            /** Heroes */
-            heroes: components["schemas"]["RestHero"][];
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "short" | "long";
-            /** Kind Ru */
-            kind_ru: string;
-            /** Place */
-            place: string | null;
-            /** Place Name */
-            place_name: string;
-            /** Proposer */
-            proposer: string | null;
-            /** Safer */
-            safer: string[];
-            /**
-             * Safety
-             * @enum {string}
-             */
-            safety: "safe" | "risky" | "dangerous";
-            /** Safety Ru */
-            safety_ru: string;
-            /** Vote Id */
-            vote_id: string;
-            /** Warning */
-            warning: string | null;
-        };
         /** ResultRef */
         ResultRef: {
             /** Kind */
             kind: string;
             /** Ref */
             ref: string;
-        };
-        /** ReviewIn */
-        ReviewIn: {
-            /** Approve */
-            approve: boolean;
-            /**
-             * Comment
-             * @default
-             */
-            comment?: string;
         };
         /** RevisionIn */
         RevisionIn: {
@@ -7608,7 +6535,7 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
-        ServerEvent: components["schemas"]["Event_audio_sfx_ready"] | components["schemas"]["Event_audio_state"] | components["schemas"]["Event_auth_ok"] | components["schemas"]["Event_campaign_deleted"] | components["schemas"]["Event_campaign_epilogue"] | components["schemas"]["Event_campaign_plan"] | components["schemas"]["Event_character_bonds"] | components["schemas"]["Event_character_review_failed"] | components["schemas"]["Event_character_review_started"] | components["schemas"]["Event_character_reviewed"] | components["schemas"]["Event_character_sheet"] | components["schemas"]["Event_character_updated"] | components["schemas"]["Event_entity_card"] | components["schemas"]["Event_error"] | components["schemas"]["Event_knowledge_revealed"] | components["schemas"]["Event_map_changed"] | components["schemas"]["Event_map_state"] | components["schemas"]["Event_map_step_result"] | components["schemas"]["Event_map_traverse_result"] | components["schemas"]["Event_master_status"] | components["schemas"]["Event_master_tool_result"] | components["schemas"]["Event_message_chunk"] | components["schemas"]["Event_message_new"] | components["schemas"]["Event_message_notice"] | components["schemas"]["Event_message_rejected"] | components["schemas"]["Event_message_state"] | components["schemas"]["Event_message_withdrawn"] | components["schemas"]["Event_pong"] | components["schemas"]["Event_presence_changed"] | components["schemas"]["Event_reaction_closed"] | components["schemas"]["Event_reaction_prompt"] | components["schemas"]["Event_rest_ended"] | components["schemas"]["Event_rest_vote"] | components["schemas"]["Event_scene_updated"] | components["schemas"]["Event_seat_changed"] | components["schemas"]["Event_session_ended"] | components["schemas"]["Event_session_paused"] | components["schemas"]["Event_session_started"] | components["schemas"]["Event_session_summary"] | components["schemas"]["Event_stand_in_changed"] | components["schemas"]["Event_stat_explained"] | components["schemas"]["Event_state_actions"] | components["schemas"]["Event_state_snapshot"] | components["schemas"]["Event_turn_changed"] | components["schemas"]["Event_vote_ended"] | components["schemas"]["Event_vote_started"] | components["schemas"]["Event_vote_updated"];
+        ServerEvent: components["schemas"]["Event_audio_sfx_ready"] | components["schemas"]["Event_audio_state"] | components["schemas"]["Event_auth_ok"] | components["schemas"]["Event_campaign_deleted"] | components["schemas"]["Event_campaign_epilogue"] | components["schemas"]["Event_campaign_plan"] | components["schemas"]["Event_character_bonds"] | components["schemas"]["Event_character_review_failed"] | components["schemas"]["Event_character_review_started"] | components["schemas"]["Event_character_reviewed"] | components["schemas"]["Event_character_sheet"] | components["schemas"]["Event_character_updated"] | components["schemas"]["Event_entity_card"] | components["schemas"]["Event_error"] | components["schemas"]["Event_knowledge_revealed"] | components["schemas"]["Event_map_changed"] | components["schemas"]["Event_map_state"] | components["schemas"]["Event_map_step_result"] | components["schemas"]["Event_map_traverse_result"] | components["schemas"]["Event_master_status"] | components["schemas"]["Event_master_tool_result"] | components["schemas"]["Event_message_chunk"] | components["schemas"]["Event_message_new"] | components["schemas"]["Event_message_notice"] | components["schemas"]["Event_message_rejected"] | components["schemas"]["Event_message_state"] | components["schemas"]["Event_message_withdrawn"] | components["schemas"]["Event_pong"] | components["schemas"]["Event_presence_changed"] | components["schemas"]["Event_reaction_closed"] | components["schemas"]["Event_reaction_prompt"] | components["schemas"]["Event_scene_updated"] | components["schemas"]["Event_seat_changed"] | components["schemas"]["Event_session_ended"] | components["schemas"]["Event_session_paused"] | components["schemas"]["Event_session_started"] | components["schemas"]["Event_session_summary"] | components["schemas"]["Event_stand_in_changed"] | components["schemas"]["Event_stat_explained"] | components["schemas"]["Event_state_actions"] | components["schemas"]["Event_state_snapshot"] | components["schemas"]["Event_turn_changed"] | components["schemas"]["Event_vote_ended"] | components["schemas"]["Event_vote_started"] | components["schemas"]["Event_vote_updated"];
         /** SessionSummary */
         SessionSummary: {
             /** Events */
@@ -7702,7 +6629,7 @@ export interface components {
             public_intro: string;
             /**
              * Ruleset Id
-             * @default dnd5e
+             * @default universal
              */
             ruleset_id?: string;
             /**
@@ -7737,15 +6664,6 @@ export interface components {
             pinned?: boolean | null;
             /** Title */
             title?: string | null;
-        };
-        /** SpellsIn */
-        SpellsIn: {
-            /** Cantrips */
-            cantrips?: string[] | null;
-            /** Prepared */
-            prepared?: string[] | null;
-            /** Spells */
-            spells?: string[] | null;
         };
         /** StageReceipt */
         StageReceipt: {
@@ -7962,8 +6880,6 @@ export interface components {
             reaction: components["schemas"]["ReactionPrompt"] | null;
             /** Replay */
             replay: boolean;
-            /** Rest Votes */
-            rest_votes: components["schemas"]["RestVote"][];
             scene: components["schemas"]["Scene"];
             /** Seats */
             seats: components["schemas"]["SeatState"][];
@@ -8437,15 +7353,6 @@ export interface components {
             /** Who */
             who: string;
         };
-        /** WildShapeForm */
-        WildShapeForm: {
-            /** Cr */
-            cr: unknown;
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-        };
         /** WorldDetail */
         WorldDetail: {
             /** Badges */
@@ -8551,21 +7458,6 @@ export interface components {
             /** Version */
             version: string;
         };
-        /** EquipmentIn */
-        app__api__equipment__EquipmentIn: {
-            /**
-             * Equipped
-             * @default true
-             */
-            equipped?: boolean;
-            /** Inventory Id */
-            inventory_id: string;
-        };
-        /** EquipmentIn */
-        app__api__library__EquipmentIn: {
-            /** Expected Revision */
-            expected_revision: number;
-        };
     };
     responses: never;
     parameters: never;
@@ -8601,7 +7493,6 @@ export type CanonEntryOut = components['schemas']['CanonEntryOut'];
 export type CanonJournalOut = components['schemas']['CanonJournalOut'];
 export type CardHero = components['schemas']['CardHero'];
 export type CharacterBonds = components['schemas']['CharacterBonds'];
-export type CharacterIn = components['schemas']['CharacterIn'];
 export type CharacterReviewFailed = components['schemas']['CharacterReviewFailed'];
 export type CharacterReviewStarted = components['schemas']['CharacterReviewStarted'];
 export type CharacterReviewed = components['schemas']['CharacterReviewed'];
@@ -8610,8 +7501,6 @@ export type CharacterUpdated = components['schemas']['CharacterUpdated'];
 export type CharacterView = components['schemas']['CharacterView'];
 export type ChatEditIn = components['schemas']['ChatEditIn'];
 export type ChatMessage = components['schemas']['ChatMessage'];
-export type ClassFeature = components['schemas']['ClassFeature'];
-export type ClassFeatureUses = components['schemas']['ClassFeatureUses'];
 export type ClassItem = components['schemas']['ClassItem'];
 export type ClockItem = components['schemas']['ClockItem'];
 export type CompanionPublic = components['schemas']['CompanionPublic'];
@@ -8619,7 +7508,6 @@ export type CreationDialogue = components['schemas']['CreationDialogue'];
 export type CreationIn = components['schemas']['CreationIn'];
 export type CreationRulesIn = components['schemas']['CreationRulesIn'];
 export type CreatureItem = components['schemas']['CreatureItem'];
-export type Derived = components['schemas']['Derived'];
 export type DraftPatch = components['schemas']['DraftPatch'];
 export type EditIn = components['schemas']['EditIn'];
 export type EditMap = components['schemas']['EditMap'];
@@ -8630,9 +7518,7 @@ export type EditsRequest = components['schemas']['EditsRequest'];
 export type Empty = components['schemas']['Empty'];
 export type EntityCard = components['schemas']['EntityCard'];
 export type Epilogue = components['schemas']['Epilogue'];
-export type EquipmentChangeView = components['schemas']['EquipmentChangeView'];
-export type EquipmentResponse = components['schemas']['EquipmentResponse'];
-export type EquipmentState = components['schemas']['EquipmentState'];
+export type EquipmentIn = components['schemas']['EquipmentIn'];
 export type Error = components['schemas']['Error'];
 export type Event_audio_sfx_ready = components['schemas']['Event_audio_sfx_ready'];
 export type Event_audio_state = components['schemas']['Event_audio_state'];
@@ -8665,8 +7551,6 @@ export type Event_pong = components['schemas']['Event_pong'];
 export type Event_presence_changed = components['schemas']['Event_presence_changed'];
 export type Event_reaction_closed = components['schemas']['Event_reaction_closed'];
 export type Event_reaction_prompt = components['schemas']['Event_reaction_prompt'];
-export type Event_rest_ended = components['schemas']['Event_rest_ended'];
-export type Event_rest_vote = components['schemas']['Event_rest_vote'];
 export type Event_scene_updated = components['schemas']['Event_scene_updated'];
 export type Event_seat_changed = components['schemas']['Event_seat_changed'];
 export type Event_session_ended = components['schemas']['Event_session_ended'];
@@ -8682,20 +7566,16 @@ export type Event_vote_ended = components['schemas']['Event_vote_ended'];
 export type Event_vote_started = components['schemas']['Event_vote_started'];
 export type Event_vote_updated = components['schemas']['Event_vote_updated'];
 export type FactionItem = components['schemas']['FactionItem'];
-export type FeatureUses = components['schemas']['FeatureUses'];
 export type GameItemAction = components['schemas']['GameItemAction'];
 export type GeneratedObject = components['schemas']['GeneratedObject'];
 export type GenerationStatusOut = components['schemas']['GenerationStatusOut'];
 export type Grid = components['schemas']['Grid'];
 export type HTTPValidationError = components['schemas']['HTTPValidationError'];
-export type HeroAttack = components['schemas']['HeroAttack'];
 export type HeroBudget = components['schemas']['HeroBudget'];
 export type HeroCard = components['schemas']['HeroCard'];
 export type HeroDescription = components['schemas']['HeroDescription'];
 export type HeroEdit = components['schemas']['HeroEdit'];
-export type HeroEffect = components['schemas']['HeroEffect'];
 export type HeroPublic = components['schemas']['HeroPublic'];
-export type HeroSheet = components['schemas']['HeroSheet'];
 export type ImportIn = components['schemas']['ImportIn'];
 export type ImportPlotRequest = components['schemas']['ImportPlotRequest'];
 export type ImportResult = components['schemas']['ImportResult'];
@@ -8705,7 +7585,6 @@ export type IntroOut = components['schemas']['IntroOut'];
 export type IntroRequest = components['schemas']['IntroRequest'];
 export type IntroTextRequest = components['schemas']['IntroTextRequest'];
 export type IntroVoiceOut = components['schemas']['IntroVoiceOut'];
-export type InventoryRow = components['schemas']['InventoryRow'];
 export type InviteCreateIn = components['schemas']['InviteCreateIn'];
 export type InviteOut = components['schemas']['InviteOut'];
 export type InvitePreviewOut = components['schemas']['InvitePreviewOut'];
@@ -8713,9 +7592,6 @@ export type JobOut = components['schemas']['JobOut'];
 export type KnowledgeRevealed = components['schemas']['KnowledgeRevealed'];
 export type LaunchReceipt = components['schemas']['LaunchReceipt'];
 export type LaunchRequest = components['schemas']['LaunchRequest'];
-export type LibraryHeroIn = components['schemas']['LibraryHeroIn'];
-export type LibraryPreviewIn = components['schemas']['LibraryPreviewIn'];
-export type Lineage = components['schemas']['Lineage'];
 export type LocationDistrict = components['schemas']['LocationDistrict'];
 export type LocationItem = components['schemas']['LocationItem'];
 export type LocationPresentation = components['schemas']['LocationPresentation'];
@@ -8804,9 +7680,7 @@ export type PortraitIn = components['schemas']['PortraitIn'];
 export type PreparationView = components['schemas']['PreparationView'];
 export type PrepareRequest = components['schemas']['PrepareRequest'];
 export type PresenceChanged = components['schemas']['PresenceChanged'];
-export type PreviewIn = components['schemas']['PreviewIn'];
 export type ProfileOut = components['schemas']['ProfileOut'];
-export type Progress = components['schemas']['Progress'];
 export type ProjectDetail = components['schemas']['ProjectDetail'];
 export type ProjectSummary = components['schemas']['ProjectSummary'];
 export type ProjectView = components['schemas']['ProjectView'];
@@ -8819,11 +7693,7 @@ export type ReactionPrompt = components['schemas']['ReactionPrompt'];
 export type RegisterByInviteIn = components['schemas']['RegisterByInviteIn'];
 export type RemoveObject = components['schemas']['RemoveObject'];
 export type RequestKey = components['schemas']['RequestKey'];
-export type RestEnded = components['schemas']['RestEnded'];
-export type RestHero = components['schemas']['RestHero'];
-export type RestVote = components['schemas']['RestVote'];
 export type ResultRef = components['schemas']['ResultRef'];
-export type ReviewIn = components['schemas']['ReviewIn'];
 export type RevisionIn = components['schemas']['RevisionIn'];
 export type ScaleItem = components['schemas']['ScaleItem'];
 export type Scene = components['schemas']['Scene'];
@@ -8845,7 +7715,6 @@ export type SnapshotCampaign = components['schemas']['SnapshotCampaign'];
 export type SnapshotMe = components['schemas']['SnapshotMe'];
 export type SnapshotSession = components['schemas']['SnapshotSession'];
 export type SoundPatch = components['schemas']['SoundPatch'];
-export type SpellsIn = components['schemas']['SpellsIn'];
 export type StageReceipt = components['schemas']['StageReceipt'];
 export type StageStatus = components['schemas']['StageStatus'];
 export type StageTask = components['schemas']['StageTask'];
@@ -8880,12 +7749,9 @@ export type ValidationSummary = components['schemas']['ValidationSummary'];
 export type VersionOut = components['schemas']['VersionOut'];
 export type Vote = components['schemas']['Vote'];
 export type VoteEnded = components['schemas']['VoteEnded'];
-export type WildShapeForm = components['schemas']['WildShapeForm'];
 export type WorldDetail = components['schemas']['WorldDetail'];
 export type WorldOverview = components['schemas']['WorldOverview'];
 export type WorldSummary = components['schemas']['WorldSummary'];
-export type app__api__equipment__EquipmentIn = components['schemas']['app__api__equipment__EquipmentIn'];
-export type app__api__library__EquipmentIn = components['schemas']['app__api__library__EquipmentIn'];
 export type $defs = Record<string, never>;
 export interface operations {
     admin_audio_api_admin_audio_get: {
@@ -11174,80 +10040,6 @@ export interface operations {
             };
         };
     };
-    character_options_api_campaigns__campaign_id__character_options_get: {
-        parameters: {
-            query?: {
-                as_seat?: string | null;
-            };
-            header?: never;
-            path: {
-                campaign_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    character_preview_api_campaigns__campaign_id__character_preview_post: {
-        parameters: {
-            query?: {
-                as_seat?: string | null;
-            };
-            header?: never;
-            path: {
-                campaign_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PreviewIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     list_characters_api_campaigns__campaign_id__characters_get: {
         parameters: {
             query?: {
@@ -11268,43 +10060,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": (components["schemas"]["CharacterView"] | components["schemas"]["UniversalGameCard"])[];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_character_api_campaigns__campaign_id__characters_post: {
-        parameters: {
-            query?: {
-                as_seat?: string | null;
-            };
-            header?: never;
-            path: {
-                campaign_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CharacterIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CharacterView"];
                 };
             };
             /** @description Validation Error */
@@ -11422,44 +10177,6 @@ export interface operations {
             };
         };
     };
-    update_character_api_campaigns__campaign_id__characters__character_id__put: {
-        parameters: {
-            query?: {
-                as_seat?: string | null;
-            };
-            header?: never;
-            path: {
-                campaign_id: string;
-                character_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CharacterIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CharacterView"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     allocate_earned_points_api_campaigns__campaign_id__characters__character_id__allocate_points_post: {
         parameters: {
             query?: {
@@ -11559,78 +10276,6 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    claim_api_campaigns__campaign_id__characters__character_id__claim_post: {
-        parameters: {
-            query?: {
-                as_seat?: string | null;
-            };
-            header?: never;
-            path: {
-                campaign_id: string;
-                character_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CharacterView"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    change_equipment_api_campaigns__campaign_id__characters__character_id__equipment_put: {
-        parameters: {
-            query?: {
-                as_seat?: string | null;
-            };
-            header?: never;
-            path: {
-                campaign_id: string;
-                character_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["app__api__equipment__EquipmentIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EquipmentResponse"];
                 };
             };
             /** @description Validation Error */
@@ -11898,224 +10543,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UniversalGameCard"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    review_api_campaigns__campaign_id__characters__character_id__review_post: {
-        parameters: {
-            query?: {
-                as_seat?: string | null;
-            };
-            header?: never;
-            path: {
-                campaign_id: string;
-                character_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ReviewIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CharacterView"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    retry_ai_review_api_campaigns__campaign_id__characters__character_id__review_retry_ai_post: {
-        parameters: {
-            query?: {
-                as_seat?: string | null;
-            };
-            header?: never;
-            path: {
-                campaign_id: string;
-                character_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    roll_abilities_api_campaigns__campaign_id__characters__character_id__roll_abilities_post: {
-        parameters: {
-            query?: {
-                as_seat?: string | null;
-            };
-            header?: never;
-            path: {
-                campaign_id: string;
-                character_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_spells_api_campaigns__campaign_id__characters__character_id__spells_put: {
-        parameters: {
-            query?: {
-                as_seat?: string | null;
-            };
-            header?: never;
-            path: {
-                campaign_id: string;
-                character_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SpellsIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CharacterView"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    spell_options_api_campaigns__campaign_id__characters__character_id__spells_options_get: {
-        parameters: {
-            query?: {
-                as_seat?: string | null;
-            };
-            header?: never;
-            path: {
-                campaign_id: string;
-                character_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    submit_api_campaigns__campaign_id__characters__character_id__submit_post: {
-        parameters: {
-            query?: {
-                as_seat?: string | null;
-            };
-            header?: never;
-            path: {
-                campaign_id: string;
-                character_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
                 };
             };
             /** @description Validation Error */
@@ -12915,39 +11342,6 @@ export interface operations {
             };
         };
     };
-    get_party_roles_api_campaigns__campaign_id__party_roles_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                campaign_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     get_plan_api_campaigns__campaign_id__plan_get: {
         parameters: {
             query?: never;
@@ -13041,113 +11435,6 @@ export interface operations {
                         [key: string]: unknown;
                     };
                 };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_premade_api_campaigns__campaign_id__premades_post: {
-        parameters: {
-            query?: {
-                as_seat?: string | null;
-            };
-            header?: never;
-            path: {
-                campaign_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CharacterIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CharacterView"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_premade_api_campaigns__campaign_id__premades__character_id__put: {
-        parameters: {
-            query?: {
-                as_seat?: string | null;
-            };
-            header?: never;
-            path: {
-                campaign_id: string;
-                character_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CharacterIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CharacterView"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_premade_api_campaigns__campaign_id__premades__character_id__delete: {
-        parameters: {
-            query?: {
-                as_seat?: string | null;
-            };
-            header?: never;
-            path: {
-                campaign_id: string;
-                character_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -14093,74 +12380,6 @@ export interface operations {
             };
         };
     };
-    character_options_api_me_character_options_get: {
-        parameters: {
-            query?: {
-                pack?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    character_preview_api_me_character_preview_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LibraryPreviewIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     list_heroes_api_me_characters_get: {
         parameters: {
             query?: never;
@@ -14177,41 +12396,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HeroCard"][];
-                };
-            };
-        };
-    };
-    create_hero_api_me_characters_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LibraryHeroIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -14269,43 +12453,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HeroCard"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_hero_api_me_characters__library_id__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                library_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LibraryHeroIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
                 };
             };
             /** @description Validation Error */
@@ -14467,45 +12614,12 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["app__api__library__EquipmentIn"];
+                "application/json": components["schemas"]["EquipmentIn"];
             };
         };
         responses: {
             /** @description Successful Response */
             201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    roll_abilities_api_me_characters__library_id__roll_abilities_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                library_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14908,28 +13022,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProfileOut"];
-                };
-            };
-        };
-    };
-    list_worlds_api_me_worlds_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
                 };
             };
         };

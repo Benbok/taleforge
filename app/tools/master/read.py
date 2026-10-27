@@ -7,10 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.core.character_form import current_form
-from app.core.features import class_rows, uses_view, wild_shape_forms
 from app.core.world import lineage_features
-from app.db.models import Character
 from app.tools.master.base import _character
 from app.tools.registry import ToolContext, ToolError, tool
 
@@ -39,76 +36,9 @@ class CharacterArg(BaseModel):
     closes=False,
 )
 async def get_character(ctx: ToolContext, a: CharacterArg) -> dict:
-    ch = _character(ctx, a.character_id)
-    act = ctx.world.actor(ch.id)
-    return {
-        "id": ch.id,
-        "name": ch.name,
-        "class": (ch.sheet or {}).get("class_id"),
-        "origin": (ch.sheet or {}).get("origin_id"),
-        "lineage": (ch.sheet or {}).get("lineage_id"),
-        "lineage_caste": (ch.sheet or {}).get("lineage_caste"),
-        "level": (ch.sheet or {}).get("level", 1),
-        "status": act.status(),
-        "current_form": current_form(ch, ctx.world.scene.game_time),
-        "ac": act.ac,
-        "abilities": act.abilities,
-        "saves": act.saves,
-        "skills": act.skills,
-        "attacks": act.attacks,
-        "effects": [
-            {"id": e.id, "template": r.id, "name": r.name, "stacks": e.stacks, "source": e.source, "reason": e.reason}
-            for e, r in act.effects
-        ],
-        "inventory": [
-            {
-                "id": it.id,
-                "item": it.item_template_id,
-                "name": ctx.world.item_name(it),
-                "qty": it.qty,
-                "equipped": it.equipped,
-            }
-            for it in ctx.world.inventory.get(ch.id, [])
-        ],
-        "personality": ch.personality,
-        "public_bio": ch.public_bio,
-        "features": uses_view(ch, ctx.world.catalog, act.mods, act.pb),
-        # все умения класса на уровне героя с текстом SRD: сервер сам считает КД, скорость, компетентность, ярость,
-        # скрытую атаку и подобное; остальное мастер исполняет по тексту
-        "class_features": class_rows(ch, ctx.world.catalog),
-        **_wild_shape(ctx, ch),
-        **_spellbook(ctx, ch),
-    }
+    from app.core.universal.exploration_views import exploration_game_card
 
-
-def _wild_shape(ctx: ToolContext, ch: Character) -> dict:
-    forms = wild_shape_forms(ch, ctx.world.catalog)
-    if forms is None:
-        return {}
-    return {"wild_shape_forms": forms}
-
-
-def _spellbook(ctx: ToolContext, ch: Character) -> dict:
-    """Заклинания героя для мастера: сложность, бонус атаки, ячейки и что он может сотворить (для cast_spell)."""
-    from app.core.spells import book_view
-
-    b = book_view(ch.sheet or {}, ch.resources or {}, ctx.world.catalog)
-    if b is None:
-        return {}
-    return {
-        "spellcasting": {
-            "save_dc": b["save_dc"],
-            "attack": b["attack"],
-            "slots_left": b["slots_left"],
-            "pact_left": b["pact_left"] if b["pact_slots"] else None,
-            "concentration": (b["concentration"] or {}).get("name"),
-            "spells": [
-                {"id": x["id"], "name": x["name"], "level": x["level"], "ritual": x["ritual"]}
-                for x in b["spells"]
-                if x["prepared"]
-            ],
-        }
-    }
+    return await exploration_game_card(ctx.session, _character(ctx, a.character_id))
 
 
 class ThresholdArgs(BaseModel):

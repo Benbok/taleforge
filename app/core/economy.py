@@ -100,19 +100,8 @@ def _save(world, hero_id: str, led: dict) -> None:
 
 
 def attacks_per_action(world, hero_id: str) -> int:
-    """Удары за действие «Атака»: 1 плюс Дополнительные атаки класса до уровня героя."""
-    if hero_id not in world.characters:
-        return 1
-    sheet = world.characters[hero_id].sheet or {}
-    cls = world.catalog.find(sheet.get("class_id") or "", "class")
-    if cls is None:
-        return 1
-    level = int(sheet.get("level") or 1)
-    n = 0
-    for row in cls.data.get("levels") or []:
-        if isinstance(row, dict) and int(row.get("level", 99)) <= level:
-            n += sum(1 for f in row.get("features") or [] if "extra_attack" in str(f))
-    return 1 + n
+    """Shared historical scene ledger has no class-derived extra attacks."""
+    return 1
 
 
 def view(world, hero_id: str) -> dict[str, Any] | None:

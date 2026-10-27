@@ -126,13 +126,15 @@ def test_runtime_diagnostics_record_retry_count_and_reasons():
 
 @pytest.mark.parametrize("prompt_version", ["role-context-v1", "role-context-v2"])
 def test_legacy_path_reports_selection_not_applied_for_any_prompt_version(prompt_version):
-    request, call = asyncio.run(_ask_legacy(
-        prompt_version=prompt_version,
-        messages=[
-            {"role": "system", "content": "legacy system"},
-            {"role": "user", "content": "legacy request"},
-        ],
-    ))
+    request, call = asyncio.run(
+        _ask_legacy(
+            prompt_version=prompt_version,
+            messages=[
+                {"role": "system", "content": "legacy system"},
+                {"role": "user", "content": "legacy request"},
+            ],
+        )
+    )
 
     assert call.diagnostics["assembly_path"] == "legacy"
     assert call.diagnostics["selection_applied"] is False
@@ -175,11 +177,13 @@ def test_runtime_sizes_match_the_serialized_llm_complete_call():
         }
     ]
 
-    request, call = asyncio.run(_ask_legacy(
-        prompt_version="role-context-v1",
-        messages=messages,
-        tools=tools,
-    ))
+    request, call = asyncio.run(
+        _ask_legacy(
+            prompt_version="role-context-v1",
+            messages=messages,
+            tools=tools,
+        )
+    )
 
     expected = message_sizes(request["messages"], request["tools"])
     actual = {key: call.diagnostics[key] for key in expected}

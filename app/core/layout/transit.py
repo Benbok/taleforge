@@ -20,7 +20,7 @@ from app.core.layout import store
 from app.core.layout.contracts import Blueprint, End, Passage
 from app.core.world_tx import WorldConflict
 from app.db.models import Campaign, Entity, MasterTurn, Scene
-from app.rules.dnd5e import modifiers as mod
+from app.rules import modifiers as mod
 from app.tools.registry import ToolError
 
 log = logging.getLogger(__name__)

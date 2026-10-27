@@ -251,7 +251,7 @@ export default function Home() {
                           {h.name || "Без имени"}
                         </span>
                         <span className="truncate text-xs text-muted">
-                          {[h.origin_name, h.class_name, `${h.level} ур.`]
+                          {[`${h.level} ур.`]
                             .filter(Boolean)
                             .join(" · ") || "Черновик"}
                         </span>
@@ -615,7 +615,7 @@ function HeroesLibrarySection({ heroes }: { heroes: LibraryHero[] }) {
                     {h.name || "Без имени"}
                   </Link>
                   <span className="text-xs text-muted font-ui">
-                    {[h.origin_name, h.class_name, `${h.level} уровень`]
+                    {[`${h.level} уровень`]
                       .filter(Boolean)
                       .join(" · ") || "Черновик"}
                   </span>
@@ -655,41 +655,7 @@ function HeroesLibrarySection({ heroes }: { heroes: LibraryHero[] }) {
   );
 }
 
-const FALLBACK_WORLDS: WorldSummary[] = [
-  {
-    id: "echo-leviathans",
-    name: "Эхо Левиафанов",
-    version: "0.2.6",
-    category: "ОСНОВНОЙ СЕТТИНГ · БИОПАНК / ДИЗЕЛЬПАНК",
-    summary:
-      "Мир титанов, павших сорок лет назад. Люди живут на остывающих телах гигантов, добывая ликвор и сражаясь с выводками Резонанса на Пепельной черте.",
-    description:
-      "Сорок лет назад титаны пали с небес. На их гигантских остывающих телах человечество построило новую цивилизацию: в позвоночных каналах гремят печи и фабрики, по жилам текут цистерны с ликвором, а на границах Пепельного кордона защитники сдерживают натиск Резонанса.",
-    ruleset: "dnd5e",
-    ruleset_base: "srd-5.1",
-    level_cap: 15,
-    badges: ["Шкалы: Скверна и Перемена", "Уровни: 1–15", "Система: SRD 5.1 Hack"],
-    status_badge: "АКТИВЕН В СИСТЕМЕ",
-    is_base: false,
-    counts: {},
-  },
-  {
-    id: "dnd5e-srd",
-    name: "D&D 5e SRD 5.1",
-    version: "0.5.9",
-    category: "КЛАССИЧЕСКИЙ НАБОР ПРАВИЛ",
-    summary:
-      "Базовые правила классического фэнтези от Wizards of the Coast (CC BY 4.0). Подходит для кастомных приключений в традиционном сеттинге меча и магии.",
-    description:
-      "Базовые правила классического фэнтези от Wizards of the Coast (CC BY 4.0). Включает 12 базовых классов, свободный бестиарий и классические заклинания.",
-    ruleset: "dnd5e",
-    level_cap: 20,
-    badges: ["12 базовых классов", "Свободный бестиарий"],
-    status_badge: "БАЗОВЫЙ ПАКЕТ",
-    is_base: true,
-    counts: {},
-  },
-];
+const FALLBACK_WORLDS: WorldSummary[] = [];
 
 /** Полноценный экран каталога миров */
 function WorldsSection({ isAdmin }: { isAdmin: boolean }) {

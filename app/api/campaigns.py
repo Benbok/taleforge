@@ -151,7 +151,7 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
         )
         if pack is None:
             raise NotFound("пакет не импортирован")
-        if pack.manifest.get("ruleset") != "dnd5e":
+        if pack.manifest.get("ruleset") not in {"universal", "dnd5e"}:
             raise Conflict("пакет для другой системы правил")
 
     if "narrative" in body.model_fields_set and body.narrative:
@@ -766,16 +766,6 @@ async def seat_agent(
     await session.commit()
     await request.app.state.bus.publish(campaign_id, envelope("seat.changed", campaign_id, {"seat_id": seat_id}), None)
     return await campaign_out(session, v.campaign, user)
-
-
-@router.get("/campaigns/{campaign_id}/party-roles")
-async def get_party_roles(campaign_id: str, user: UserDep, session: SessionDep) -> dict:
-    """Каких ролей не хватает отряду и какие классы их закроют — подсказка перед тем, как сажать ИИ-игрока."""
-    from app.content.catalog import campaign_catalog
-    from app.core.party import party_roles
-
-    v = await _viewer(session, user, campaign_id)
-    return await party_roles(session, v.campaign, await campaign_catalog(session, v.campaign))
 
 
 @router.post("/campaigns/{campaign_id}/seats/take")

@@ -180,6 +180,10 @@ async def catch_up_copy(session, campaign_id, character_id):
             if previous.tool != "universal_catchup" or previous.actor_id != hero.id:
                 raise Conflict("Событие вступления уже сохранено")
             return before
+        from app.core.characters import ensure_character_admission_allowed
+        from app.db.models import Campaign
+
+        await ensure_character_admission_allowed(session, await session.get(Campaign, campaign_id))
         if (
             before.level != 1
             or before.xp != 0

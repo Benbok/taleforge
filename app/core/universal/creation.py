@@ -56,6 +56,11 @@ async def _campaign_target(session, owner_id, campaign_id, target_id):
             raise Conflict("для заготовки нужна кампания")
         return None
     viewer = await get_viewer(session, await session.get(User, owner_id), campaign_id)
+    from app.core.characters import ensure_character_admission_allowed
+    from app.core.universal.clock import lock_campaign
+
+    await lock_campaign(session, campaign_id)
+    await ensure_character_admission_allowed(session, viewer.campaign)
     if target_id:
         # Existing game cards cannot be edited or replaced via creation.
         if not viewer.is_owner or target_id != "premade":
@@ -249,6 +254,9 @@ async def copy_library_hero(session, viewer, original):
     from app.rules.universal.mechanics import derive
 
     await lock_campaign(session, viewer.campaign.id)
+    from app.core.characters import ensure_character_admission_allowed
+
+    await ensure_character_admission_allowed(session, viewer.campaign)
     if original.owner_user_id != viewer.user.id:
         raise AccessDenied("Можно добавить только своего библиотечного героя")
     if await world_context(session, viewer.campaign.id):

@@ -1,7 +1,7 @@
 [project]
 name = "taleforge"
 version = "0.1.0"
-description = "Текстовая ролевая игра с ИИ-мастером по правилам D&D 5e SRD"
+description = "Текстовая ролевая игра с ИИ-мастером и универсальными правилами"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

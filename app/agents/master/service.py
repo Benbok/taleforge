@@ -30,7 +30,6 @@ from app.agents.master.helpers import _batches, _in_fight
 from app.agents.master.narration import NarrationMixin
 from app.agents.master.parsing import ParsingMixin
 from app.agents.master.recall import RecallMixin
-from app.agents.master.review import ReviewMixin
 from app.agents.master.stepwise import StepwiseMixin
 from app.agents.master.turn import TurnMixin
 from app.agents.master.whispers import WhisperMixin
@@ -45,9 +44,7 @@ from app.tools.registry import ToolContext
 log = logging.getLogger(__name__)
 
 
-class MasterService(
-    WhisperMixin, TurnMixin, FinishMixin, NarrationMixin, RecallMixin, ParsingMixin, StepwiseMixin, ReviewMixin
-):
+class MasterService(WhisperMixin, TurnMixin, FinishMixin, NarrationMixin, RecallMixin, ParsingMixin, StepwiseMixin):
     """Очередь ходов ИИ-мастера по кампаниям. Один ход кампании за раз; реплики, пришедшие во время хода,
     уходят в следующий пакет."""
 
@@ -120,9 +117,6 @@ class MasterService(
             self._pending.add(campaign_id)
             return
         self._tasks[campaign_id] = asyncio.create_task(self._loop(campaign_id))
-
-    def schedule_review(self, campaign_id: str, character_id: str) -> None:
-        self._spawn(self.review_character(campaign_id, character_id))
 
     def schedule_summary(self, campaign_id: str, kind: str = "rolling", session_id: str | None = None) -> None:
         self._spawn(self.summarize(campaign_id, kind, session_id=session_id))

@@ -234,10 +234,7 @@ def unresolved_searches(ctx: ToolContext) -> list[ActionRef] | list[str]:
 
 async def finalize_action_parts(ctx: ToolContext) -> list[tuple[ActionRef, ActionProgress]]:
     """Finalize any non-terminal action parts at the end of the decision phase."""
-    unresolved_keys = {
-        action_key(r) if isinstance(r, ActionRef) else str(r)
-        for r in unresolved_searches(ctx)
-    }
+    unresolved_keys = {action_key(r) if isinstance(r, ActionRef) else str(r) for r in unresolved_searches(ctx)}
     finalized: list[tuple[ActionRef, ActionProgress]] = []
 
     for ref in ctx.required_actions:
@@ -250,9 +247,7 @@ async def finalize_action_parts(ctx: ToolContext) -> list[tuple[ActionRef, Actio
 
         dependencies = blocked_dependencies(ctx, ref)
         if dependencies:
-            new_prog = ActionProgress(
-                status="blocked", reason_code="dependency_failed", blocked_by=dependencies
-            )
+            new_prog = ActionProgress(status="blocked", reason_code="dependency_failed", blocked_by=dependencies)
             await set_action_progress(ctx, ref, new_prog)
             finalized.append((ref, new_prog))
             continue
@@ -332,9 +327,7 @@ def public_action_notice(ctx: ToolContext, ref: ActionRef, progress: ActionProgr
 
             blocked_indices = progress.blocked_by
             if not blocked_indices and act.get("depends_on"):
-                blocked_indices = [
-                    d.get("part") for d in act["depends_on"] if isinstance(d, dict) and "part" in d
-                ]
+                blocked_indices = [d.get("part") for d in act["depends_on"] if isinstance(d, dict) and "part" in d]
 
             if blocked_indices:
                 for b_idx in blocked_indices:

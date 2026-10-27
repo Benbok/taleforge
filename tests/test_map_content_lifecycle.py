@@ -22,8 +22,9 @@ def port(client, admin, settings):
 
     async def create(ctx):
         root = (await _ok(ctx, "create_location", {"name": "Port"}))["location_id"]
-        out = await _ok(ctx, "prepare_complex", {"location_id": root,
-            "intent": template.intent.model_dump(mode="json")})
+        out = await _ok(
+            ctx, "prepare_complex", {"location_id": root, "intent": template.intent.model_dump(mode="json")}
+        )
         return root, out["operation_ref"]
 
     root, ref = _play(settings, cid, create)
@@ -34,6 +35,7 @@ def port(client, admin, settings):
         async def move(ctx):
             ctx.campaign.settings = {**ctx.campaign.settings, "scene_generation": True}
             return await _ok(ctx, "move", {"character_ids": [hid], "location_id": areas[ref]})
+
         out = _play(settings, cid, move)
         if out.get("operation_ref"):
             assert _prepare(settings, cid, out["operation_ref"]) == "ready"
@@ -102,6 +104,7 @@ def test_pickup_binding_and_memory_roll_back_atomically(port, settings):
         item = await _ok(ctx, "place_item", {"item_template_id": "item.rope_hempen", "reason": "rollback test"})
         entity = ctx.world.entities[item["entity_id"]]
         from app.core.layout.furnish import sync_objects
+
         sync_objects(ctx, [], include={entity.id})
         await ctx.record("placed_for_rollback", target_id=entity.id)
         return entity.id
@@ -130,8 +133,14 @@ def test_pickup_binding_and_memory_roll_back_atomically(port, settings):
     async def replay(session):
         from app.db.models import Character, InventoryItem, MapMemory, Scene
 
-        tables = {"entities": Entity, "inventory": InventoryItem, "characters": Character,
-                  "scenes": Scene, "map_memories": MapMemory, "party_map_memories": PartyMapMemory}
+        tables = {
+            "entities": Entity,
+            "inventory": InventoryItem,
+            "characters": Character,
+            "scenes": Scene,
+            "map_memories": MapMemory,
+            "party_map_memories": PartyMapMemory,
+        }
         for delta in reversed(undo):
             model = tables[delta["table"]]
             key = delta.get("id")
@@ -157,8 +166,19 @@ def test_pickup_binding_and_memory_roll_back_atomically(port, settings):
 
 
 def test_blueprint_feature_matches_wire_contract_without_private_slot():
-    raw = {**FIELD, "features": [{"id": "box", "name": "Box", "kind": "furniture",
-                                "cells": [[2, 2, 2, 2]], "solid": False, "slot_ref": "cargo"}]}
+    raw = {
+        **FIELD,
+        "features": [
+            {
+                "id": "box",
+                "name": "Box",
+                "kind": "furniture",
+                "cells": [[2, 2, 2, 2]],
+                "solid": False,
+                "slot_ref": "cargo",
+            }
+        ],
+    }
     feature = sketch.project_for_viewer(raw, False, set(), {}, "room")["features"][0]
     assert "slot_ref" not in feature
     assert MapSketchFeature.model_validate(feature).solid is False
@@ -167,8 +187,17 @@ def test_blueprint_feature_matches_wire_contract_without_private_slot():
 def test_scene_companion_link_matches_wire_contract():
     from app.gateway.protocol import MapSceneToken
 
-    token = {"id": "npc", "name": "Guide", "type": "npc", "mine": False, "down": False,
-             "zone": None, "bearing": None, "cell": None, "companion_of": "hero"}
+    token = {
+        "id": "npc",
+        "name": "Guide",
+        "type": "npc",
+        "mine": False,
+        "down": False,
+        "zone": None,
+        "bearing": None,
+        "cell": None,
+        "companion_of": "hero",
+    }
     assert MapSceneToken.model_validate(token).companion_of == "hero"
 
 
@@ -199,11 +228,14 @@ def test_parallel_preparation_keeps_pinned_shares_and_single_manifest(port, sett
     reserve = copy.deepcopy(run(settings, lambda s: s.get(Entity, root)).state["content_reservation"])
     refs = []
     for area in order:
+
         async def request(ctx, area=area):
             row = await storage.reserve_root(ctx.session, ctx.campaign, ctx.world, ctx.world.entities[areas[area]])
             storage.activate(row)
             return row.id
+
         refs.append(_play(settings, cid, request))
+
     async def prepare(maker):
         orchestrator = Orchestrator(InMemoryCoordination())
         return await asyncio.gather(*(orchestrator.prepare(maker, cid, ref) for ref in [*refs, refs[0]]))
@@ -268,15 +300,21 @@ def test_unobserved_changes_stay_remembered_until_another_hero_observes(port, se
     assert "New unseen sign" not in json.dumps(_map(client, heads[0], cid))
 
     async def second_hero(ctx):
-        hero = Character(campaign_id=cid, name="Scout", status="approved", location_id=areas["harbor_warehouse"],
-                         sheet=dict(ctx.world.characters[hid].sheet))
+        hero = Character(
+            campaign_id=cid,
+            name="Scout",
+            status="approved",
+            location_id=areas["harbor_warehouse"],
+            sheet=dict(ctx.world.characters[hid].sheet),
+        )
         ctx.session.add(hero)
         await ctx.session.flush()
         ctx.world.characters[hero.id] = hero
         await ctx.record("scout_observed")
 
     _play(settings, cid, second_hero)
-    remembered = next(a for a in _map(client, heads[0], cid)["location_map"]["areas"]
-                      if a["id"] == areas["harbor_warehouse"])
+    remembered = next(
+        a for a in _map(client, heads[0], cid)["location_map"]["areas"] if a["id"] == areas["harbor_warehouse"]
+    )
     assert remembered["status"] == "remembered" and "New unseen sign" in json.dumps(remembered)
     assert not any(f.get("entity_id") for f in remembered["sketch"]["features"])

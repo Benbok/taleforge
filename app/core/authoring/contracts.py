@@ -87,7 +87,7 @@ class ProjectSummary(Contract):
 
 
 class ProjectDetail(ProjectSummary):
-    ruleset_id: str = "dnd5e"
+    ruleset_id: str = "universal"
     brief: BriefIn = Field(default_factory=BriefIn)
 
 

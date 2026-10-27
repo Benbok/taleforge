@@ -7,7 +7,7 @@ __all__ = ["Dice", "FixedDice", "RollMode", "RulesEngine", "get_engine"]
 
 
 def get_engine(ruleset_id: str) -> RulesEngine:
-    """Движок по ``ruleset_id`` кампании. Пока известен только ``dnd5e``."""
+    """Движок по ``ruleset_id`` кампании. Поддерживается ``universal``."""
     if ruleset_id == "universal":
         from app.rules.universal.engine import UniversalEngine
 

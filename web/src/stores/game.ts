@@ -14,7 +14,6 @@ import type {
   HeroPublic,
   PendingReply,
   ReactionPrompt,
-  RestVote,
   Scene,
   SeatState,
   SessionSummary,
@@ -58,7 +57,6 @@ interface GameState {
     | "reaction"
     | "summary"
     | "votes"
-    | "rest_votes"
     | "audio"
   > | null;
   audio: AudioState | null; // звук сцены: что звучит в каждом слое
@@ -86,8 +84,6 @@ interface GameState {
   summary: SessionSummary | null;
   /** Открытые голосования: кто-то ушёл из сети во время сессии (раздел 11). */
   votes: Vote[];
-  /** Голосования группы за отдых, которые видит этот участник. */
-  restVotes: RestVote[];
   /** За какое место сейчас пишет этот игрок: null — за своего героя, иначе — за героя ушедшего по голосованию. */
   playAs: string | null;
   /** Что можно сейчас герою ушедшего, которого ведёт этот игрок, по месту. */
@@ -143,7 +139,6 @@ const initial = {
   reaction: null,
   summary: null,
   votes: [],
-  restVotes: [],
   playAs: null,
   standIn: {},
 };
@@ -196,12 +191,11 @@ export const useGame = create<GameState>((set, get) => ({
     // e.payload сужается по e.type: формы событий приходят из контракта сервера (lib/api.gen.ts)
     switch (e.type) {
       case "state.snapshot": {
-        const { messages, seats, heroes, scene, audio, actions, blocked, turn, pending, reaction, summary, votes, rest_votes, master_stage, ...rest } =
+        const { messages, seats, heroes, scene, audio, actions, blocked, turn, pending, reaction, summary, votes, master_stage, ...rest } =
           e.payload;
         set((s) => ({
           masterStage: master_stage ?? null,
           votes: votes ?? [],
-          restVotes: rest_votes ?? [],
           playAs: s.playAs && rest.me?.stand_in_for?.includes(s.playAs) ? s.playAs : null,
           standIn: {},
           reaction: reaction ?? null,
@@ -300,16 +294,6 @@ export const useGame = create<GameState>((set, get) => ({
         set((s) => ({ votes: s.votes.filter((x) => x.vote_id !== id) }));
         return;
       }
-      case "rest.vote": {
-        const v: RestVote = e.payload;
-        set((s) => ({ restVotes: [...s.restVotes.filter((x) => x.vote_id !== v.vote_id), v] }));
-        return;
-      }
-      case "rest.ended": {
-        const id = e.payload.vote_id;
-        set((s) => ({ restVotes: s.restVotes.filter((x) => x.vote_id !== id) }));
-        return;
-      }
       case "stand_in.changed": {
         const x = e.payload;
         set((s) => {
@@ -385,7 +369,6 @@ export const useGame = create<GameState>((set, get) => ({
         return;
       }
       case "character.sheet": {
-        // книгу заклинаний сервер пока не описывает (app/core/views.py): её форма — в lib/spells.ts
         const h = e.payload.character as unknown as HeroSheet;
         // лист пришёл после изменения: прежние разборы чисел могли устареть
         if (h?.id)

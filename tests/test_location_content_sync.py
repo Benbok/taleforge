@@ -28,10 +28,24 @@ def test_existing_feature_footprints_are_reserved():
 
 
 def test_blueprint_preserves_explicit_object_slots():
-    raw = {"schema_version": 1, "seed": 1, "entry": "room", "passages": [], "areas": [
-        {"area_ref": "room", "name": "Room", "cols": 6, "rows": 5,
-         "scene_profile": "minimal", "object_slots": [
-             {"slot_ref": "chest", "role": "container", "cells": [[2, 2, 2, 2]], "detail_ref": "box"}]}]}
+    raw = {
+        "schema_version": 1,
+        "seed": 1,
+        "entry": "room",
+        "passages": [],
+        "areas": [
+            {
+                "area_ref": "room",
+                "name": "Room",
+                "cols": 6,
+                "rows": 5,
+                "scene_profile": "minimal",
+                "object_slots": [
+                    {"slot_ref": "chest", "role": "container", "cells": [[2, 2, 2, 2]], "detail_ref": "box"}
+                ],
+            }
+        ],
+    }
     area = Blueprint.from_json(raw).to_json()["areas"][0]
     assert area["scene_profile"] == "minimal"
     assert area["object_slots"][0]["slot_ref"] == "chest"
@@ -39,10 +53,19 @@ def test_blueprint_preserves_explicit_object_slots():
 
 def test_container_binds_existing_detail_without_duplicate():
     feature = {"id": "box", "kind": "furniture", "name": "Box", "cells": [[2, 2, 2, 2]]}
-    slots = [{"slot_ref": "chest", "role": "container", "detail_ref": "box",
-              "cells": [[2, 2, 2, 2]], "max_cols": 1, "max_rows": 1}]
-    sk, unplaced = furnish.place({**FIELD, "features": [feature]}, [("new", "Chest")], 3,
-                                slots=slots, roles={"new": "container"})
+    slots = [
+        {
+            "slot_ref": "chest",
+            "role": "container",
+            "detail_ref": "box",
+            "cells": [[2, 2, 2, 2]],
+            "max_cols": 1,
+            "max_rows": 1,
+        }
+    ]
+    sk, unplaced = furnish.place(
+        {**FIELD, "features": [feature]}, [("new", "Chest")], 3, slots=slots, roles={"new": "container"}
+    )
     assert unplaced == []
     assert len(sk["features"]) == 1
     assert sk["features"][0]["entity_id"] == "new"
@@ -97,12 +120,27 @@ def test_generated_item_move_updates_both_sketches_with_inverse():
     from app.core.layout.furnish import sync_objects
     from app.db.models import Entity
 
-    old = Entity(id="old", kind="location", state={"sketch": {**FIELD, "blueprint": {"root_id": "root"},
-        "features": [{"id": "sf_item", "entity_id": "item", "name": "Rope", "kind": "object",
-                      "cells": [[2, 2, 2, 2]]}]}})
+    old = Entity(
+        id="old",
+        kind="location",
+        state={
+            "sketch": {
+                **FIELD,
+                "blueprint": {"root_id": "root"},
+                "features": [
+                    {"id": "sf_item", "entity_id": "item", "name": "Rope", "kind": "object", "cells": [[2, 2, 2, 2]]}
+                ],
+            }
+        },
+    )
     new = Entity(id="new", kind="location", state={"sketch": {**FIELD, "blueprint": {"root_id": "root"}}})
-    item = Entity(id="item", kind="object", name="Rope", location_id="new", state={"world_object": {
-        "role": "item", "generation_ref": "g", "container_id": None}})
+    item = Entity(
+        id="item",
+        kind="object",
+        name="Rope",
+        location_id="new",
+        state={"world_object": {"role": "item", "generation_ref": "g", "container_id": None}},
+    )
     ctx = SimpleNamespace(world=SimpleNamespace(entities={e.id: e for e in (old, new, item)}), signals=set())
     inverse = []
     sync_objects(ctx, inverse)
@@ -115,10 +153,15 @@ def test_generated_item_move_updates_both_sketches_with_inverse():
 
 
 def test_wide_object_respects_slot_size_and_keeps_footprint():
-    slots = [{"slot_ref": "small", "role": "container", "cells": [[2, 2, 2, 2]],
-              "max_cols": 1, "max_rows": 1}]
-    sk, unplaced = furnish.place({**FIELD, "exits": []}, [("wide", "Wide chest")], 1,
-                                slots=slots, roles={"wide": "container"}, sizes={"wide": (2, 1)})
+    slots = [{"slot_ref": "small", "role": "container", "cells": [[2, 2, 2, 2]], "max_cols": 1, "max_rows": 1}]
+    sk, unplaced = furnish.place(
+        {**FIELD, "exits": []},
+        [("wide", "Wide chest")],
+        1,
+        slots=slots,
+        roles={"wide": "container"},
+        sizes={"wide": (2, 1)},
+    )
     assert unplaced == []
     feature = sk["features"][0]
     assert feature.get("slot_ref") != "small"
@@ -151,8 +194,9 @@ def test_new_port_reserves_shared_budget_and_binds_warehouse(client, admin, sett
 
     async def create(ctx):
         root = (await _ok(ctx, "create_location", {"name": "Port"}))["location_id"]
-        out = await _ok(ctx, "prepare_complex", {"location_id": root,
-            "intent": template.intent.model_dump(mode="json")})
+        out = await _ok(
+            ctx, "prepare_complex", {"location_id": root, "intent": template.intent.model_dump(mode="json")}
+        )
         return root, out["operation_ref"]
 
     root_id, layout_ref = _play(settings, cid, create)
@@ -192,6 +236,7 @@ def test_new_port_reserves_shared_budget_and_binds_warehouse(client, admin, sett
 
     async def open_chest(ctx):
         from app.tools.master.places import relocate_scene
+
         await relocate_scene(ctx, ctx.world.entities[warehouse_id], [])
         await _ok(ctx, "open_container", {"character_id": hid, "container_id": chest_id})
         out = await _ok(ctx, "search_container", {"character_id": hid, "container_id": chest_id})
@@ -208,8 +253,7 @@ def test_new_port_reserves_shared_budget_and_binds_warehouse(client, admin, sett
 
     async def retrieve(ctx):
         for entity in nested:
-            await _ok(ctx, "retrieve_object", {"character_id": hid, "container_id": chest_id,
-                                                "object_id": entity.id})
+            await _ok(ctx, "retrieve_object", {"character_id": hid, "container_id": chest_id, "object_id": entity.id})
         return ctx.world.entities[warehouse_id].state["sketch"]
 
     sk = _play(settings, cid, retrieve)
@@ -220,15 +264,21 @@ def test_new_port_reserves_shared_budget_and_binds_warehouse(client, admin, sett
         from app.tools.master.places import relocate_scene
 
         await relocate_scene(ctx, ctx.world.entities[root_id], [])
-        watcher = Character(campaign_id=cid, name="Watcher", status="approved", location_id=warehouse_id,
-                            sheet=dict(ctx.world.characters[hid].sheet))
+        watcher = Character(
+            campaign_id=cid,
+            name="Watcher",
+            status="approved",
+            location_id=warehouse_id,
+            sheet=dict(ctx.world.characters[hid].sheet),
+        )
         ctx.session.add(watcher)
         await ctx.session.flush()
         ctx.world.characters[watcher.id] = watcher
         room = ctx.world.entities[warehouse_id]
         raw = room.state["sketch"]
-        features = [dict(f, name="Observed change") if f.get("id", "").endswith("overseer_des") else f
-                    for f in raw["features"]]
+        features = [
+            dict(f, name="Observed change") if f.get("id", "").endswith("overseer_des") else f for f in raw["features"]
+        ]
         room.state = {**room.state, "sketch": {**raw, "features": features}}
         await ctx.record("test_observation")
         memory = await ctx.session.get(PartyMapMemory, (cid, root_id, warehouse_id))
@@ -250,16 +300,21 @@ def test_publication_accounts_for_existing_root_reservation(client, admin, setti
     template = next(t for t in load_catalog() if t.id == "port_quay_warehouse")
 
     async def create(ctx):
-        root_id = (await _ok(ctx, "create_location", {"name": "Port", "template_id": "location.port",
-                                                      "make_current": True}))["location_id"]
-        await _ok(ctx, "place_item", {"item_template_id": "item.rope_hempen", "qty": 1,
-                                       "location_id": root_id, "reason": "authored cargo"})
+        root_id = (
+            await _ok(ctx, "create_location", {"name": "Port", "template_id": "location.port", "make_current": True})
+        )["location_id"]
+        await _ok(
+            ctx,
+            "place_item",
+            {"item_template_id": "item.rope_hempen", "qty": 1, "location_id": root_id, "reason": "authored cargo"},
+        )
         root = ctx.world.entities[root_id]
         initial = await storage.reserve_root(ctx.session, ctx.campaign, ctx.world, root)
         initial.status = status
         initial.lease_token = "old-claim" if status == "preparing" else None
-        out = await _ok(ctx, "prepare_complex", {"location_id": root_id,
-            "intent": template.intent.model_dump(mode="json")})
+        out = await _ok(
+            ctx, "prepare_complex", {"location_id": root_id, "intent": template.intent.model_dump(mode="json")}
+        )
         return root_id, initial.id, out["operation_ref"]
 
     root_id, initial_ref, layout_ref = _play(settings, cid, create)

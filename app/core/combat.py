@@ -18,7 +18,7 @@ from app.core import steps
 from app.core.companions import companion_is_active, companion_record, public_companion
 from app.core.world import PLAYABLE, Actor, WorldError
 from app.db.models import Character
-from app.rules.dnd5e import modifiers as mod
+from app.rules import modifiers as mod
 from app.tools.registry import ToolContext, execute
 
 ROUND_SECONDS = 6
@@ -153,12 +153,8 @@ async def _next(ctx: ToolContext, notes: list[str]) -> None:
     """Передаёт ход следующему. Новый раунд — плюс 6 секунд игрового времени и снятие истёкших эффектов."""
     from app.tools import grapples as gp
     from app.tools.master.scene import expire_effects
-    from app.tools.spells import turn_end_saves
 
     sc = ctx.world.scene
-    ending = current_id(ctx)
-    if ending:
-        await turn_end_saves(ctx, ending, notes)
     notes.extend(await gp.refresh(ctx))
     i = int(state(ctx).get("turn", 0)) + 1
     if i >= len(sc.turn_order):
@@ -308,7 +304,6 @@ async def finish_turn(ctx: ToolContext, notes: list[str]) -> None:
 async def run_until_hero(ctx: ToolContext, key: str, ask: ReactionAsk | None = None) -> list[str]:
     """Проигрывает ходы существ и героев без сознания до ближайшего героя, который может действовать.
     Возвращает заметки для повествования. Бой заканчивается сам, когда врагов или стоящих героев не осталось."""
-    from app.tools.spells import zone_tick
 
     notes: list[str] = []
     if not in_combat(ctx):
@@ -328,7 +323,6 @@ async def run_until_hero(ctx: ToolContext, key: str, ask: ReactionAsk | None = N
         except WorldError:
             await _next(ctx, notes)
             continue
-        await zone_tick(ctx, act, notes)  # начало хода в длящейся области заклинания
         act = ctx.world.actor(cid)
         if not act.alive and act.kind != "character":
             await _next(ctx, notes)

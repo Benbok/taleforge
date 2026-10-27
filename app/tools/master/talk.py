@@ -127,56 +127,6 @@ async def mark_moment(ctx: ToolContext, a: MomentArgs) -> dict:
     return {"marked": MOMENTS[a.kind], "characters": names}
 
 
-class ReviewArgs(BaseModel):
-    character_id: str
-    approve: bool
-    comment: str = Field("", max_length=2000, description="замечания игроку; при возврате — обязательно")
-    secret_link: str | None = Field(
-        None, max_length=2000, description="тайная связь истории героя с сюжетом, игрок её не увидит"
-    )
-    hook_ref: str | None = Field(
-        None, description="к чему в каркасе привязать эту связь: id узла, NPC, злодея или места (если каркас есть)"
-    )
-
-
-@tool(
-    "review_character",
-    "Решение мастера по персонажу на проверке: одобрить или вернуть с комментарием.",
-    ReviewArgs,
-    ids={"hook_ref": "plot:hooks"},
-    closes=False,
-)
-async def review_character(ctx: ToolContext, a: ReviewArgs) -> dict:
-    ch = ctx.world.characters.get(a.character_id)
-    if ch is None or ch.status != "submitted":
-        raise ToolError("персонаж не на проверке")
-    if not a.approve and not a.comment:
-        raise ToolError("при возврате на доработку нужен комментарий")
-    from app.core.campaigns import Conflict
-    from app.core.characters import approve_character, record_secret_link
-
-    before = ch.status
-    if a.approve:
-        await approve_character(ctx.session, ctx.campaign, ch, ctx.world.catalog)
-    else:
-        ch.status = "draft"
-    ch.review_comment = a.comment or None
-    if a.hook_ref and not a.secret_link:
-        raise ToolError("hook_ref задаётся вместе с secret_link")
-    if a.secret_link:
-        try:
-            await record_secret_link(ctx.session, ctx.campaign.id, ch, a.secret_link, ref=a.hook_ref)
-        except Conflict as e:
-            raise ToolError(str(e)) from e
-    await ctx.record(
-        "review_character",
-        target_id=ch.id,
-        payload={"approve": a.approve, "comment": a.comment},
-        inverse=[{"table": "characters", "id": ch.id, "field": "status", "before": before}],
-    )
-    return {"character": ch.name, "status": ch.status}
-
-
 MUTATING_FOR_NARRATION: tuple[str, ...] = ()  # в фазе повествования изменяющих инструментов нет (раздел 7.1)
 READ_TOOLS = ("get_scene", "get_character", "lookup_template")
 

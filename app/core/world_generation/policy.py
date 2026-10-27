@@ -27,7 +27,7 @@ def allocate_complex(total: int, weights: dict[str, int]) -> dict[str, int]:
     denominator = sum(weights.values())
     shares = {ref: total * weights[ref] // denominator if denominator else 0 for ref in refs}
     eligible = [ref for ref in refs if weights[ref] > 0]
-    for ref in eligible[:total - sum(shares.values())]:
+    for ref in eligible[: total - sum(shares.values())]:
         shares[ref] += 1
     return shares
 

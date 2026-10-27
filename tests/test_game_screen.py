@@ -108,7 +108,12 @@ def test_entity_card_by_knowledge_level(game_client, admin_g, settings, attitude
     assert "condition" not in card and card["locked"] == ["наслышан", "изучил", "знает всё"]
     assert card["stats"]["hp"] == 5 and card["stats"]["hp_max"] == 7 and card["stats"]["ac"] == 15
     assert card["stats"]["abilities"] == {
-        "Сила": 8, "Ловкость": 14, "Телосложение": 10, "Интеллект": 10, "Мудрость": 8, "Харизма": 8,
+        "Сила": 8,
+        "Ловкость": 14,
+        "Телосложение": 10,
+        "Интеллект": 10,
+        "Мудрость": 8,
+        "Харизма": 8,
     }
     assert card["stats"]["speed"] == {"walk": 30}
     assert "resist" not in card["stats"] and "immune" not in card["stats"]

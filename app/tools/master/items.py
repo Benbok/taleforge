@@ -66,9 +66,7 @@ async def use_item(ctx: ToolContext, a: UseItemArgs) -> dict:
         )
     rec = ctx.world.catalog.get(it.item_template_id, "item_template")
     if rec.data.get("spell_scroll"):
-        from app.tools.spells import read_scroll
-
-        return await read_scroll(ctx, ch, it, rec, [a.target_id] if a.target_id else [])
+        raise ToolError("Fixed spell scrolls are retired; use a Universal consumable")
     ops = rec.data.get("modifiers") or rec.data.get("use") or []
     if not ops:
         raise ToolError(

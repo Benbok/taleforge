@@ -183,9 +183,7 @@ def test_turn_rollback_reverts_effects_and_progress(game_client, admin_g, llm, s
     assert turn.status == "failed"
 
 
-def test_recovery_after_effect_before_publication_does_not_repeat(
-    game_client, admin_g, llm, settings, monkeypatch
-):
+def test_recovery_after_effect_before_publication_does_not_repeat(game_client, admin_g, llm, settings, monkeypatch):
     """Сбой после фиксации эффектов (committed=True) восстанавливается через master.recover,
 
     не повторяя вызовы инструментов и не дублируя события.

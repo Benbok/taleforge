@@ -9,10 +9,10 @@ from pydantic import Field
 
 from app.core.world import PLAYABLE, Actor
 from app.db.models import Character
-from app.rules.dnd5e.engine import Dnd5eEngine
+from app.rules.common import ScalarRules
 from app.tools.registry import ToolContext, ToolError
 
-engine = Dnd5eEngine()
+engine = ScalarRules()
 Zone = Literal["melee", "near", "far"]
 Bearing = Literal["n", "ne", "e", "se", "s", "sw", "w", "nw"]
 BEARING_HINT = "в какой стороне от отряда на схеме места: n — север (вверх), e — восток и т. д."
@@ -33,7 +33,6 @@ EDGE_HINT = (
     "грани возможного. Эффекты сервер учтёт сам, здесь только обстоятельства"
 )
 HIDDEN_SKILLS_DEFAULT = ("perception", "insight", "stealth")
-MAX_LEVEL_DEFAULT = 20
 # Находка без шаблона в пакете (камень, шляпа прохожего): вещь без механики, имя даёт мастер.
 # Такого шаблона нет в каталоге намеренно: листу героя он ничего не прибавляет.
 FOUND_ITEM = "item.found"

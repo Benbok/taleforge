@@ -34,8 +34,6 @@ export const EVENT_HANDLERS = {
   "presence.changed": "stores/game.ts",
   "reaction.closed": "stores/game.ts",
   "reaction.prompt": "stores/game.ts",
-  "rest.ended": "stores/game.ts",
-  "rest.vote": "stores/game.ts",
   "scene.updated": "stores/game.ts, game/map.ts",
   "seat.changed": "lib/socket.ts (запрос состояния заново)",
   "session.ended": "lib/socket.ts (запрос состояния заново)",

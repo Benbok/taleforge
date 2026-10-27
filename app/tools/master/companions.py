@@ -31,12 +31,17 @@ def _basis(ctx: ToolContext, entity_id: str, hero_id: str, event_id: str):
         raise ToolError("основание спутника должно быть событием этого хода от этого героя для этого NPC")
     if event.tool == "roll_check":
         payload = event.payload or {}
-        if payload.get("kind") == "check" and payload.get("stat") in {
-            "persuasion",
-            "deception",
-            "intimidation",
-            "performance",
-        } and payload.get("success"):
+        if (
+            payload.get("kind") == "check"
+            and payload.get("stat")
+            in {
+                "persuasion",
+                "deception",
+                "intimidation",
+                "performance",
+            }
+            and payload.get("success")
+        ):
             return event
     if event.tool == "pass_item" and not event.hidden:
         return event
@@ -138,22 +143,6 @@ async def leave_party(ctx: ToolContext, a: LeavePartyArgs) -> dict:
         result["betrayal"] = True
     await ctx.record("leave_party", target_id=entity.id, payload=result, inverse=inverse)
     ctx.outbox.append({"kind": "system", "content": f"{entity.name} отстал."})
-    if a.turn_hostile:
-        from app.core import combat
-        from app.tools.master.checks import roll_initiative
-
-        if combat.in_combat(ctx) and entity.id not in {x["id"] for x in ctx.world.scene.turn_order}:
-            entries, dice = roll_initiative(ctx, [entity.id])
-            if entries:
-                combat.insert(ctx, entries)
-                result["initiative"] = entries[0]["initiative"]
-                event = next(
-                    (e for e in reversed(ctx.events) if e.tool == "leave_party" and e.target_id == entity.id),
-                    None,
-                )
-                if event is not None:
-                    event.dice = dice
-                ctx.world.invalidate(entity.id)
     return result
 
 

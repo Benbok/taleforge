@@ -55,7 +55,6 @@ def test_db_writable_while_model_reviews_hero(game_client, admin_g, llm, setting
 
 def test_diagnost_starting_gear_is_given_as_items():
     import yaml
-
     from app.rules.dnd5e.character import starting_items
 
     raw = yaml.safe_load(open("content/echo-leviathans/data/classes/diagnost.yaml", encoding="utf-8"))

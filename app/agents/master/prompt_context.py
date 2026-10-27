@@ -13,7 +13,6 @@ from app.core.brief import brief_text
 from app.core.narrative.view import master_canon_block
 from app.db.models import AgentConfig, CampaignSecret
 from app.tools import fortune as fortune_tools
-from app.tools import progress as progress_tools
 from app.tools.registry import ToolContext
 
 
@@ -340,7 +339,7 @@ async def master_prompt_values(ctx: ToolContext, cfg: AgentConfig) -> dict:
         dc_scale=dc,
         max_calls=MAX_CALLS,
         difficulty=c.difficulty,
-        leveling=progress_tools.leveling(c),
+        leveling="universal",
         random_events=fortune_tools.random_events(c),
         critical_checks=(c.settings or {}).get("critical_checks", True) is not False,
         audio=audio.prompt_block(c, ctx.world.scene, audio.where(ctx), ctx.saved_sfx),

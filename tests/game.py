@@ -100,9 +100,34 @@ def party(
     inv = invite(client, admin, c["id"])
     names = names or ["Арагорн", "Гимли", "Леголас"]
     heads = [register(client, inv["token"], names[i]) for i in range(players)]
-    ch = ok(client.post(f"/api/campaigns/{c['id']}/characters", json=FIGHTER, headers=heads[0]), 201)
-    res = ok(client.post(f"/api/campaigns/{c['id']}/characters/{ch['id']}/submit", headers=heads[0]))
-    assert res["status"] == "approved", res
+    from copy import deepcopy
+
+    from tests.universal_helpers import DESCRIPTION, PROPOSAL, ready_reply, set_replies
+
+    proposal = deepcopy(PROPOSAL)
+    proposal["abilities"] = {key: str(value) for key, value in FIGHTER["abilities"].items()}
+    description = {**DESCRIPTION, "name": FIGHTER["name"], "identity": FIGHTER["public_bio"]}
+    previous = client.app.state.hero_llm
+    try:
+        set_replies(client, [ready_reply(description=description, proposal=proposal)])
+        draft = ok(
+            client.post(
+                "/api/hero-creation/dialogues",
+                json={"campaign_id": c["id"], "description": description},
+                headers=heads[0],
+            ),
+            201,
+        )
+        confirmed = ok(
+            client.post(
+                f"/api/hero-creation/dialogues/{draft['id']}/confirm",
+                json={"expected_revision": draft["revision"]},
+                headers=heads[0],
+            )
+        )
+    finally:
+        client.app.state.hero_llm = previous
+    ch = ok(client.get(f"/api/campaigns/{c['id']}/characters/{confirmed['hero_id']}", headers=heads[0]))
     if start:
         ok(client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin))
     return c, heads, ch

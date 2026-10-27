@@ -701,7 +701,9 @@ def test_a_magic_request_the_model_cannot_shape_is_kept_as_a_free_effect(tmp_pat
         await prepare(maker)
         story = "Магия откликается, но по-своему: вокруг героя вспыхивают светлячки."
         broken = unrealisable("supernatural")
-        provider = Provider([broken, {"verdict": "pass", "covered_requirements": ["r"]}, broken, story, {"verdict": "pass"}])
+        provider = Provider(
+            [broken, {"verdict": "pass", "covered_requirements": ["r"]}, broken, story, {"verdict": "pass"}]
+        )
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
         async with maker() as s:
             events = list(await s.scalars(select(Event)))
@@ -725,7 +727,9 @@ def test_an_ordinary_request_the_model_cannot_shape_is_a_plain_turn_that_costs_n
         await prepare(maker)
         story = "Доска занимается неохотно, но тесак высекает искру."
         broken = unrealisable("mundane")
-        provider = Provider([broken, {"verdict": "pass", "covered_requirements": ["r"]}, broken, story, {"verdict": "pass"}])
+        provider = Provider(
+            [broken, {"verdict": "pass", "covered_requirements": ["r"]}, broken, story, {"verdict": "pass"}]
+        )
         await MasterService(maker, Bus(), provider).run_turn("c")
         async with maker() as s:
             events = list(await s.scalars(select(Event)))
@@ -849,7 +853,9 @@ def test_the_floor_without_any_model_name_uses_a_generic_one(tmp_path):
         engine, maker = await setup(tmp_path)
         await prepare(maker)
         broken = unrealisable("supernatural")
-        provider = Provider([broken, {"verdict": "pass", "covered_requirements": ["r"]}, broken, "Ок.", {"verdict": "pass"}])
+        provider = Provider(
+            [broken, {"verdict": "pass", "covered_requirements": ["r"]}, broken, "Ок.", {"verdict": "pass"}]
+        )
         await MasterService(maker, Bus(), provider).run_turn("c")
         async with maker() as s:
             event = (await s.scalars(select(Event))).one()

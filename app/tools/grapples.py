@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import copy
 
-from app.rules.dnd5e import modifiers as mod
+from app.rules import modifiers as mod
 from app.tools import effects as fx
 from app.tools.registry import ToolContext
 

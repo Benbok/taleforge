@@ -16,7 +16,6 @@ from sqlalchemy import select
 
 from app.agents import textcalls, voiceover, voicing
 from app.agents.llm import LLMError
-from app.content.catalog import campaign_catalog
 from app.core import adventure, bonds, plot
 from app.core.campaigns import master_seat
 from app.core.chat import active_session, next_seq
@@ -114,19 +113,12 @@ async def _ai_plan(s, c: Campaign) -> tuple[AgentConfig | None, dict]:
     return await s.get(AgentConfig, seat.agent_config_id), secret.plot
 
 
-async def _names(s, c: Campaign, ch: Character) -> tuple[str, str]:
-    cat = await campaign_catalog(s, c)
-    out = []
-    for key, kind in (("class_id", "class"), ("origin_id", "origin")):
-        rec = cat.find((ch.sheet or {}).get(key) or "", kind)
-        out.append(rec.name if rec else "")
-    return out[0], out[1]
-
-
 async def _hero(s, c: Campaign, ch: Character, *, private: bool) -> str:
-    cls, origin = await _names(s, c, ch)
     traits = "; ".join(f"{k}: {v}" for k, v in (ch.personality or {}).items() if v and k != "bonds")
-    parts = [f"{ch.name} ({ch.id}): {cls}, {origin}, уровень {(ch.sheet or {}).get('level', 1)}."]
+    parts = [
+        f"{ch.name} ({ch.id}): {(ch.sheet or {}).get('description', {}).get('identity', '')}, "
+        f"уровень {(ch.sheet or {}).get('level', 1)}."
+    ]
     if ch.public_bio:
         parts.append(f"О себе: {ch.public_bio}")
     if traits:

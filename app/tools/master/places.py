@@ -7,7 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.core import adventure, audio, combat, companions, economy, sketch
+from app.core import adventure, combat, companions, economy, sketch
 from app.core import positions as grid
 from app.core.map_memory import observe_area
 from app.core.object_policy import observe
@@ -29,7 +29,7 @@ from app.tools.master.base import (
     Zone,
     _character,
 )
-from app.tools.master.checks import _area_hits, enter_areas, roll_initiative
+from app.tools.master.checks import _area_hits, enter_areas
 from app.tools.registry import ToolContext, ToolError, tool
 
 
@@ -1203,7 +1203,7 @@ async def move_heroes(
     party = [c for c in ctx.world.characters.values() if c.status in PLAYABLE]
     if not all(c.location_id == loc.id for c in party):
         _clear_positions(ctx, {ch.id for ch in moved}, inverse)
-    joined = await _move_in_combat(ctx, moved, inverse, dice)
+    joined = {}
     if all(c.location_id == loc.id for c in party):
         inverse.append(
             {"table": "scenes", "id": ctx.campaign.id, "field": "location_id", "before": ctx.world.scene.location_id}
@@ -1217,32 +1217,3 @@ async def move_heroes(
     if moved_companions:
         joined["companions_moved"] = [entity.name for entity in moved_companions]
     return joined
-
-
-async def _move_in_combat(ctx: ToolContext, moved: list, inverse: list, dice: list) -> dict:
-    """Идёт бой: герой, ушедший из места боя, выходит из очереди; пришедший в место боя бросает инициативу и
-    встаёт в очередь (5e: опоздавший вступает в бой)."""
-    if not combat.in_combat(ctx):
-        return {}
-    sc = ctx.world.scene
-    inverse += [
-        {"table": "scenes", "id": ctx.campaign.id, "field": f, "before": copy.deepcopy(getattr(sc, f))}
-        for f in ("mode", "round", "turn_order", "state")
-    ]
-    fronts = {combat._at(ctx, x["id"]) for x in sc.turn_order if x["id"] not in ctx.world.characters}
-    have = {x["id"] for x in sc.turn_order}
-    out: dict = {}
-    left = combat.drop(ctx, {ch.id for ch in moved if ch.id in have and ch.location_id not in fronts})
-    if left:
-        out["left_combat"] = [ctx.world.characters[i].name for i in left]
-    came = [ch.id for ch in moved if ch.id not in have and ch.location_id in fronts]
-    if came:
-        entries, rolls_ = roll_initiative(ctx, came)
-        combat.insert(ctx, entries)
-        dice += rolls_
-        out["joined_combat"] = [f"{ctx.world.characters[e['id']].name} ({e['initiative']})" for e in entries]
-    if not sc.turn_order:  # в бою никого не осталось
-        sc.mode, sc.round = "free", 0
-        combat.end_combat(ctx)
-        audio.on_mode(ctx, "free")
-    return out

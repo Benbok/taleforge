@@ -1,6 +1,5 @@
 import type { ServerEvent } from "./api.gen";
 export type { AudioSfxReady, NarrativePreparationStatusOut, NarrativeSettingsIn } from "./api.gen";
-import type { Spellbook } from "./spells";
 
 export interface MenuMusicPreferences {
   enabled: boolean;
@@ -409,12 +408,6 @@ export interface HeroSheet extends HeroPublic {
     /** Вдохновение SRD: награда мастера, тратится на преимущество в одном броске. */
     inspiration?: boolean;
   };
-  /** Умения с ограниченным числом использований и сколько осталось до отдыха (SRD). */
-  features?: FeatureUses[];
-  /** Умения класса на уровне героя: что даёт, как применить и кто исполняет. */
-  class_features?: ClassFeature[];
-  /** Звери, в которых друид может обернуться на своём уровне. */
-  wild_shape_forms?: { id: string; name: string; cr: unknown }[];
   private_backstory?: string | null;
   /** Анкета характера {text, fields, core}; у старых героев — плоский словарь «поле: текст». */
   personality?: Record<string, unknown> | null;
@@ -440,8 +433,6 @@ export interface HeroSheet extends HeroPublic {
   equipment?: EquipmentState;
   /** Опыт: сколько есть, порог текущего уровня и следующего (null — выше расти некуда). */
   progress?: { xp: number; level_xp: number; next_xp: number | null };
-  /** Книга заклинаний: у заклинателей. */
-  spellbook?: Spellbook | null;
 }
 
 export interface Explained {
@@ -486,59 +477,6 @@ export interface Vote {
   voters: string[];
   voted: string[];
   tally: Record<string, number>;
-  deadline: number;
-}
-
-/** Умение с перезарядкой: ярость, второе дыхание, ци… */
-export interface FeatureUses {
-  key: string;
-  name: string;
-  max: number;
-  left: number;
-  per: "short_rest" | "long_rest";
-  per_ru: string;
-  unit: string;
-}
-
-/** Умение класса в листе: ``auto`` — сервер учтёт сам, ``declare`` — игрок заявляет в ходе фразой ``say``,
- *  ``master`` — мастер применит по описанию. */
-export interface ClassFeature {
-  key: string;
-  name: string;
-  level: number;
-  mode: "auto" | "declare" | "master";
-  text_ru?: string;
-  how?: string;
-  say?: string;
-  detail?: string;
-  skills?: string[];
-  uses?: { left: number; max: number; per_ru: string; unit: string };
-}
-
-export type RestChoice = "sleep" | "watch" | "no";
-
-/** Голосование группы за отдых: отдыхают только все вместе, в ненадёжном месте — со стражей. */
-export interface RestVote {
-  vote_id: string;
-  kind: "short" | "long";
-  kind_ru: string;
-  place: string | null;
-  place_name: string;
-  safety: "safe" | "risky" | "dangerous";
-  safety_ru: string;
-  warning: string | null;
-  safer: string[];
-  proposer: string | null;
-  heroes: {
-    id: string;
-    name: string;
-    seat_id: string | null;
-    voter: boolean;
-    choice: RestChoice | null;
-    hit_dice: number | null;
-    hit_dice_left: number;
-  }[];
-  choices: RestChoice[];
   deadline: number;
 }
 
@@ -587,7 +525,6 @@ export interface Snapshot {
   };
   seats: SeatState[];
   votes?: Vote[];
-  rest_votes?: RestVote[];
   turn: Turn | null;
   reaction?: ReactionPrompt | null;
   summary?: SessionSummary | null;

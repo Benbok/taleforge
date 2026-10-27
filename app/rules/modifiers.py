@@ -174,14 +174,12 @@ def add_value(mods: Modifiers, target: str) -> int:
 
 def defenses(mods: Modifiers) -> tuple[set[str], set[str], set[str]]:
     """Сопротивления, уязвимости, иммунитеты к урону от эффектов. ``damage: all`` — ко всем видам."""
-    from app.rules.dnd5e.tables import DAMAGE_TYPES
-
     out: dict[str, set[str]] = {"resistance": set(), "vulnerability": set(), "immunity": set()}
     for op, bucket in out.items():
         for _, m in mods.own(op):
             dmg = m.get("damage")
             if dmg == "all":
-                bucket |= set(DAMAGE_TYPES)
+                bucket.add("*")
             elif isinstance(dmg, str):
                 bucket.add(dmg)
             elif isinstance(dmg, list):

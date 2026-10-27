@@ -27,17 +27,15 @@ from app.db.models import (
     MapMemory,
     Scene,
 )
+from app.rules import modifiers as mod
+from app.rules.attributes import ABILITIES, SKILLS
 from app.rules.base import DeathSaves, HitPoints
-from app.rules.dnd5e import features as cf
-from app.rules.dnd5e import modifiers as mod
-from app.rules.dnd5e.character import derive
-from app.rules.dnd5e.engine import Dnd5eEngine
-from app.rules.dnd5e.tables import ABILITIES, SKILLS
+from app.rules.common import ScalarRules
 
 ZONE_FT = {"melee": 5, "near": 30, "far": 120}
 ZONE_NAMES = {"melee": "вплотную", "near": "близко", "far": "далеко"}
 PLAYABLE = ("approved", "active")
-engine = Dnd5eEngine()
+engine = ScalarRules()
 
 
 @dataclass(frozen=True)
@@ -78,8 +76,6 @@ class Actor:
     zone: str = "near"
     template_id: str | None = None
     speed: int = 30  # футов за ход, для перемещения в бою
-    features: frozenset[str] = frozenset()  # ключи умений класса героя на его уровне (app/rules/dnd5e/features.py)
-    class_numbers: dict = field(default_factory=dict)  # числа класса: скрытая атака, урон ярости, кость ци…
     level: int = 0
 
     def can_target_harmfully(self, target: Actor) -> bool:
@@ -188,98 +184,51 @@ def natural_ac(feats: list[dict], dex_mod: int) -> int | None:
     return None
 
 
-def character_actor(
-    ch: Character,
-    cat: CatalogView,
-    inventory: list[InventoryItem],
-    effects: list[ActiveEffect],
-    game_time: int = 0,
-) -> Actor:
-    sheet = ch.sheet or {}
-    cls = cat.find(sheet.get("class_id", ""), "class")
-    origin = cat.find(sheet.get("origin_id", ""), "origin")
-    inv = []
-    for it in inventory:
-        rec = cat.find(it.item_template_id, "item_template")
-        if rec is not None:
-            inv.append((it.id, {"id": rec.id, **rec.data}, it.equipped, it.display_name or rec.name))
-    d = derive(sheet, cls.data if cls else None, origin.data if origin else None, inv)
-    from app.core.weapon_enchantments import active_shillelagh, enchant_attack
+def _universal_actor(row, entities=()):
+    from app.core.universal.inventory import state_of
+    from app.rules.universal.contracts import UniversalSheet
+    from app.rules.universal.mechanics import derive, starting_defense_bonuses
 
-    shillelagh = active_shillelagh(ch, inventory, game_time)
-    if shillelagh:
-        for attack in d.attacks:
-            data = attack.__dict__
-            enchant_attack(data, shillelagh, d.mods)
-    effs = _effects_for(ch.id, effects, cat)
-    lin, _, feats = lineage_features(sheet, cat)
-    lin_mods = [m for f in feats for m in f.get("modifiers") or [] if isinstance(m, dict)]
-    extra = [(lin.id, {"modifiers": lin_mods}, 1)] if lin else []
-    level = int(sheet.get("level") or 1)
-    have = frozenset(cf.owned(cls.data, level)) if cls else frozenset()
-    # Чувство опасности варвара: преимущество на спасброски Ловкости, пока он видит и слышит и дееспособен
-    blind = {r.id for _, r in effs} & {"condition.blinded", "condition.deafened", "condition.incapacitated"}
-    if "danger_sense" in have and not blind:
-        extra.append(("Чувство опасности", {"modifiers": [{"op": "advantage", "on": "save", "stat": "dex"}]}, 1))
-    mods_ = mod.collect(
-        [*extra, *((rec.id, rec.data, e.stacks) for e, rec in effs)],
-        lambda name: (lambda r: {"id": r.id, **r.data} if r else None)(
-            cat.find(name if "." in name else f"condition.{name}")
-        ),
-    )
-    res, vul, imm = mod.defenses(mods_)
-    skills = dict(d.skills)
-    for m in lin_mods:
-        # владения навыками от Порога: к навыку, которым герой ещё не владеет, прибавляется бонус мастерства
-        s = m.get("value")
-        if m.get("op") == "proficiency" and m.get("kind") == "skill" and s in SKILLS and s not in d.proficient_skills:
-            skills[s] = d.mods[SKILLS[s]] + d.pb
-    ac = d.ac
-    armored = any(
-        eq and item.get("category") == "armor" and item.get("armor_type") != "shield" for _, item, eq, _ in inv
-    )
-    natural = natural_ac(feats, d.mods["dex"]) if lin else None
-    # «Доспехи мага» и подобные: базовый КД без доспеха из эффекта (set ac_base)
-    spell_base = natural_ac([rec.data for _, rec in effs], d.mods["dex"])
-    if spell_base is not None:
-        natural = max(natural or 0, spell_base)
-    if natural is not None and not armored:
-        shield = next((i for _, i, eq, _ in inv if eq and i.get("armor_type") == "shield"), None)
-        ac = max(ac, natural + (int(shield.get("ac_bonus", 2)) if shield else 0))
-    floor = max(
-        (
-            int(m["value"])
-            for _, m in mods_.own("set")
-            if m.get("target") == "ac_min" and isinstance(m.get("value"), int)
-        ),
-        default=0,
-    )
-    ac = max(ac, floor)  # «Дубовая кожа»: КД не ниже 16
+    raw = row.sheet if isinstance(row, Character) else row.state.get("universal_sheet")
+    sheet = UniversalSheet.model_validate(raw)
+    items = [
+        state_of(e)
+        for e in entities
+        if e.state.get("universal_item") and e.state["universal_item"].get("owner_id") == row.id
+    ]
+    bonuses = [item.profile.defense_bonus for item in items if item.equipped and item.profile.kind == "armor"]
+    d = derive(sheet, bonuses if items else starting_defense_bonuses(sheet))
+    data = row.resources if isinstance(row, Character) else row.state.get("resources", {})
+    vitality = data.get("vitality", {})
+    hp = _hp_from({**data, "hp_max": d.hp_max, "dead": vitality.get("state") == "dead"}, d.hp_max)
     return Actor(
-        id=ch.id,
-        name=ch.name,
-        kind="character",
-        obj=ch,
-        hp=_hp_from(ch.resources or {}, d.hp_max),
-        ac=ac + mod.add_value(mods_, "ac"),
-        abilities=d.abilities,
-        mods=d.mods,
-        saves=d.saves,
-        skills=skills,
-        pb=d.pb,
-        attacks=[a.as_dict() for a in d.attacks],
-        resistances=set(d.resistances) | res,
-        vulnerabilities=vul,
-        immunities=imm,
-        condition_immunities=mod.condition_immunities(mods_),
-        effects=effs,
-        modifiers=mods_,
-        zone="party",
-        speed=_effective_speed(int(d.speed), mods_),
-        features=have,
-        class_numbers=cf.numbers(cls.data, level) if cls else {},
-        level=level,
+        id=row.id,
+        name=row.name,
+        kind="character" if isinstance(row, Character) else "creature",
+        obj=row,
+        hp=hp,
+        ac=d.ac,
+        abilities=sheet.abilities.model_dump(),
+        mods=d.modifiers,
+        saves=d.modifiers,
+        skills={},
+        pb=0,
+        attacks=[],
+        zone="party" if isinstance(row, Character) else row.zone,
+        level=sheet.level,
     )
+
+
+def character_actor(ch, cat=None, inventory=(), effects=(), game_time=0, entities=()):
+    actor = _universal_actor(ch, entities)
+    if cat is not None:
+        actor.effects = _effects_for(ch.id, effects, cat)
+        actor.modifiers = _collect(actor.effects, cat)
+        actor.resistances, actor.vulnerabilities, actor.immunities = mod.defenses(actor.modifiers)
+        actor.condition_immunities = mod.condition_immunities(actor.modifiers)
+        actor.ac += mod.add_value(actor.modifiers, "ac")
+        actor.speed = _effective_speed(actor.speed, actor.modifiers)
+    return actor
 
 
 # Сложность стола → множитель средних хитов шаблона для существ и NPC, выходящих в мир
@@ -331,6 +280,8 @@ def _cr_level(cr: Any) -> int:
 
 
 def creature_actor(en: Entity, cat: CatalogView, effects: list[ActiveEffect]) -> Actor:
+    if en.state.get("universal_sheet"):
+        return _universal_actor(en)
     rec = cat.find(en.template_id or "", "creature_template")
     if rec is None:
         raise WorldError(f"у сущности {en.id} нет шаблона существа")
@@ -432,6 +383,7 @@ class World:
                 self.inventory.get(actor_id, []),
                 self.effects,
                 self.scene.game_time,
+                self.entities.values(),
             )
         elif actor_id in self.entities and self.entities[actor_id].kind == "creature":
             a = creature_actor(self.entities[actor_id], self.catalog, self.effects)
@@ -868,36 +820,12 @@ class World:
                 lines.append(f"    {magic}")
         return lines
 
-    def _feature_line(self, ch: Character) -> str | None:
-        """Умения класса: без этой строки мастер не знает о скрытой атаке, ярости и формах друида."""
-        from app.core.features import scene_line
+    def _feature_line(self, ch):
+        names = [a.get("name", "") for a in (ch.resources or {}).get("learned_abilities", []) if isinstance(a, dict)]
+        return ", ".join(filter(None, names)) or None
 
-        try:
-            return scene_line(ch, self.catalog)
-        except Exception:  # noqa: BLE001 — сломанный лист не должен ронять таблицу сцены
-            return None
-
-    def _spell_line(self, ch: Character) -> str | None:
-        """Что герой может сотворить: без этой строки мастер считает героя немагом и выдумывает эффекты."""
-        from app.core.spells import book_view
-
-        try:
-            b = book_view(ch.sheet or {}, ch.resources or {}, self.catalog)
-        except Exception:  # noqa: BLE001 — сломанный лист не должен ронять таблицу сцены
-            return None
-        if b is None:
-            return None
-        ready = [x for x in b["spells"] if x["prepared"]]
-        slots = ", ".join(f"{k}-й {v}/{b['slots'][int(k) - 1]}" for k, v in b["slots_left"].items() if v is not None)
-        if b.get("pact_slots"):
-            slots += f"{', ' if slots else ''}договор {b['pact_level']}-й {b['pact_left']}/{b['pact_slots']}"
-        head = f"заклинатель: Сл {b['save_dc']}, атака {b['attack']:+d}, ячейки: {slots or 'нет'}"
-        if (b.get("concentration") or {}).get("name"):
-            head += f", концентрация: {b['concentration']['name']}"
-        spells = "; ".join(
-            f"{x['id']} {x['name']} ({'заговор' if x['level'] == 0 else str(x['level']) + '-й'})" for x in ready
-        )
-        return f"{head}; заклинания (для cast_spell): {spells or 'не выбраны'}"
+    def _spell_line(self, ch):
+        return None
 
     def _sketch_line(self, place: str) -> str:
         """Закрытое описание места и эскиз для схемы игроков (app/core/sketch.py) или напоминание описать место."""

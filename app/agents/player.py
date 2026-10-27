@@ -285,7 +285,7 @@ def _render(ch, sheet, last, rows, chars, place, here, combat_turn: bool) -> str
     derived = sheet.get("derived") or {}
     res = ch.resources or {}
     lines = [
-        f"Твой герой: {ch.name}. Класс: {sheet.get('class_name') or (ch.sheet or {}).get('class_id')}, "
+        f"Твой герой: {ch.name}. {(ch.sheet or {}).get('description', {}).get('identity', '')}. "
         f"уровень {(ch.sheet or {}).get('level', 1)}. Хиты {res.get('hp', '?')} из {derived.get('hp_max', '?')}.",
         f"Снаряжение: {inv}.",
     ]

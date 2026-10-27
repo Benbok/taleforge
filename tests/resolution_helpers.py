@@ -22,4 +22,3 @@ async def prepare_actions(ctx, hero_id: str, actions: list[dict]) -> tuple[Messa
 async def prepare_action(ctx, hero_id: str, actions: list[dict]) -> ActionRef:
     _msg, refs = await prepare_actions(ctx, hero_id, actions)
     return refs[0]
-

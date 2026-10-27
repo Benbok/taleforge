@@ -19,7 +19,6 @@ from app.core.world import World
 from app.tools import fortune as _fortune_tools  # noqa: F401
 from app.tools import master as _master_tools  # noqa: F401  (регистрирует инструменты)
 from app.tools import plot as _plot_tools  # noqa: F401
-from app.tools import progress as _progress_tools  # noqa: F401
 from app.tools import standing as _standing_tools  # noqa: F401
 from app.tools.registry import REGISTRY, _enum_values
 

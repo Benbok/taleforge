@@ -74,7 +74,10 @@ async def reserve_from_plan(ctx, root: Entity, sketch: dict[str, Any], inverse: 
     record = ctx.world.catalog.find(template_id, "location_template")
     tags = tuple((record.data.get("tags") if record is not None else None) or [])
     row = await store.reserve_plan_layout(
-        ctx.session, ctx.campaign, root, mandate,
+        ctx.session,
+        ctx.campaign,
+        root,
+        mandate,
         template_context=TemplateContext(template_id=template_id, tags=tags),
     )
     inverse.append({"table": "world_generation_states", "op": "delete", "id": row.id})

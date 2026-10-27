@@ -26,8 +26,9 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app.rules.dice import DiceError, parse  # noqa: E402
 from app.rules.dnd5e.tables import CONDITIONS, DAMAGE_TYPES, SKILLS  # noqa: E402
+
+from app.rules.dice import DiceError, parse  # noqa: E402
 from tools.srd_blurbs import CLASS_BLURBS, RACE_BLURBS  # noqa: E402
 from tools.srd_feature_texts import text_for  # noqa: E402
 

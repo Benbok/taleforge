@@ -8,7 +8,7 @@ from typing import Any
 
 from app.core import combat, economy, reach, steps
 from app.core import positions as grid
-from app.rules.dnd5e import modifiers as mod
+from app.rules import modifiers as mod
 from app.tools import grapples as gp
 from app.tools.registry import ToolContext, ToolError, execute
 

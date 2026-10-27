@@ -17,7 +17,6 @@ from sqlalchemy import select
 from app.core import plot, plot_anchors
 from app.core.world import creature_hp, creature_stats
 from app.db.models import CampaignSecret, Entity, PlotAnchorBinding
-from app.tools import progress
 from app.tools.registry import ToolContext, ToolError, tool
 
 PLOT_TOOLS = ("get_plot", "advance_plot", "plot_reveal", "end_act", "develop", "threat_tick", "bind_plot_anchor")
@@ -104,10 +103,6 @@ async def advance_plot(ctx: ToolContext, a: AdvanceArgs) -> dict:
     out = await _change(
         ctx, "advance_plot", fn, payload={"node_id": a.node_id, "result": a.result, "outcome": a.outcome}
     )
-    if a.result == "done":  # задача сюжета выполнена: опыт отряду (в кампании с опытом)
-        xp = await progress.goal_reached(ctx, "task", "medium", "задача сюжета выполнена")
-        if xp:
-            out["xp"] = xp
     return out
 
 
@@ -155,8 +150,6 @@ async def end_act(ctx: ToolContext, a: EndActArgs) -> dict:
     def fn(p: dict) -> dict:
         done, nxt = plot.end_act(p, a.outcome)
         out: dict[str, Any] = {"closed": done["title"]}
-        if done.get("milestone_level") and progress.leveling(ctx.campaign) == "milestone":
-            out["milestone"] = f"веха акта: подними героев до уровня {done['milestone_level']} через grant_level"
         if nxt is None:
             out["next"] = "актов больше нет: веди к финалу"
         else:
@@ -166,9 +159,6 @@ async def end_act(ctx: ToolContext, a: EndActArgs) -> dict:
 
     act = plot.active_act((await _secret(ctx)).plot)
     out = await _change(ctx, "end_act", fn, payload={"act_id": act["id"] if act else None, "outcome": a.outcome})
-    xp = await progress.goal_reached(ctx, "quest", "hard", "квест сюжета завершён")
-    if xp:
-        out["xp"] = xp
     return out
 
 

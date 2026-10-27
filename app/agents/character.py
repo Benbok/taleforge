@@ -113,12 +113,8 @@ def _tool(name: str, description: str, properties: dict, required: list[str]) ->
 
 
 async def hero_basics(s, c: Campaign, ch: Character) -> str:
-    cat = await campaign_catalog(s, c)
-    names = []
-    for key, kind in (("class_id", "class"), ("origin_id", "origin")):
-        rec = cat.find((ch.sheet or {}).get(key) or "", kind)
-        names.append(rec.name if rec else "")
-    parts = [f"Герой: {ch.name}. Класс: {names[0] or '—'}. Происхождение: {names[1] or '—'}."]
+    description = (ch.sheet or {}).get("description") or {}
+    parts = [f"Герой: {ch.name}. {description.get('identity', '')}"]
     if ch.public_bio:
         parts.append(f"Внешность и история: {ch.public_bio}")
     if ch.private_backstory:

@@ -21,7 +21,7 @@ from typing import Annotated, Any, Literal, Union
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
 from app.core.scene_presentation import LocationPresentation
-from app.core.views import CompanionPublic, HeroPublic, HeroSheet, TurnEconomy, absent
+from app.core.views import CompanionPublic, HeroPublic, TurnEconomy, absent
 from app.rules.universal.contracts import UniversalGameCard
 
 # В тестах — True: каждое событие проверяется по своей модели (tests/conftest.py).
@@ -101,32 +101,6 @@ class Vote(_Strict):
     voters: list[str]
     voted: list[str]
     tally: dict[str, int]
-    deadline: float
-
-
-class RestHero(_Strict):
-    id: str
-    name: str
-    seat_id: str | None
-    voter: bool
-    choice: Literal["sleep", "watch", "no"] | None
-    hit_dice: int | None
-    hit_dice_left: int
-
-
-class RestVote(_Strict):
-    vote_id: str
-    kind: Literal["short", "long"]
-    kind_ru: str
-    place: str | None
-    place_name: str
-    safety: Literal["safe", "risky", "dangerous"]
-    safety_ru: str
-    warning: str | None
-    safer: list[str]
-    proposer: str | None
-    heroes: list[RestHero]
-    choices: list[Literal["sleep", "watch", "no"]]
     deadline: float
 
 
@@ -237,7 +211,7 @@ class SnapshotCampaign(_Strict):
     name: str
     status: Literal["lobby", "active", "paused", "ended"]
     public_intro: str
-    ruleset_id: str = "dnd5e"
+    ruleset_id: str = "universal"
 
 
 class SnapshotSession(_Strict):
@@ -264,7 +238,6 @@ class StateSnapshot(_Strict):
     me: SnapshotMe
     seats: list[SeatState]
     votes: list[Vote]
-    rest_votes: list[RestVote]
     turn: Turn | None
     reaction: ReactionPrompt | None
     summary: SessionSummary | None
@@ -334,12 +307,12 @@ class CharacterReviewStarted(_Strict):
 class CharacterReviewed(_Strict):
     status: str
     comment: str | None
-    character: HeroSheet | UniversalGameCard = absent()
+    character: UniversalGameCard = absent()
     attempt_id: str = absent()
 
 
 class CharacterSheet(_Strict):
-    character: HeroSheet | UniversalGameCard
+    character: UniversalGameCard
     event_id: str | None = absent()
 
 
@@ -666,10 +639,6 @@ class ReactionClosed(_Strict):
     choice: str
 
 
-class RestEnded(_Strict):
-    vote_id: str
-
-
 class SeatChanged(_Strict):
     seat_id: str
 
@@ -727,8 +696,6 @@ SERVER_EVENTS: dict[str, type[BaseModel]] = {
     "presence.changed": PresenceChanged,
     "reaction.closed": ReactionClosed,
     "reaction.prompt": ReactionPrompt,
-    "rest.ended": RestEnded,
-    "rest.vote": RestVote,
     "scene.updated": Scene,
     "seat.changed": SeatChanged,
     "session.ended": CampaignStatusChanged,

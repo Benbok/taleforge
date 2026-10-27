@@ -20,7 +20,6 @@ from app.api import (
     auth,
     campaigns,
     characters,
-    equipment,
     home,
     library,
     models,
@@ -48,7 +47,6 @@ from app.db.session import make_engine, make_sessionmaker, verify_universal_sche
 from app.gateway import ws
 from app.gateway.hub import Hub, MemoryBus, RedisBus
 from app.gateway.presence import Presence
-from app.gateway.rest import RestVotes
 from app.rules.dice import Dice
 
 log = logging.getLogger("taleforge")
@@ -172,8 +170,6 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
         app.state.presence = Presence(app.state.sessionmaker, app.state.bus, hub, app.state.master)
         app.state.master.presence = app.state.presence
         app.state.master.players = PlayerAgents(app.state.master)
-        app.state.rest = RestVotes(app.state.sessionmaker, app.state.bus, app.state.master, dice_factory)
-        await app.state.rest.resume()
         app.state.stt = SpeechToText(
             settings.stt_api_base, settings.stt_model, settings.stt_language, settings.stt_concurrency
         )
@@ -182,7 +178,6 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
         finally:
             await app.state.author_runner.stop()
             await app.state.presence.stop()
-            await app.state.rest.stop()
             await app.state.master.players.stop()
             await app.state.master.stop()
             await app.state.sfx_worker.stop()
@@ -208,7 +203,6 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     app.include_router(adventures_api.router)
     app.include_router(campaigns.router)
     app.include_router(characters.router)
-    app.include_router(equipment.router)
     app.include_router(home.router)
     app.include_router(library.router)
     app.include_router(hero_creation_api.router)

@@ -5,9 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
-
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -15,47 +13,17 @@ from app.api.deps import SessionDep, UserDep
 from app.content.catalog import campaign_catalog
 from app.core import bonds
 from app.core import characters as svc
-from app.core import equipment as equipment_core
 from app.core import library as lib
-from app.core.campaigns import AccessDenied, Conflict, Viewer, get_viewer, master_seat, stand_in_seats
+from app.core.campaigns import AccessDenied, Conflict, Viewer, get_viewer
 from app.core.universal.state import game_card_of
 from app.core.views import CharacterView
-from app.core.world import load_world
-from app.db.models import ActiveEffect, Character, Entity, InventoryItem
+from app.db.models import Character
 from app.gateway.events import envelope
 from app.rules.universal.contracts import UniversalGameCard
 from app.rules.universal.items import GameItemAction
 from app.rules.universal.progression import PointAllocation
 
 router = APIRouter(prefix="/api/campaigns/{campaign_id}", tags=["characters"])
-
-
-class CharacterIn(BaseModel):
-    name: str | None = Field(None, max_length=64)
-    class_id: str | None = None
-    origin_id: str | None = None
-    ability_method: Literal["standard_array", "point_buy", "roll"] | None = None
-    abilities: dict[str, int] | None = None
-    ability_choice: list[str] | None = None
-    skills: list[str] | None = None
-    fighting_style: str | None = Field(None, max_length=40)
-    expertise: list[str] | None = Field(None, max_length=8)
-    equipment_choices: list[dict[str, Any]] | None = None
-    cantrips: list[str] | None = Field(None, max_length=30)
-    spells: list[str] | None = Field(None, max_length=80)
-    prepared: list[str] | None = Field(None, max_length=60)
-    public_bio: str | None = Field(None, max_length=4000)
-    private_backstory: str | None = Field(None, max_length=4000)
-    personality: dict[str, str] | None = None
-
-
-class PreviewIn(CharacterIn):
-    ability_rolls: list[int] | None = Field(None, max_length=6)  # выпавшие 4d6 черновика: только для живого листа
-
-
-class ReviewIn(BaseModel):
-    approve: bool
-    comment: str = Field("", max_length=2000)
 
 
 @router.post("/characters/{character_id}/universal-actions", response_model=UniversalGameCard)
@@ -149,71 +117,7 @@ async def _view(session, viewer: Viewer, ch: Character) -> dict:
         from app.core.universal.exploration_views import exploration_game_card
 
         return await exploration_game_card(session, ch)
-    out = await _sheet_view(session, viewer, ch)
-    cat = await campaign_catalog(session, viewer.campaign)
-    if "inventory" in out:
-        world = await load_world(session, viewer.campaign, cat)
-        out["equipment"] = {
-            "can_manage": _can_manage_equipment(viewer, ch),
-            "in_combat": world.in_fight(ch.id),
-            "changes": equipment_core.equipment_state(world, ch.id),
-        }
-    for key, kind in (("class", "class"), ("origin", "origin")):
-        rec = cat.find((ch.sheet or {}).get(f"{key}_id") or "", kind)
-        out[f"{key}_name"] = rec.name if rec else None
-    if ch.status == "submitted":
-        ai = master_seat(viewer.campaign).occupant_type == "agent"
-        out["reviewer"] = "ai" if ai else "master"
-        if ai:
-            out.update(await svc.review_state(session, ch))
-        else:
-            out["review_error"] = None
-    return out
-
-
-def _can_manage_equipment(viewer: Viewer, ch: Character) -> bool:
-    return bool(
-        viewer.seat is not None
-        and ch.seat_id == viewer.seat.id
-        and (ch.owner_user_id == viewer.user.id or ch.seat_id in stand_in_seats(viewer.campaign, viewer.user.id))
-    )
-
-
-async def _sheet_view(session, viewer: Viewer, ch: Character) -> dict:
-    mine = viewer.seat is not None and ch.seat_id == viewer.seat.id
-    # героя ушедшего игрока ведёт другой по итогам голосования: ему нужен лист, но не личная предыстория
-    stand_in = ch.seat_id is not None and ch.seat_id in stand_in_seats(viewer.campaign, viewer.user.id)
-    # заготовку без игрока показываем целиком: игрок выбирает, кем играть
-    full = mine or viewer.can_review or ch.status == "premade" or (viewer.is_owner and ch.seat_id is None)
-    entities = (await session.scalars(select(Entity).where(Entity.campaign_id == viewer.campaign.id))).all()
-    if not (full or stand_in):
-        return svc.public_view(ch, entities)
-    cat = await campaign_catalog(session, viewer.campaign)
-    inv = (await session.scalars(select(InventoryItem).where(InventoryItem.character_id == ch.id))).all()
-    eff = (await session.scalars(select(ActiveEffect).where(ActiveEffect.target_id == ch.id))).all()
-    out = svc.full_view(ch, cat, list(inv), list(eff), entities)
-    if not full:
-        out.pop("private_backstory", None)
-        out["stand_in"] = True
-    if (ch.status == "draft" and mine) or ch.status == "premade":
-        out["errors"] = svc.errors_for(ch, cat, await svc.creation_rules(session, viewer.campaign))
-    return out
-
-
-@router.get("/character-options")
-async def character_options(campaign_id: str, user: UserDep, session: SessionDep, as_seat: str | None = None) -> dict:
-    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
-    return await svc.options(session, v.campaign, await campaign_catalog(session, v.campaign))
-
-
-@router.post("/character-preview")
-async def character_preview(
-    campaign_id: str, body: PreviewIn, user: UserDep, session: SessionDep, as_seat: str | None = None
-) -> dict:
-    """Живой лист конструктора по правилам кампании: ничего не сохраняет."""
-    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
-    cat = await campaign_catalog(session, v.campaign)
-    return svc.preview(body.model_dump(exclude_none=True), cat, await svc.creation_rules(session, v.campaign))
+    raise Conflict("Кампания использует универсальную карточку героя.")
 
 
 @router.get("/characters", response_model_exclude_unset=True)
@@ -233,17 +137,6 @@ async def list_characters(
     return out
 
 
-@router.post("/characters", status_code=201, response_model_exclude_unset=True)
-async def create_character(
-    campaign_id: str, body: CharacterIn, user: UserDep, session: SessionDep, as_seat: str | None = None
-) -> CharacterView:
-    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
-    rules = await svc.creation_rules(session, v.campaign)
-    ch = await svc.create_draft(session, v, body.model_dump(exclude_none=True), rules)
-    await session.commit()
-    return await _view(session, v, ch)
-
-
 @router.get("/characters/{character_id}", response_model_exclude_unset=True)
 async def get_character(
     campaign_id: str, character_id: str, user: UserDep, session: SessionDep, as_seat: str | None = None
@@ -252,232 +145,7 @@ async def get_character(
     return await _view(session, v, await svc.get_character(session, v, character_id))
 
 
-@router.put("/characters/{character_id}", response_model_exclude_unset=True)
-async def update_character(
-    campaign_id: str,
-    character_id: str,
-    body: CharacterIn,
-    user: UserDep,
-    session: SessionDep,
-    as_seat: str | None = None,
-) -> CharacterView:
-    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
-    ch = await svc.update_draft(
-        session, v, await svc.get_character(session, v, character_id), body.model_dump(exclude_none=True)
-    )
-    await session.commit()
-    return await _view(session, v, ch)
-
-
-class SpellsIn(BaseModel):
-    cantrips: list[str] | None = Field(None, max_length=30)
-    spells: list[str] | None = Field(None, max_length=80)
-    prepared: list[str] | None = Field(None, max_length=60)
-
-
-@router.get("/characters/{character_id}/spells/options")
-async def spell_options(
-    campaign_id: str, character_id: str, user: UserDep, session: SessionDep, as_seat: str | None = None
-) -> dict:
-    """Что герой может выучить или подготовить: заклинания его класса до доступного круга."""
-    from app.core import spells as spellbook
-
-    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
-    ch = await svc.get_character(session, v, character_id)
-    if not (v.seat is not None and ch.seat_id == v.seat.id) and not v.can_review:
-        raise AccessDenied("чужую книгу заклинаний видит только её хозяин и мастер")
-    cat = await campaign_catalog(session, v.campaign)
-    return {"spells": spellbook.learnable(ch.sheet or {}, cat)}
-
-
-@router.put("/characters/{character_id}/spells", response_model_exclude_unset=True)
-async def update_spells(
-    campaign_id: str,
-    character_id: str,
-    body: SpellsIn,
-    user: UserDep,
-    session: SessionDep,
-    request: Request,
-    as_seat: str | None = None,
-) -> CharacterView:
-    """Книга заклинаний в игре: выучить открывшееся с уровнем, сменить подготовленные после отдыха."""
-    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
-    ch = await svc.get_character(session, v, character_id)
-    cat = await campaign_catalog(session, v.campaign)
-    await svc.update_spells(session, v, ch, cat, body.model_dump(exclude_none=True))
-    await session.commit()
-    view = await _view(session, v, ch)
-    if ch.seat_id:
-        await request.app.state.bus.publish(
-            campaign_id, envelope("character.sheet", campaign_id, {"character": view}), [ch.seat_id]
-        )
-    return view
-
-
-@router.post("/characters/{character_id}/roll-abilities")
-async def roll_abilities(
-    campaign_id: str,
-    character_id: str,
-    user: UserDep,
-    session: SessionDep,
-    request: Request,
-    as_seat: str | None = None,
-):
-    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
-    ch = await svc.get_character(session, v, character_id)
-    totals = await svc.roll_abilities(session, v, ch, request.app.state.dice_factory())
-    await session.commit()
-    return {"rolls": totals}
-
-
-@router.post("/characters/{character_id}/submit")
-async def submit(
-    campaign_id: str,
-    character_id: str,
-    user: UserDep,
-    session: SessionDep,
-    request: Request,
-    as_seat: str | None = None,
-) -> dict:
-    lock = request.app.state.master.turn_lock(campaign_id)
-    if lock.locked():
-        raise Conflict("Новый герой может вступить до старта или на паузе после завершения боя и хода мастера")
-    async with lock:
-        v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
-        ch = await svc.get_character(session, v, character_id)
-        cat = await campaign_catalog(session, v.campaign)
-        errors = await svc.submit(session, v, ch, cat, await svc.creation_rules(session, v.campaign))
-        await session.commit()
-        if errors:
-            return {"status": ch.status, "errors": errors}
-        bus = request.app.state.bus
-        await bus.publish(
-            campaign_id, envelope("character.updated", campaign_id, {"character": svc.public_view(ch)}), None
-        )
-        if ch.status == "submitted" and master_seat(v.campaign).occupant_type == "agent":
-            # проверку ведёт ИИ-мастер; ответ придёт событием character.reviewed
-            request.app.state.master.schedule_review(campaign_id, ch.id)
-        return {"status": ch.status, "errors": []}
-
-
-@router.post("/characters/{character_id}/review", response_model_exclude_unset=True)
-async def review(
-    campaign_id: str,
-    character_id: str,
-    body: ReviewIn,
-    user: UserDep,
-    session: SessionDep,
-    request: Request,
-    as_seat: str | None = None,
-) -> CharacterView:
-    lock = request.app.state.master.turn_lock(campaign_id)
-    if lock.locked():
-        raise Conflict("Новый герой может вступить до старта или на паузе после завершения боя и хода мастера")
-    async with lock:
-        v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
-        ch = await svc.get_character(session, v, character_id)
-        await svc.review(session, v, ch, await campaign_catalog(session, v.campaign), body.approve, body.comment)
-        await session.commit()
-        view = await _view(session, v, ch)
-        bus = request.app.state.bus
-        await bus.publish(
-            campaign_id, envelope("character.updated", campaign_id, {"character": svc.public_view(ch)}), None
-        )
-        if ch.seat_id:
-            await bus.publish(
-                campaign_id,
-                envelope("character.reviewed", campaign_id, {"status": ch.status, "comment": ch.review_comment}),
-                [ch.seat_id],
-            )
-        return view
-
-
-@router.post("/characters/{character_id}/review/retry-ai", status_code=202)
-async def retry_ai_review(
-    campaign_id: str,
-    character_id: str,
-    user: UserDep,
-    session: SessionDep,
-    request: Request,
-    as_seat: str | None = None,
-) -> dict:
-    """Ещё раз отдать героя на проверку ИИ-мастеру, например после смены модели."""
-    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
-    ch = await svc.get_character(session, v, character_id)
-    mine = v.seat is not None and ch.seat_id == v.seat.id
-    if not (mine or v.can_review):
-        raise AccessDenied("повторить проверку может игрок героя, мастер или владелец")
-    if ch.status != "submitted":
-        raise Conflict("персонаж не на проверке")
-    if master_seat(v.campaign).occupant_type != "agent":
-        raise Conflict("героя проверяет живой мастер")
-    await session.rollback()
-    attempt_id = await request.app.state.master.start_character_review(campaign_id, character_id)
-    return {"status": "submitted", "review_status": "running", "attempt_id": attempt_id}
-
-
 # --- готовые герои и герои из профиля ---
-
-
-@router.post("/premades", status_code=201, response_model_exclude_unset=True)
-async def create_premade(
-    campaign_id: str, body: CharacterIn, user: UserDep, session: SessionDep, as_seat: str | None = None
-) -> CharacterView:
-    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
-    rules = await svc.creation_rules(session, v.campaign)
-    ch = await svc.create_premade(session, v, body.model_dump(exclude_none=True), rules)
-    await session.commit()
-    return await _view(session, v, ch)
-
-
-@router.put("/premades/{character_id}", response_model_exclude_unset=True)
-async def update_premade(
-    campaign_id: str,
-    character_id: str,
-    body: CharacterIn,
-    user: UserDep,
-    session: SessionDep,
-    as_seat: str | None = None,
-) -> CharacterView:
-    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
-    ch = await svc.get_character(session, v, character_id)
-    await svc.update_premade(session, v, ch, body.model_dump(exclude_none=True))
-    await session.commit()
-    return await _view(session, v, ch)
-
-
-@router.delete("/premades/{character_id}", status_code=204)
-async def delete_premade(
-    campaign_id: str, character_id: str, user: UserDep, session: SessionDep, as_seat: str | None = None
-) -> Response:
-    v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
-    await svc.delete_premade(session, v, await svc.get_character(session, v, character_id))
-    await session.commit()
-    return Response(status_code=204)
-
-
-@router.post("/characters/{character_id}/claim", response_model_exclude_unset=True)
-async def claim(
-    campaign_id: str,
-    character_id: str,
-    user: UserDep,
-    session: SessionDep,
-    request: Request,
-    as_seat: str | None = None,
-) -> CharacterView:
-    lock = request.app.state.master.turn_lock(campaign_id)
-    if lock.locked():
-        raise Conflict("Новый герой может вступить до старта или на паузе после завершения боя и хода мастера")
-    async with lock:
-        v = await get_viewer(session, user, campaign_id, as_seat, ai_seat=True)
-        ch = await svc.get_character(session, v, character_id)
-        cat = await campaign_catalog(session, v.campaign)
-        await svc.claim(session, v, ch, cat, await svc.creation_rules(session, v.campaign))
-        await session.commit()
-        await request.app.state.bus.publish(
-            campaign_id, envelope("character.updated", campaign_id, {"character": svc.public_view(ch)}), None
-        )
-        return await _view(session, v, ch)
 
 
 @router.post("/characters/from-library/{library_id}", status_code=201, response_model_exclude_unset=True)
@@ -708,7 +376,7 @@ async def tables_persona(
     tables = [e.data for e in cat.by_kind("persona_table")]
     if not tables:
         raise Conflict("в версии пакета, на которой идёт кампания, нет таблиц характера")
-    hero_ids = {x for x in ((ch.sheet or {}).get("class_id"), (ch.sheet or {}).get("origin_id")) if x}
+    hero_ids = set()
     out, taken = persona.from_tables(sheet, tables, hero_ids, random.SystemRandom().choice)
     return {"persona": out, "taken": taken}
 

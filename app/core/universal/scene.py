@@ -45,8 +45,14 @@ async def universal_scene(session, campaign, viewer):
         from app.core.universal.perception import illumination_view
 
         payload["exploration_light"] = await illumination_view(session, campaign.id, hero.id)
-        payload["mode"] = "combat" if any(
-            entity.kind == "creature" and entity.state.get("hostile")
-            and int(entity.state.get("resources", {}).get("hp", "1")) > 0 for entity in view.entities
-        ) else "free"
+        payload["mode"] = (
+            "combat"
+            if any(
+                entity.kind == "creature"
+                and entity.state.get("hostile")
+                and int(entity.state.get("resources", {}).get("hp", "1")) > 0
+                for entity in view.entities
+            )
+            else "free"
+        )
     return payload

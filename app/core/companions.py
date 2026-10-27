@@ -21,9 +21,7 @@ def companion_record(entity: Any) -> dict[str, str] | None:
     if not isinstance(owner, str) or not owner:
         return None
     return {
-        key: value
-        for key, value in record.items()
-        if key in {"of", "since_event", "reason"} and isinstance(value, str)
+        key: value for key, value in record.items() if key in {"of", "since_event", "reason"} and isinstance(value, str)
     }
 
 
@@ -31,10 +29,7 @@ def companion_is_active(entity: Any) -> bool:
     record = companion_record(entity)
     state = getattr(entity, "state", None) or {}
     return bool(
-        record
-        and not state.get("dead")
-        and not state.get("fled")
-        and state.get("attitude", "hostile") != "hostile"
+        record and not state.get("dead") and not state.get("fled") and state.get("attitude", "hostile") != "hostile"
     )
 
 

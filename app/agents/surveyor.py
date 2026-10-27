@@ -183,9 +183,7 @@ async def draw(svc, cid: str, place_id: str) -> dict | None:
         await s.commit()
     if not stored:
         if data is None:
-            log.warning(
-                "эскиз %s по описанию не построен: %s", place_id, "; ".join(c.error or "" for c in calls)[:500]
-            )
+            log.warning("эскиз %s по описанию не построен: %s", place_id, "; ".join(c.error or "" for c in calls)[:500])
         return None
     await svc.bus.publish(cid, envelope("map.changed", cid, {"place_id": place_id}), None)
     log.info("эскиз %s: %s", place_id, sketch.describe(data))
