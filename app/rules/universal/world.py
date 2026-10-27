@@ -2,11 +2,16 @@
 
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from app.rules.universal.contracts import ClosedModel
 
 Ref = str
+
+
+def clip(limit):
+    """Free-text hints are cosmetic: a model overshooting the limit must not void a whole scene plan."""
+    return lambda value: value[:limit] if isinstance(value, str) else value
 
 
 class WorldObject(ClosedModel):
@@ -38,6 +43,8 @@ class WorldPassage(ClosedModel):
     bearing: Literal["n", "ne", "e", "se", "s", "sw", "w", "nw"] | None = None
     hidden: bool = False
 
+    _clip_destination = field_validator("destination", mode="before")(clip(100))
+
     @model_validator(mode="after")
     def destination_required(self):
         if not self.existing_destination_id and not self.destination.strip():
@@ -62,3 +69,5 @@ class WorldScenePlan(ClosedModel):
 class WorldSceneReview(ClosedModel):
     verdict: Literal["pass", "revise"]
     message: str = Field(default="", max_length=1500)
+
+    _clip_message = field_validator("message", mode="before")(clip(1500))

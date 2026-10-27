@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import Field
 from sqlalchemy import select
 
+from app.agents.llm import repair_json
 from app.core.campaigns import AccessDenied
 from app.core.universal.contracts import ResolutionContext
 from app.core.universal.interpretation import compile_exploration, is_plain_action
@@ -132,6 +133,8 @@ SYSTEM = (
     "Короткое действие — 6 игровых секунд. "
     "Обычная ходьба, речь и действия руками — source=mundane (move, speak, take…), а не заклинание; "
     "магию для них не придумывай. "
+    "Обращение героя к существу рядом — speak с recipient_id из id существ сцены; ответ существа не изображай "
+    "через observe, его передаст рассказчик. "
     "Для операций с предметами используй реальные id из objects; новые ссылки intro:ref или created:индекс. "
     "Не указывай object_id/source_id, если действию предмет не нужен (форма, свет, маскировка). "
     "introductions только по точной evidence_quote из established_evidence; "
@@ -325,7 +328,7 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                 try:
                     raw = clean_model_intent(json.loads(reply))
                 except ValueError:
-                    raw = {"invalid_json": True}
+                    raw = repair_json(reply) or {"invalid_json": True}
                 trace.setdefault("admissions", {})[mid] = raw
                 await store(service, tid, trace)
             except Exception as exc:

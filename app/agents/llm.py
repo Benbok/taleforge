@@ -231,13 +231,55 @@ def decide_model_for() -> str:
     return model_for() if settings.decide_model == "main" else parser_model_for()
 
 
+def repair_json(raw: str) -> dict[str, Any] | None:
+    """Spare the fields a model wrote before it slipped: cut at the syntax error (or end) back to the last complete
+    member and close what is still open. Anything that does not come out as an object stays invalid."""
+    try:
+        json.loads(raw)
+    except json.JSONDecodeError as exc:
+        text = raw[: exc.pos]
+    else:
+        return None
+    # Candidate cut points, latest first: a comma outside strings, or the end when the text only ran out.
+    commas, stack, in_str, esc = [], [], False, False
+    for i, ch in enumerate(text):
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch in "{[":
+            stack.append((ch, i))
+        elif ch in "}]" and stack:
+            stack.pop()
+        elif ch == "," and stack:
+            commas.append((i, [c for c, _ in stack]))
+    closers = lambda opened: "".join("}" if c == "{" else "]" for c in reversed(opened))  # noqa: E731
+    attempts = [text.rstrip().rstrip(",") + closers([c for c, _ in stack])]
+    attempts += [text[:i] + closers(opened) for i, opened in reversed(commas)]
+    for candidate in attempts:
+        try:
+            v = json.loads(candidate)
+        except ValueError:
+            continue
+        if isinstance(v, dict):
+            return v
+    return None
+
+
 def _parse_args(raw: Any) -> dict[str, Any]:
     if isinstance(raw, dict):
         return raw
     try:
         v = json.loads(raw or "{}")
     except (TypeError, ValueError):
-        return {"__invalid_json__": str(raw)[:500]}
+        v = repair_json(raw) if isinstance(raw, str) else None
+        return v if v is not None else {"__invalid_json__": str(raw)[:500]}
     return v if isinstance(v, dict) else {"__invalid_json__": str(raw)[:500]}
 
 
