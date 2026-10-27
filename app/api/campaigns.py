@@ -52,7 +52,7 @@ from app.db.models import (
 )
 from app.db.narrative import sync_plan_metadata
 from app.gateway.events import envelope, publish_message
-from app.rules.dnd5e import Dnd5eEngine
+from app.rules.universal.engine import UniversalEngine
 
 router = APIRouter(prefix="/api", tags=["campaigns"])
 
@@ -167,7 +167,7 @@ async def create_campaign(body: CampaignCreateIn, user: UserDep, session: Sessio
         session,
         user,
         name=body.name,
-        ruleset_version=Dnd5eEngine.version,
+        ruleset_version=UniversalEngine.version,
         pack=pack,
         difficulty=body.difficulty,
         players=body.players,
@@ -720,9 +720,7 @@ async def get_canon_journal(campaign_id: str, user: UserDep, session: SessionDep
 
 
 @router.post("/campaigns/{campaign_id}/seats", status_code=201)
-async def add_seat(
-    campaign_id: str, user: UserDep, session: SessionDep, request: Request
-) -> CampaignOut:
+async def add_seat(campaign_id: str, user: UserDep, session: SessionDep, request: Request) -> CampaignOut:
     """Владелец добавляет пустое место игрока в созданную кампанию (максимум 6 мест игроков)."""
     user_id = user.id
     current_user = user

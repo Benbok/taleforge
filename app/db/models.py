@@ -208,7 +208,7 @@ class Campaign(Base):
     launch_request_key: Mapped[str | None] = mapped_column(String(128))
     launch_input_digest: Mapped[str | None] = mapped_column(String(64))
     status: Mapped[str] = mapped_column(String(16), default="lobby")  # lobby | active | paused | ended
-    ruleset_id: Mapped[str] = mapped_column(String(32), default="dnd5e")
+    ruleset_id: Mapped[str] = mapped_column(String(32), default="universal")
     ruleset_version: Mapped[str] = mapped_column(String(32))
     pack_id: Mapped[str | None] = mapped_column(String(64))
     pack_version: Mapped[str | None] = mapped_column(String(32))

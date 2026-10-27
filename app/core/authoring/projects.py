@@ -7,7 +7,7 @@ from app.content.catalog import CatalogError, resolve_chain
 from app.core.authoring.contracts import AuthorProjectCreate
 from app.core.campaigns import AccessDenied, Conflict, NotFound, create_world, is_admin
 from app.db.models import AuthorProject, Campaign, ContentPack, User
-from app.rules.dnd5e.engine import Dnd5eEngine
+from app.rules.universal.engine import UniversalEngine
 
 
 async def author_write(session: AsyncSession, project: AuthorProject, expected_revision: int) -> None:
@@ -57,7 +57,7 @@ async def create_project(session: AsyncSession, owner: User, request: AuthorProj
         session,
         owner,
         name=request.title,
-        ruleset_version=Dnd5eEngine.version,
+        ruleset_version=UniversalEngine.version,
         pack=pack,
         difficulty=request.difficulty,
         players=None,
