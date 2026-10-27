@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from app.agents.master.service import MasterService
 from app.agents.master.world import ScenePreparationError
 from app.core.universal.clock import clock_view
-from app.db.models import Campaign, Character, Entity, Event, WorldGenerationState
+from app.db.models import Campaign, Character, Entity, Event, Message, Seat, User, WorldGenerationState
 from tests.test_universal_location_knowledge import place
 from tests.test_universal_master import Bus, Provider, prepare
 from tests.test_universal_resolution import setup
@@ -101,6 +101,113 @@ def test_scene_preparation_persists_entities_and_lazy_exits_once_without_gamepla
             )
             assert "Костяной страж" in str(view)
             assert "PRIVATE" not in str(view)
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_world_snapshot_includes_current_public_conditions_and_evidence_only(tmp_path):
+    async def run():
+        from app.core.universal.world_generation import reserve_scene
+
+        engine, maker = await world_setup(tmp_path)
+        async with maker() as s:
+            campaign = await s.get(Campaign, "c")
+            s.add(
+                Entity(
+                    id="dead",
+                    campaign_id="c",
+                    location_id="gorge",
+                    kind="creature",
+                    name="Страж",
+                    description="Страж охраняет дорогу.",
+                    state={"resources": {"hp": "0"}, "hostile": True},
+                )
+            )
+            for index, (content, audience, where) in enumerate(
+                [
+                    ("Страж погиб у повозок.", None, "gorge"),
+                    ("PRIVATE-WHISPER", ["seat"], "gorge"),
+                    ("OFFSCREEN-SECRET", None, "elsewhere"),
+                ],
+                2,
+            ):
+                s.add(
+                    Message(
+                        campaign_id="c",
+                        kind="narration",
+                        seq=index,
+                        content=content,
+                        visible_to=audience,
+                        data={"location_id": where},
+                    )
+                )
+            hero = await s.get(Character, "hero")
+            hero.sheet = {**hero.sheet, "description": {"identity": "PRIVATE-HERO-BACKGROUND"}}
+            await s.flush()
+            row = await reserve_scene(s, campaign, "gorge")
+            context = row.reservation["context"]
+            assert next(o for o in context["existing_objects"] if o["id"] == "dead")["condition"] == "dead"
+            assert context["present_heroes"] == [{"id": "hero", "name": "hero", "condition": "active"}]
+            assert context["established_public_evidence"] == ["Страж погиб у повозок."]
+            assert "PRIVATE-HERO" not in str(context) and "OFFSCREEN" not in str(context)
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_player_retry_rearms_blocked_phase_with_fresh_context_and_bounded_cumulative_calls(tmp_path):
+    async def run():
+        from app.core.campaigns import Viewer
+        from app.core.chat import retry_message
+        from app.db.models import MasterTurn
+
+        engine, maker = await world_setup(tmp_path)
+        service = MasterService(maker, Bus(), Provider([{}, {}]))
+        tid = await service.run_turn("c")
+        async with maker() as s:
+            turn = await s.get(MasterTurn, tid)
+            row = await s.get(WorldGenerationState, turn.trace["world_preparation_ref"])
+            assert turn.status == "failed" and row.status == "blocked"
+            ref = row.id
+            # A previously exhausted window is a recoverable explicit player retry, too.
+            row.llm_attempt_count = 6
+            row.last_error = "model_budget_exhausted"
+            (await s.get(Entity, "gorge")).description = "Изменённое публичное описание."
+            await s.commit()
+        automatic = Provider([])
+        assert await MasterService(maker, Bus(), automatic).run_turn("c") == tid
+        assert not automatic.prompts
+        async with maker() as s:
+            c = await s.get(Campaign, "c")
+            await retry_message(s, Viewer(await s.get(User, "u"), c, await s.get(Seat, "seat")), "source")
+            row = await s.get(WorldGenerationState, ref)
+            assert row.status == "unprepared"
+            assert row.reservation["foundation"] == "Изменённое публичное описание."
+            assert row.reservation["model_call_limit"] == 12 and row.llm_attempt_count == 6
+            await s.commit()
+        provider = Provider(
+            [
+                scene_plan(objects=[], passages=[]),
+                {"verdict": "pass"},
+                dict(
+                    schema_version=2,
+                    source="mundane",
+                    player_request="ordinary",
+                    resolution="automatic",
+                    effects=[dict(kind="observe")],
+                ),
+                "У повозок остались следы колёс.",
+                {"verdict": "pass"},
+            ]
+        )
+        assert await MasterService(maker, Bus(), provider).run_turn("c") == tid
+        async with maker() as s:
+            assert (await s.get(MasterTurn, tid)).status == "done"
+            row = await s.get(WorldGenerationState, ref)
+            assert row.status == "ready" and row.llm_attempt_count == 8
+            assert (await s.get(Entity, "gorge")).description.startswith("Изменённое публичное описание.")
+            assert await s.scalar(select(func.count()).select_from(Event)) == 1
         await engine.dispose()
 
     asyncio.run(run())

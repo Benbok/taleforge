@@ -10,16 +10,13 @@ from sqlalchemy import func, select
 
 from app.agents.llm import decide_model_for, model_for
 from app.agents.master.action_admission import obtain_prepared_action
-from app.agents.master.action_results import mark_source, narration_parts, prepared_outcome, public_outcome
+from app.agents.master.action_results import mark_source, prepared_outcome, public_outcome
 from app.agents.master.helpers import _batches
-from app.agents.master.universal_mood import mood_note
-from app.agents.master.universal_narration import SYSTEM as NARRATION_SYSTEM
 from app.agents.master.universal_narration import recent_history
 from app.core.campaigns import Viewer, master_seat
-from app.core.chat import active_session, next_seq
+from app.core.chat import active_session
 from app.core.universal.action_intents import LegacyAdmission
 from app.core.universal.profiles import load_actor
-from app.core.universal.references import link_scene_text, location_reference
 from app.core.universal.resolution import ResolutionContext, resolve_action
 from app.core.universal.rolls import ensure_completion_message, ensure_roll_message
 from app.db.models import (
@@ -242,11 +239,22 @@ async def run_universal_turn(service, cid, place=None):
                 from app.core.universal.combat import enemy_source_key
 
                 async with service.maker() as s:
-                    card = await ensure_roll_message(s, cid, game.id, tid, mid, trace.get("audience"))
+                    from app.agents.master.public_context import scene_audience
+                    from app.agents.master.universal_story import result_scene
+
+                    scenes = trace.setdefault("result_scenes", {})
+                    if mid not in scenes:
+                        scenes[mid] = await result_scene(s, c, mid)
+                    audiences = trace.setdefault("result_audiences", {})
+                    if mid not in audiences:
+                        audiences[mid] = await scene_audience(s, cid, trace.get("audience"), scenes[mid])
+                    card = await ensure_roll_message(s, cid, game.id, tid, mid, trace["result_audiences"][mid])
                     enemy_card = await ensure_roll_message(
-                        s, cid, game.id, tid, enemy_source_key(mid), trace.get("audience")
+                        s, cid, game.id, tid, enemy_source_key(mid), trace["result_audiences"][mid]
                     )
-                    completion_card = await ensure_completion_message(s, cid, game.id, tid, mid, trace.get("audience"))
+                    completion_card = await ensure_completion_message(
+                        s, cid, game.id, tid, mid, trace["result_audiences"][mid]
+                    )
                     await s.commit()
                 if card:
                     await publish_message(service.bus, card)
@@ -411,6 +419,12 @@ async def run_universal_turn(service, cid, place=None):
                         )
                     outcome = public_outcome(result, compiled.public_reason)
                     trace["scene"] = await universal_scene(s, c, Viewer(user, c, seat))
+                    from app.agents.master.public_context import scene_audience
+
+                    trace.setdefault("result_scenes", {})[mid] = trace["scene"]
+                    trace.setdefault("result_audiences", {})[mid] = await scene_audience(
+                        s, cid, trace.get("audience"), trace["scene"]
+                    )
                     if results:
                         from app.core.universal.effects import scope_changes
                         from app.db.models import CombatExchange
@@ -429,10 +443,12 @@ async def run_universal_turn(service, cid, place=None):
                             change.model_dump(mode="json") for change in changes if not change.private
                         ]
                         enemy_card = await ensure_roll_message(
-                            s, cid, game.id, tid, enemy_source_key(mid), trace.get("audience")
+                            s, cid, game.id, tid, enemy_source_key(mid), trace["result_audiences"][mid]
                         )
-                    card = await ensure_roll_message(s, cid, game.id, tid, mid, trace.get("audience"))
-                    completion_card = await ensure_completion_message(s, cid, game.id, tid, mid, trace.get("audience"))
+                    card = await ensure_roll_message(s, cid, game.id, tid, mid, trace["result_audiences"][mid])
+                    completion_card = await ensure_completion_message(
+                        s, cid, game.id, tid, mid, trace["result_audiences"][mid]
+                    )
                     await s.commit()
                 if card:
                     await publish_message(service.bus, card)
@@ -440,6 +456,7 @@ async def run_universal_turn(service, cid, place=None):
                     await publish_message(service.bus, enemy_card)
                 if completion_card:
                     await publish_message(service.bus, completion_card)
+            trace.setdefault("result_scenes", {})[mid] = trace["scene"]
             trace["outcomes"][mid] = outcome
             async with service.maker() as s:
                 t = await s.get(MasterTurn, tid)
@@ -447,115 +464,18 @@ async def run_universal_turn(service, cid, place=None):
                 source = await s.get(Message, mid)
                 mark_source(source, outcome)
                 await s.commit()
-        # Checkpoint the same recipient-safe view before any text model call.
-        # A resumed narration never rebuilds memory from a later world state.
-        story, notices = narration_parts(trace["outcomes"])
-        async with service.maker() as s:
-            saved_turn = await s.get(MasterTurn, tid)
-            saved_narration = (
-                await s.get(Message, saved_turn.narration_message_id) if saved_turn.narration_message_id else None
-            )
-            if "public_context" not in trace:
-                from app.agents.master.public_context import public_context, scene_audience
+        from app.agents.master.universal_story import describe_turn
 
-                trace["narration_audience"] = await scene_audience(
-                    s, cid, trace.get("audience"), trace.get("scene", {})
-                )
-                trace["public_context"] = await public_context(
-                    s, c, saved_turn.upto_seq, trace["narration_audience"], trace.get("scene", {}), story
-                )
-                saved_turn.trace = dict(trace)
-                await s.commit()
-        public = trace["public_context"]
-        narration_audience = trace.get("narration_audience", trace.get("audience"))
-        if narration_audience is not None:
-            service._audience[cid] = narration_audience
-        story, scene, history = public["outcomes"], public["scene"], public["recent_history"]
-        await service._status(cid, "describing")
-        tone = await mood_note(service, c, tid, trace) if story and not saved_narration else ""
-        if saved_narration:
-            text = saved_narration.content
-        elif not story:
-            text = "\n\n".join(notices)
-        else:
-            if any(o.get("schema_version") == 2 for o in story.values()):
-                from app.agents.master.exploration import reviewed_narration
-
-                async def ask_narration(purpose, payload):
-                    return await _call(service, c, tid, purpose, payload)
-
-                text = await reviewed_narration(
-                    service, c, tid, trace, story, scene, history, ask_narration, tone, context=public
-                )
-            else:
-                text = await _call(
-                    service,
-                    c,
-                    tid,
-                    "narrate",
-                    [
-                        {
-                            "role": "system",
-                            "content": NARRATION_SYSTEM + ("\n\n" + tone if tone else ""),
-                        },
-                        {
-                            "role": "user",
-                            "content": json.dumps(
-                                public,
-                                ensure_ascii=False,
-                            ),
-                        },
-                    ],
-                )
-            if notices:
-                text += "\n\n" + "\n\n".join(notices)
+        await describe_turn(service, c, game, tid, trace)
         async with service.maker() as s:
             t = await s.get(MasterTurn, tid)
-            if not t.narration_message_id:
-                m = Message(
-                    campaign_id=cid,
-                    session_id=game.id,
-                    turn_id=tid,
-                    kind="narration",
-                    content=link_scene_text(text, scene),
-                    seq=await next_seq(s, cid),
-                    visible_to=narration_audience,
-                    data={
-                        "universal": True,
-                        "location_ref": location_reference(scene),
-                        "scope": "party" if narration_audience is not None else "public",
-                        "location_id": (scene.get("location") or {}).get("id"),
-                    },
-                )
-                s.add(m)
-                await s.flush()
-                t.narration_message_id = m.id
-            else:
-                m = await s.get(Message, t.narration_message_id)
             t.status, t.finished_at = "done", now()
+            t.trace = dict(trace)
             for mid in ids:
                 source = await s.get(Message, mid)
                 if source is not None:
                     mark_source(source, trace["outcomes"][mid])
             await s.commit()
-        from app.agents import voiceover, voicing
-
-        channel = service._tts_for(c, voicing.TEXT)
-        if channel and not (m.data or {}).get("voice"):
-            try:
-                audio = await service.tts.voice_for_narration(
-                    service.media_dir, cid, m.content, provider=channel.provider, voice_name=channel.voice
-                )
-                async with service.maker() as s:
-                    voiced = await s.get(Message, m.id)
-                    if audio:
-                        # The chat's player reads voices/voice/voice_parts, as the old master wrote them.
-                        voiced.data = {**voiced.data, **voiceover.data_of([audio], 1)}
-                    await s.commit()
-                    m = voiced
-            except Exception:
-                log.exception("master text voice failed")  # optional: never replays saved actions
-        await publish_message(service.bus, m)
         from app.core.universal.publication import publish_game_state
 
         async with service.maker() as s:
@@ -568,6 +488,8 @@ async def run_universal_turn(service, cid, place=None):
         await service._states(cid, ids, "answered")
         return tid
     except Exception as exc:
+        if getattr(exc, "operation_ref", None):
+            trace["world_preparation_ref"] = exc.operation_ref
         async with service.maker() as s:
             t = await s.get(MasterTurn, tid)
             t.status = "failed"

@@ -368,6 +368,10 @@ async def retry_message(
         if gate is not None and (reason := await gate(m.kind)):
             raise Conflict(reason)
         # Resume original admissions and receipts: never detach a saved Universal action.
+        if ref := (turn.trace or {}).get("world_preparation_ref"):
+            from app.core.universal.world_generation import retry_failed_scene
+
+            await retry_failed_scene(session, viewer.campaign, ref)
         turn.trace = {**turn.trace, "recovery_attempts": 0}
         await session.flush()
         return m

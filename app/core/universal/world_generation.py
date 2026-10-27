@@ -7,7 +7,7 @@ from sqlalchemy import select
 from app.core.universal.clock import lock_campaign
 from app.core.world_generation import storage
 from app.core.world_generation.contracts import Blocked
-from app.db.models import CampaignSecret, Entity, WorldGenerationState
+from app.db.models import CampaignSecret, Character, Entity, Message, WorldGenerationState
 from app.rules.universal.world import WorldScenePlan
 
 VERSION = "universal-scene-v1"
@@ -31,6 +31,21 @@ async def reserve_scene(session, campaign, location_id, turn_id=None, source_id=
     old = await storage.find(session, campaign.id, location_id, "location_initial")
     if old is not None:
         return old
+    row = WorldGenerationState(
+        campaign_id=campaign.id,
+        target_entity_id=location_id,
+        phase="location_initial",
+        generator_version=VERSION,
+        reservation=await scene_reservation(session, campaign, location, turn_id, source_id),
+    )
+    session.add(row)
+    await session.flush()
+    storage.activate(row)
+    return row
+
+
+async def scene_reservation(session, campaign, location, turn_id=None, source_id=""):
+    location_id = location.id
     secret = await session.get(CampaignSecret, campaign.id)
     present = []
     for row in await session.scalars(
@@ -49,6 +64,12 @@ async def reserve_scene(session, campaign, location_id, turn_id=None, source_id=
                 description=row.description,
                 kind=row.kind,
                 hidden=bool(state.get("hidden") or state.get("secret")),
+                condition="dead"
+                if row.kind == "creature" and int(state.get("resources", {}).get("hp", "1")) <= 0
+                else state.get("condition", ""),
+                expired=bool((state.get("exploration") or {}).get("expired")),
+                hostile=bool(state.get("hostile")),
+                remaining_material=(state.get("exploration") or {}).get("amount"),
             )
         )
     neighbors = []
@@ -64,6 +85,32 @@ async def reserve_scene(session, campaign, location_id, turn_id=None, source_id=
                     hidden=bool(link.get("hidden")),
                 )
             )
+    heroes = [
+        dict(id=h.id, name=h.name, condition="incapacitated" if int(h.resources.get("hp", "1")) <= 0 else "active")
+        for h in await session.scalars(
+            select(Character).where(
+                Character.campaign_id == campaign.id,
+                Character.location_id == location_id,
+                Character.status.in_(["active", "approved"]),
+                Character.seat_id.is_not(None),
+            )
+        )
+    ]
+    evidence = []
+    for message in await session.scalars(
+        select(Message)
+        .where(Message.campaign_id == campaign.id, Message.kind == "narration")
+        .order_by(Message.seq.desc())
+        .limit(60)
+    ):
+        data = message.data or {}
+        if message.visible_to is not None or data.get("whisper_reply") or data.get("scope") == "private":
+            continue
+        place = data.get("location_id") or (data.get("location_ref") or {}).get("id")
+        if place == location_id:
+            evidence.append(message.content[:6000])
+            if len(evidence) == 10:
+                break
     context = dict(
         world=(secret.setting or {}).get("studio", {}) if secret else {},
         public_intro=campaign.public_intro,
@@ -71,20 +118,35 @@ async def reserve_scene(session, campaign, location_id, turn_id=None, source_id=
         location=dict(id=location.id, name=location.name, description=location.description),
         existing_objects=present,
         existing_neighbors=neighbors,
+        present_heroes=heroes,
+        established_public_evidence=list(reversed(evidence)),
     )
-    row = WorldGenerationState(
-        campaign_id=campaign.id,
-        target_entity_id=location_id,
-        phase="location_initial",
-        generator_version=VERSION,
-        reservation=dict(
-            engine=VERSION, context=context, foundation=location.description, turn_id=turn_id, source_id=source_id
-        ),
+    return dict(
+        engine=VERSION,
+        context=context,
+        foundation=location.description,
+        turn_id=turn_id,
+        source_id=source_id,
+        model_call_limit=6,
     )
-    session.add(row)
+
+
+async def retry_failed_scene(session, campaign, ref):
+    """The authorized chat Retry action rearms only its blocked scene, never a ready world."""
+    await lock_campaign(session, campaign.id)
+    row = await session.get(WorldGenerationState, ref, populate_existing=True)
+    if row is None or row.campaign_id != campaign.id or row.generator_version != VERSION or row.status != "blocked":
+        return False
+    location = await session.get(Entity, row.target_entity_id, populate_existing=True)
+    if location is None or location.campaign_id != campaign.id:
+        return False
+    before = row.reservation
+    row.reservation = await scene_reservation(
+        session, campaign, location, before.get("turn_id"), before.get("source_id", "")
+    )
+    storage.retry(row)
     await session.flush()
-    storage.activate(row)
-    return row
+    return True
 
 
 async def publish_scene(session, row, plan: WorldScenePlan):

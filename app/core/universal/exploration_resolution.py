@@ -224,7 +224,8 @@ async def _execute(ctx, action, key):
                     EffectChange(
                         kind="moved_within_scene",
                         subject_id=action.actor_id,
-                        description="Герой переместился в пределах текущего места; переход в другую локацию не выполнялся.",
+                        description="Герой переместился в пределах текущего места; "
+                        "переход в другую локацию не выполнялся.",
                     )
                 )
                 continue

@@ -94,7 +94,15 @@ def first_adventure_scenario(client, root, settings, monkeypatch, voice_capture=
         assert wait_message_result(ws, client_id="investigate")["type"] == "message.new"
     free = Provider(
         [
-            dict(name="Гавань", description="У ворот гавани видна свежая тропа.", objects=[], passages=[]),
+            dict(
+                name="Гавань",
+                description="У ворот гавани видна свежая тропа. Рядом лежит обломок повозки.",
+                objects=[
+                    dict(ref="cart", kind="object", name="Обломок повозки", template="wood_source"),
+                    dict(ref="guard", kind="npc", name="Смотритель причала", description="Осматривает ворота."),
+                ],
+                passages=[dict(ref="quay", name="Проход к причалу", destination="Причал", state="open")],
+            ),
             dict(verdict="pass"),
             dict(
                 schema_version=2,

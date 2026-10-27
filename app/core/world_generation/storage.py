@@ -257,6 +257,9 @@ async def activate_cas(s: AsyncSession, row: WorldGenerationState) -> bool:
 def retry(row: WorldGenerationState) -> None:
     """Повтор ведущего: ``blocked → unprepared``, тот же seed и резерв, счётчик конфликтов сброшен."""
     t = now()
+    if row.generator_version == "universal-scene-v1":
+        # Only an explicit retry opens a new bounded window; accounting remains cumulative.
+        row.reservation = {**row.reservation, "model_call_limit": row.llm_attempt_count + 6}
     row.status = "unprepared"
     row.last_error = None
     row.result_manifest = None
