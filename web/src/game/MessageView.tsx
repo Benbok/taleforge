@@ -56,7 +56,7 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
   if (m.kind === "narration" && (!m.whisper || m.scope === 'party')) {
     return (
       <div
-        className={`tf-pop tf-narration-card w-full min-w-0 max-w-[84ch] rounded-xl border border-line-soft/80 border-l-[3px] border-l-accent/90 bg-surface-2/45 p-3.5 sm:p-4.5 shadow-2xs transition-colors ${
+        className={`tf-pop tf-narration-card w-full min-w-0 rounded-xl border border-line-soft/80 border-l-[3px] border-l-accent/90 bg-surface-2/45 p-3.5 sm:p-4.5 shadow-2xs transition-colors ${
           m.scope === "party" ? "tf-narration-party" : ""
         }`}
       >
@@ -104,7 +104,9 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
           {fromMaster ? (m.data?.whisper_reply ? "Мастер отвечает на ваш шёпот" : "Шёпот мастера") : m.seat_id === who.mySeat ? "Ваш шёпот мастеру" : `Шёпот: ${heroName(m, who)}`} ·
           видите только вы{fromMaster ? "" : " и мастер"}
         </p>
-        {m.data?.voice && <VoiceClip clips={[m.data.voice]} autoPlay={m.fresh && fromMaster} />}
+        {m.data?.voice && (
+          <VoiceClip clips={[m.data.voice]} autoPlay={m.fresh && fromMaster} caption={fromMaster ? undefined : "Голосовое сообщение"} />
+        )}
         <p className="tf-message-body font-narration text-[16px] leading-relaxed text-ink">
           <RichText text={m.content} />
         </p>
@@ -132,7 +134,7 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
           {mine && <span className="font-mono text-[10px] text-accent uppercase tracking-wider font-semibold">(вы)</span>}
           {ai && <span className="font-mono text-[10px] text-muted" title="Реплику написал ИИ">· ИИ</span>}
         </div>
-        {m.data?.voice && <VoiceClip clips={[m.data.voice]} />}
+        {m.data?.voice && <VoiceClip clips={[m.data.voice]} caption="Голосовое сообщение" />}
         {m.kind === "speech" ? (
           <p className="tf-message-body font-narration text-[16px] sm:text-[17px] leading-[1.6] text-ink italic">
             «{m.content.replace(/^["«]|["»]$/g, "")}»

@@ -24,7 +24,18 @@ function release(who: { stop: () => void }) {
 
 /** Плеер голосовой реплики: живой голос автора или мастера. Длинное повествование озвучено частями (clips):
  * они играют подряд одной дорожкой; expected — сколько частей ждать, если не все ещё готовы. */
-export default function VoiceClip({ clips, expected, autoPlay }: { clips: VoiceData[]; expected?: number; autoPlay?: boolean }) {
+export default function VoiceClip({
+  clips,
+  expected,
+  autoPlay,
+  caption = "Озвучка мастера",
+}: {
+  clips: VoiceData[];
+  expected?: number;
+  autoPlay?: boolean;
+  /** Подпись плеера: озвучка мастера или голосовое самого игрока. */
+  caption?: string;
+}) {
   const campaignId = useGame((s) => s.snapshot?.campaign.id);
   const audios = useRef(new Map<string, HTMLAudioElement>());
   const [state, setState] = useState<"idle" | "loading" | "playing" | "waiting">("idle");
@@ -210,7 +221,7 @@ export default function VoiceClip({ clips, expected, autoPlay }: { clips: VoiceD
           <div className="flex items-center justify-between gap-2">
             <span className="flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-muted">
               <span className="text-accent">🎙️</span>
-              <span>Озвучка мастера</span>
+              <span>{caption}</span>
               {state === "playing" && (
                 <span className="ml-1 inline-flex h-2.5 items-end gap-0.5" aria-hidden="true">
                   <span className="h-2 w-0.5 animate-pulse rounded-full bg-accent" />

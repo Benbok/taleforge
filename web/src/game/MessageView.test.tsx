@@ -71,3 +71,11 @@ it("renders master narration in a distinct chronicle card with master heading", 
   expect(screen.getByText("Мастер")).toBeTruthy();
   expect(screen.getByText("Лязг приближающейся нежити...")).toBeTruthy();
 });
+
+it("captions a player's own recording as a voice message, not as the master's narration voice", () => {
+  const voice = { id: "v1", mime: "audio/webm", duration: 3 };
+  const mine = { ...failed, state: null, data: { voice } } as ChatMessage;
+  render(<MessageView m={mine} who={{ seats: {}, heroBySeat: {}, mySeat: "seat_me" }} />);
+  expect(screen.getByText("Голосовое сообщение")).toBeTruthy();
+  expect(screen.queryByText("Озвучка мастера")).toBeNull();
+});
