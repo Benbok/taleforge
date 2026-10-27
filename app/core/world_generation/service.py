@@ -71,7 +71,7 @@ class Orchestrator:
         async with self.coordination.generation_lock(campaign_id):
             for _ in range(MAX_STEPS):
                 got = await storage.claim(maker, campaign_id, ref)
-                if got in ("later", "busy"):
+                if got in ("later", "busy", "leased"):
                     await asyncio.sleep(storage.RETRY_AFTER.total_seconds())
                     continue
                 if isinstance(got, str):
@@ -90,8 +90,11 @@ class Orchestrator:
             reservation = dict(row.reservation or {})
             check_reservation(reservation, campaign)
             try:
-                profile = (restore_profile(reservation["profile_snapshot"]) if reservation.get("profile_snapshot")
-                           else load_profile(catalog, reservation.get("profile_ref")))
+                profile = (
+                    restore_profile(reservation["profile_snapshot"])
+                    if reservation.get("profile_snapshot")
+                    else load_profile(catalog, reservation.get("profile_ref"))
+                )
             except ProfileError as e:
                 raise Blocked("unsupported_source", str(e)) from e
             plan = build_plan(reservation, profile, row.target_entity_id)
@@ -160,7 +163,16 @@ class Orchestrator:
 
         try:
             phase = await storage.phase_of(maker, claim.ref)
-            if phase in executor.PHASES:
+            async with maker() as s:
+                row = await s.get(WorldGenerationState, claim.ref)
+                universal = row.generator_version == "universal-scene-v1"
+            if universal:
+                from app.agents.master.world import run_phase
+
+                status = await run_phase(maker, claim, self.llm)
+                if status != "ready":
+                    return status
+            elif phase in executor.PHASES:
                 await executor.run(maker, self.dice_factory, claim, phase, self.layout_provider, llm=self.llm)
             else:
                 draft = await self._plan(maker, claim)

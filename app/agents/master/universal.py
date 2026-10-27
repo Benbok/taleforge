@@ -81,23 +81,41 @@ async def _call(service, campaign, turn, purpose, payload):
         if cfg is None or cfg.provider == "env" or cfg.model == "env":
             model = (
                 decide_model_for()
-                if purpose in {"decide", "exploration_decide", "intent_review", "narration_review"}
+                if purpose
+                in {
+                    "decide",
+                    "exploration_decide",
+                    "intent_review",
+                    "narration_review",
+                    "world_prepare",
+                    "world_review",
+                }
                 else model_for()
             )
         else:
             model = model_for(cfg.provider, cfg.model)
         temperature = 0.2 if purpose == "decide" else cfg.temperature if cfg else 0.8
     options = {"max_tokens": NARRATION_MAX_TOKENS}  # reasoning shares this budget with the text
-    if purpose in {"decide", "exploration_decide", "intent_review", "narration_review"}:
+    if purpose in {
+        "decide",
+        "exploration_decide",
+        "intent_review",
+        "narration_review",
+        "world_prepare",
+        "world_review",
+    }:
         from app.agents.master.exploration import NarrationReview
         from app.core.universal.action_intents import ActionIntent
         from app.rules.universal.exploration import IntentReview, IntentV2
+        from app.rules.universal.world import WorldScenePlan, WorldSceneReview
 
         schema = {
             "decide": ActionIntent,
             "exploration_decide": IntentV2,
             "intent_review": IntentReview,
             "narration_review": NarrationReview,
+            "world_prepare": WorldScenePlan,
+            "world_review": WorldSceneReview,
         }[purpose]
 
         options = dict(

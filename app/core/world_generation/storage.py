@@ -97,8 +97,11 @@ async def reserve_root(
     # Участок нового комплекса берёт долю, закреплённую при публикации (reserve_complex).
     cx = (location.state or {}).get("complex") or {}
     root = world.entities.get(cx.get("root_id"))
-    fixed = None if minimal or root is None else (
-        ((root.state or {}).get("content_reservation") or {}).get("areas", {}).get(cx.get("area_ref")))
+    fixed = (
+        None
+        if minimal or root is None
+        else (((root.state or {}).get("content_reservation") or {}).get("areas", {}).get(cx.get("area_ref")))
+    )
     try:
         profile = restore_profile(fixed["profile_snapshot"]) if fixed else load_profile(world.catalog, ref)
     except ProfileError as e:
@@ -124,8 +127,7 @@ async def reserve_root(
         ):
             # Корень комплекса: случайная добыча уже распределена (или генерируется структура карты),
             # остаются только носители зацепок, а случайная добыча распределится по участкам при публикации layout.
-            reservation = {**reservation, "budget": 0,
-                           "limits": {"entities": 0, "item_units": 0, "containers": 0}}
+            reservation = {**reservation, "budget": 0, "limits": {"entities": 0, "item_units": 0, "containers": 0}}
         row = WGS(
             campaign_id=campaign.id,
             target_entity_id=location.id,
@@ -158,7 +160,8 @@ async def reserve_complex(ctx, root: Entity, bp) -> None:
             profile = MINIMAL
         anchors = [anchor_reserve(b) for b in await reserved_for(ctx.session, ctx.campaign.id, location.id)]
         reservations[area.area_ref] = root_reservation(
-            ctx.campaign, location.id, profile, authored_templates(ctx.world.entities, location.id), anchors)
+            ctx.campaign, location.id, profile, authored_templates(ctx.world.entities, location.id), anchors
+        )
     budget = max((r["profile_snapshot"]["budget"] for r in reservations.values()), default=0)
     if all(r["profile_ref"] == MINIMAL_REF for r in reservations.values()):
         return  # generic/legacy complexes retain explicit per-location preparation
@@ -171,36 +174,54 @@ async def reserve_complex(ctx, root: Entity, bp) -> None:
             root_profile = load_profile(ctx.world.catalog, profile_ref_for(root, ctx.world.catalog))
     except ProfileError:
         root_profile = MINIMAL
-    root_authored = root_reservation(ctx.campaign, root.id, root_profile,
-                                     authored_templates(ctx.world.entities, root.id))
+    root_authored = root_reservation(
+        ctx.campaign, root.id, root_profile, authored_templates(ctx.world.entities, root.id)
+    )
     authored += root_authored["authored_cost"]
     if root_row is not None and root_row.status == "ready":
         # Existing root content/closed containers already consume their reserved shares.
         authored += int((root_row.reservation or {}).get("budget", 0))
     remaining = max(0, budget - authored)
-    if any("unknown_authored_cost" in r["diagnostics"] or "unknown_anchor_cost" in r["diagnostics"]
-           for r in [*reservations.values(), root_authored]):
+    if any(
+        "unknown_authored_cost" in r["diagnostics"] or "unknown_anchor_cost" in r["diagnostics"]
+        for r in [*reservations.values(), root_authored]
+    ):
         remaining = 0
-    role_weights = {a.area_ref: weights.get(a.role, 1) if reservations[a.area_ref]["budget"] > 0 else 0
-                    for a in bp.areas}
+    role_weights = {
+        a.area_ref: weights.get(a.role, 1) if reservations[a.area_ref]["budget"] > 0 else 0 for a in bp.areas
+    }
     shares = allocate_complex(remaining, role_weights)
-    limits = {key: max((r["limits"][key] for r in reservations.values()), default=0)
-              for key in ("entities", "item_units", "containers")}
+    limits = {
+        key: max((r["limits"][key] for r in reservations.values()), default=0)
+        for key in ("entities", "item_units", "containers")
+    }
     if root_row is not None and root_row.status == "ready":
-        limits = {key: max(0, value - int((root_row.reservation or {}).get("limits", {}).get(key, 0)))
-                  for key, value in limits.items()}
+        limits = {
+            key: max(0, value - int((root_row.reservation or {}).get("limits", {}).get(key, 0)))
+            for key, value in limits.items()
+        }
     allocated_limits = {key: allocate_complex(value, role_weights) for key, value in limits.items()}
     for ref, reservation in reservations.items():
         reservation["budget"] = shares[ref]
         reservation["limits"] = {key: allocated_limits[key][ref] for key in limits}
         reservation["complex_root_id"] = root.id
-    root.state = {**root.state, "content_reservation": {
-        "schema_version": 1, "budget": budget, "authored_cost": authored, "random_budget": remaining,
-        "limits": limits, "areas": reservations,
-    }}
+    root.state = {
+        **root.state,
+        "content_reservation": {
+            "schema_version": 1,
+            "budget": budget,
+            "authored_cost": authored,
+            "random_budget": remaining,
+            "limits": limits,
+            "areas": reservations,
+        },
+    }
     if root_row is not None and root_row.status != "ready":
-        root_row.reservation = {**(root_row.reservation or {}), "budget": 0,
-                                "limits": {"entities": 0, "item_units": 0, "containers": 0}}
+        root_row.reservation = {
+            **(root_row.reservation or {}),
+            "budget": 0,
+            "limits": {"entities": 0, "item_units": 0, "containers": 0},
+        }
         root_row.revision += 1
         if root_row.status == "preparing":
             root_row.status = "unprepared"
@@ -441,8 +462,66 @@ async def commit_with(maker, dice_factory, claim: Claim, apply, *, quality: str 
         return manifest
 
 
-def _furnish(place: Entity, placed: list[tuple[str, str]], seed: int,
-             roles: dict[str, str] | None = None) -> list[str]:
+async def commit_session_phase(maker, claim: Claim, apply, *, quality: str = "normal") -> dict[str, Any]:
+    """Publish a phase with the same guard/CAS, without loading a rules-engine runtime."""
+    async with maker() as s:
+        await _own(s, claim)
+        row = await s.get(WGS, claim.ref)
+        manifest = await apply(s, row)
+        _finish(row, manifest, quality)
+        await s.commit()
+        return manifest
+
+
+async def save_phase_draft(maker, claim: Claim, draft: dict) -> Claim:
+    """Checkpoint reviewed generation output without modifying the world revision."""
+    async with maker() as s:
+        done = await s.execute(
+            update(WGS)
+            .where(
+                WGS.id == claim.ref,
+                WGS.lease_token == claim.token,
+                WGS.revision == claim.revision,
+                WGS.status == "preparing",
+            )
+            .values(result_manifest=draft, revision=WGS.revision + 1, updated_at=now())
+        )
+        if done.rowcount != 1:
+            raise LeaseLost(claim.ref)
+        await s.commit()
+    return replace(claim, revision=claim.revision + 1)
+
+
+async def renew_phase_lease(maker, claim: Claim, seconds: int = 300) -> Claim:
+    if now() >= claim.lease_until:
+        raise LeaseLost(claim.ref)
+    until = now() + timedelta(seconds=seconds)
+    async with maker() as s:
+        done = await s.execute(
+            update(WGS)
+            .where(
+                WGS.id == claim.ref,
+                WGS.lease_token == claim.token,
+                WGS.revision == claim.revision,
+                WGS.status == "preparing",
+            )
+            .values(lease_until=until, revision=WGS.revision + 1, updated_at=now())
+        )
+        if done.rowcount != 1:
+            raise LeaseLost(claim.ref)
+        await s.commit()
+    return replace(claim, revision=claim.revision + 1, lease_until=until)
+
+
+async def release_phase(maker, claim: Claim, error: str) -> bool:
+    return await _close(
+        maker,
+        claim,
+        dict(status="unprepared", lease_token=None, lease_until=None, next_attempt_at=now(), last_error=error),
+    )
+
+
+def _furnish(place: Entity, placed: list[tuple[str, str]], seed: int, roles: dict[str, str] | None = None) -> list[str]:
     """Обстановка участка комплекса встаёт на его геометрию связанными деталями (спецификация 2026-10-12, §3.4)."""
     from app.core.layout import furnish
 

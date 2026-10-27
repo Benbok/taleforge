@@ -1,0 +1,228 @@
+import asyncio
+from copy import deepcopy
+
+import pytest
+from sqlalchemy import func, select
+
+from app.agents.master.service import MasterService
+from app.agents.master.world import ScenePreparationError
+from app.core.universal.clock import clock_view
+from app.db.models import Campaign, Character, Entity, Event, WorldGenerationState
+from tests.test_universal_location_knowledge import place
+from tests.test_universal_master import Bus, Provider, prepare
+from tests.test_universal_resolution import setup
+
+
+def scene_plan(**overrides):
+    return {
+        "name": "Подземный проход",
+        "description": "Под сводами сырость. На камнях остались следы колёс.",
+        "objects": [
+            {
+                "ref": "cart",
+                "kind": "object",
+                "name": "Обломок повозки",
+                "description": "Сухие доски в куче камней.",
+                "template": "wood_source",
+            },
+            {
+                "ref": "guard",
+                "kind": "creature",
+                "name": "Костяной страж",
+                "description": "Страж стучит костями по камню.",
+                "hostile": True,
+            },
+            {
+                "ref": "secret",
+                "kind": "object",
+                "name": "PRIVATE-RELIC",
+                "description": "PRIVATE-SECRET",
+                "hidden": True,
+            },
+        ],
+        "passages": [
+            {
+                "ref": "tunnel",
+                "name": "Туннель",
+                "destination": "Тёмный туннель",
+                "description": "Туннель уходит в темноту.",
+                "state": "open",
+            }
+        ],
+        **overrides,
+    }
+
+
+async def world_setup(tmp_path):
+    engine, maker = await setup(tmp_path)
+    await prepare(maker)
+    await place(maker)
+    async with maker() as s:
+        c = await s.get(Campaign, "c")
+        c.settings = {**c.settings, "universal_world_generation": True}
+        await s.commit()
+    return engine, maker
+
+
+def test_scene_preparation_persists_entities_and_lazy_exits_once_without_gameplay_cost(tmp_path):
+    async def run():
+        from app.agents.master.world import prepare_scene
+
+        engine, maker = await world_setup(tmp_path)
+        provider = Provider([scene_plan(), {"verdict": "pass"}])
+        service = MasterService(maker, Bus(), provider)
+        async with maker() as s:
+            campaign = await s.get(Campaign, "c")
+            resources = deepcopy((await s.get(Character, "hero")).resources)
+            before = await clock_view(s, "c")
+        await prepare_scene(service, campaign, None, "gorge", source_id="source")
+        await prepare_scene(service, campaign, None, "gorge", source_id="source")
+        assert len(provider.prompts) == 2
+        async with maker() as s:
+            origin = await s.get(Entity, "gorge")
+            assert origin.description.startswith("Сырое ущелье.")
+            assert origin.state["universal_scene"]["ready"]
+            assert len(origin.state["links"]) == 1
+            destination = await s.get(Entity, origin.state["links"][0]["to"])
+            assert not destination.state["universal_scene"]["ready"]
+            assert destination.state["links"][0]["to"] == origin.id
+            assert (await s.get(Character, "hero")).location_id == "gorge"
+            assert (await s.get(Character, "hero")).resources == resources
+            assert await clock_view(s, "c") == before
+            assert await s.scalar(select(func.count()).select_from(Event)) == 0
+            jobs = list(await s.scalars(select(WorldGenerationState)))
+            assert len(jobs) == 1 and jobs[0].status == "ready"
+            from app.core.campaigns import Viewer
+            from app.core.universal.scene import universal_scene
+            from app.db.models import Seat, User
+
+            view = await universal_scene(
+                s, campaign, Viewer(await s.get(User, "u"), campaign, await s.get(Seat, "seat"))
+            )
+            assert "Костяной страж" in str(view)
+            assert "PRIVATE" not in str(view)
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_world_schema_rejects_duplicate_and_foreign_reference_shapes():
+    from app.rules.universal.world import WorldScenePlan
+
+    with pytest.raises(ValueError):
+        WorldScenePlan.model_validate(
+            scene_plan(
+                passages=[
+                    {"ref": "same", "name": "One", "destination": "A"},
+                    {"ref": "same", "name": "Two", "destination": "B"},
+                ]
+            )
+        )
+    with pytest.raises(ValueError):
+        WorldScenePlan.model_validate(scene_plan(objects=[{"ref": "bad", "kind": "object", "name": "Gear", "hp": 999}]))
+
+
+def test_failed_provider_does_not_publish_partial_scene_and_retry_reuses_phase(tmp_path):
+    async def run():
+        from app.agents.master.world import prepare_scene
+
+        engine, maker = await world_setup(tmp_path)
+        async with maker() as s:
+            campaign = await s.get(Campaign, "c")
+        failing = MasterService(maker, Bus(), Provider([RuntimeError("offline")]))
+        with pytest.raises(ScenePreparationError):
+            await prepare_scene(failing, campaign, None, "gorge", source_id="source")
+        async with maker() as s:
+            assert (await s.get(Entity, "gorge")).description == "Сырое ущелье."
+            assert await s.scalar(select(func.count()).select_from(Entity)) == 1
+            assert (await clock_view(s, "c"))["step_index"] == "0"
+        recovered = MasterService(maker, Bus(), Provider([scene_plan(), {"verdict": "pass"}]))
+        await prepare_scene(recovered, campaign, None, "gorge", source_id="source")
+        async with maker() as s:
+            assert await s.scalar(select(func.count()).select_from(WorldGenerationState)) == 1
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_reviewed_draft_survives_a_process_crash_without_another_model_call(tmp_path, monkeypatch):
+    async def run():
+        from datetime import timedelta
+
+        from app.agents.master.world import prepare_scene
+        from app.core.world_generation import storage
+        from app.db.models import now
+
+        engine, maker = await world_setup(tmp_path)
+        async with maker() as s:
+            campaign = await s.get(Campaign, "c")
+
+        class Crash(BaseException):
+            pass
+
+        original = storage.commit_session_phase
+
+        async def crash(*args, **kwargs):
+            raise Crash()
+
+        monkeypatch.setattr(storage, "commit_session_phase", crash)
+        service = MasterService(maker, Bus(), Provider([scene_plan(), {"verdict": "pass"}]))
+        with pytest.raises(Crash):
+            await prepare_scene(service, campaign, None, "gorge", source_id="source")
+        async with maker() as s:
+            row = await s.scalar(select(WorldGenerationState))
+            assert row.result_manifest["reviewed_plan"]
+            row.lease_until = now() - timedelta(seconds=1)
+            await s.commit()
+        monkeypatch.setattr(storage, "commit_session_phase", original)
+        provider = Provider([])
+        await prepare_scene(MasterService(maker, Bus(), provider), campaign, None, "gorge", source_id="source")
+        assert not provider.prompts
+        async with maker() as s:
+            assert (await s.scalar(select(WorldGenerationState))).status == "ready"
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_concurrent_preparations_materialize_one_scene(tmp_path):
+    async def run():
+        from app.agents.master.world import prepare_scene
+
+        engine, maker = await world_setup(tmp_path)
+        async with maker() as s:
+            campaign = await s.get(Campaign, "c")
+        provider = Provider([scene_plan(), {"verdict": "pass"}])
+        services = [MasterService(maker, Bus(), provider) for _ in range(2)]
+        await asyncio.gather(*(prepare_scene(s, campaign, None, "gorge", source_id="source") for s in services))
+        assert len(provider.prompts) == 2
+        async with maker() as s:
+            assert await s.scalar(select(func.count()).select_from(WorldGenerationState)) == 1
+            assert len((await s.get(Entity, "gorge")).state["links"]) == 1
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_foreign_destinations_are_rejected_atomically(tmp_path):
+    async def run():
+        from app.agents.master.world import prepare_scene
+
+        engine, maker = await world_setup(tmp_path)
+        async with maker() as s:
+            campaign = await s.get(Campaign, "c")
+        provider = Provider(
+            [
+                scene_plan(passages=[{"ref": "bad", "name": "Bad", "existing_destination_id": "foreign"}]),
+                {"verdict": "pass"},
+            ]
+        )
+        with pytest.raises(ScenePreparationError):
+            await prepare_scene(MasterService(maker, Bus(), provider), campaign, None, "gorge")
+        async with maker() as s:
+            assert await s.scalar(select(func.count()).select_from(Entity)) == 1
+            assert (await s.get(Entity, "gorge")).description == "Сырое ущелье."
+            assert (await s.scalar(select(WorldGenerationState))).status == "blocked"
+        await engine.dispose()
+
+    asyncio.run(run())
