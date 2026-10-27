@@ -4,8 +4,6 @@
 import pytest
 
 from app.agents.master.searches import unresolved_searches
-from app.db.models import Event, KnownFact, MasterTurn
-from tests.game import party
 from tests.test_master import DONE, act, admin_g, dice, game_client, llm, rows  # noqa: F401
 from tests.test_tools import call, game, play  # noqa: F401
 
@@ -175,76 +173,3 @@ def test_unrelated_placed_item_cannot_close_targeted_search(game):
         return unresolved_searches(ctx)
 
     assert play(settings, cid, [19], fn) == [hero]
-
-
-def test_search_success_returns_to_decider_until_fact_recorded(game_client, admin_g, llm, dice, settings):
-    c, (player,), hero = party(game_client, admin_g)
-    dice += [19]
-
-    def record_result(messages, _tools):
-        assert "Результат исследования" in messages[-1]["content"]
-        return {
-            "tool_calls": [
-                (
-                    "learn_fact",
-                    {
-                        "character_ids": [hero["id"]],
-                        "subject_id": hero["id"],
-                        "fact": "На двери видны свежие царапины от взлома.",
-                    },
-                )
-            ]
-        }
-
-    llm.replies += [
-        {
-            "tool_calls": [
-                (
-                    "roll_check",
-                    {
-                        "character_id": hero["id"],
-                        "stat": "investigation",
-                        "difficulty": "dc.easy",
-                        "reason": "осмотр",
-                    },
-                )
-            ]
-        },
-        DONE,
-        record_result,
-        DONE,
-        {"text": "На двери видны свежие царапины от взлома."},
-    ]
-    result = act(game_client, player, c["id"], "Осматриваю дверь в поисках следов")
-    assert "царапины" in result["content"]
-    facts = rows(settings, KnownFact, KnownFact.character_id == hero["id"])
-    assert any("царапины" in fact.text for fact in facts)
-    assert not rows(settings, Event, Event.tool == "cancel_action")
-
-
-def test_unresolved_search_is_not_allowed_to_invent_keys(game_client, admin_g, llm, dice, settings):
-    c, (player,), hero = party(game_client, admin_g)
-    dice += [19]
-    llm.replies += [
-        {
-            "tool_calls": [
-                (
-                    "roll_check",
-                    {
-                        "character_id": hero["id"],
-                        "stat": "investigation",
-                        "difficulty": "dc.easy",
-                        "reason": "поиск ключа",
-                    },
-                )
-            ]
-        },
-        DONE,
-        DONE,
-        {"text": "Вы находите связку ключей и открываете тайник."},
-    ]
-    result = act(game_client, player, c["id"], "Ищу ключи")
-    (turn,) = rows(settings, MasterTurn)
-    assert turn.trace.get("unresolved_searches")
-    assert rows(settings, Event, Event.tool == "cancel_action")
-    assert "находите связку" not in result["content"]

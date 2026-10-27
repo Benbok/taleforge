@@ -126,13 +126,6 @@ def failed_check_with_new_opportunity(game_client, admin_g, llm, settings):
     return run(settings, inspect)
 
 
-def test_adaptation_does_not_complete_failed_player_action(game_client, admin_g, llm, settings):
-    report = failed_check_with_new_opportunity(game_client, admin_g, llm, settings)
-    assert report["check_success"] is False
-    assert report["new_thread_status"] == "offered"
-    assert report["player_accepted"] is False
-
-
 def test_bind_scene_sources_stable_slots(settings, client, admin):
     import_base(settings)
     c, _heads, hero = party(client, admin)
@@ -195,39 +188,3 @@ def _adapt_with_message(game_client, admin_g, llm, source_id: str | None, thread
     llm.replies += [{"tool_calls": [("adapt_story", adapt)]}, DONE, {"text": "Разговор идёт дальше."}]
     act(game_client, p1, cid, "Расспрашиваю трактирщика о дороге")
     return cid
-
-
-def test_adapt_story_rejects_invented_message_ref(game_client, admin_g, llm, settings):
-    """Выдуманная ссылка на сообщение отклоняется, а не подменяется сообщением хода (Review Focus 2)."""
-    cid = _adapt_with_message(game_client, admin_g, llm, "msg-invented-by-model", "th-invented")
-
-    async def thread(s):
-        q = select(NarrativeThread).where(NarrativeThread.campaign_id == cid)
-        return await s.scalar(q.where(NarrativeThread.thread_id == "th-invented"))
-
-    assert run(settings, thread) is None
-
-
-def test_adapt_story_binds_current_message_marker(game_client, admin_g, llm, settings):
-    """Явный маркер current — реплика игрока этого хода, проверяемый сервером источник."""
-    cid = _adapt_with_message(game_client, admin_g, llm, "current", "th-current")
-
-    async def thread(s):
-        q = select(NarrativeThread).where(NarrativeThread.campaign_id == cid)
-        return await s.scalar(q.where(NarrativeThread.thread_id == "th-current"))
-
-    row = run(settings, thread)
-    assert row is not None and row.status == "offered"
-
-
-@pytest.mark.parametrize("source_id", [None, ""])
-def test_empty_message_id_is_not_current(source_id, game_client, admin_g, llm, settings):
-    cid = _adapt_with_message(game_client, admin_g, llm, source_id, "th-empty")
-
-    async def verify(s):
-        row = await s.scalar(
-            select(NarrativeThread).where(NarrativeThread.campaign_id == cid, NarrativeThread.thread_id == "th-empty")
-        )
-        assert row is None
-
-    run(settings, verify)

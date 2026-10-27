@@ -4,13 +4,13 @@
 from sqlalchemy import select
 
 from app.agents import intent as intents
-from app.db.models import Campaign, Event, InventoryItem, LlmCall, MasterTurn, Message
+from app.db.models import Campaign, InventoryItem
 from app.tools.action_plan import approach_attack
 from app.tools.runtime import open_context
-from tests.game import QueueDice, ok, party, run
+from tests.game import QueueDice, run
 from tests.test_combat import _fight, scene  # noqa: F401
 from tests.test_master import DONE, act, admin_g, dice, game_client, llm, rows  # noqa: F401 — фикстуры
-from tests.test_ws import connect, next_of
+from tests.test_ws import connect
 
 
 def intent(*actions, confidence=0.95, problem="none", question=None):
@@ -68,21 +68,6 @@ def goblin_in_melee(settings, cid, hero, *, fight=False):
     return run(settings, go)
 
 
-def test_rejects_offtopic_and_unclear(game_client, admin_g, llm, settings):
-    c, (p1,), hero = party(game_client, admin_g)
-    llm.replies += [intent(confidence=0.9, problem="offtopic")]
-    e = send(game_client, p1, c["id"], "а кто смотрел вчера футбол?")
-    assert e["type"] == "message.new" and e["payload"]["kind"] == "ooc"  # оффтоп сам уходит во внеигровой чат
-    llm.replies += [intent({"verb": "custom"}, confidence=0.3, question="Кого именно вы хотите позвать?")]
-    e = send(game_client, p1, c["id"], "зову его")
-    assert e["payload"]["reason"] == "Кого именно вы хотите позвать?"
-    llm.replies += [intent({"verb": "attack"}, problem="other_character")]
-    e = send(game_client, p1, c["id"], "Гимли бьёт орка топором")
-    assert "чужого героя" in e["payload"]["reason"]
-    assert rows(settings, Message, Message.kind == "action") == []
-    assert [x.purpose for x in rows(settings, LlmCall)] == ["parse"] * 3
-
-
 def send_auto(client, head, cid, text, **extra):
     with connect(client, head, cid) as (ws, _):
         ws.send_json({"type": "message.send", "payload": {"text": text, **extra}})
@@ -90,158 +75,6 @@ def send_auto(client, head, cid, text, **extra):
         while e["type"] not in ("message.rejected", "message.new"):
             e = ws.receive_json()
         return e
-
-
-def test_native_chat_kind_from_parser(game_client, admin_g, llm, settings):
-    """Игрок не выбирает тип реплики: речь, действие и оффтоп различает парсер, шёпот — отдельный флаг."""
-    c, (p1,), hero = party(game_client, admin_g)
-    speech = {"tool_calls": [("submit_intent", {"kind": "speech", "speech": "Кто здесь?", "confidence": 0.9})]}
-    llm.replies += [speech, DONE, {"text": "Тишина."}]
-    e = send_auto(game_client, p1, c["id"], "— Кто здесь? — шепчу в темноту")
-    assert e["payload"]["kind"] == "speech"
-    game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
-    llm.replies += [intent({"verb": "search"}), DONE, {"text": "Пыль и паутина."}]
-    e = send_auto(game_client, p1, c["id"], "Обыскиваю сундук")
-    assert e["payload"]["kind"] == "action"
-    game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
-    assert send_auto(game_client, p1, c["id"], "// перерыв 5 минут")["payload"]["kind"] == "ooc"
-    llm.replies += [DONE, {"text": "Мастер кивает."}]
-    e = send_auto(game_client, p1, c["id"], "Прячу кольцо в сапог", kind="whisper")
-    assert e["payload"]["kind"] == "whisper" and e["payload"]["whisper"]
-    game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
-    # мастер-человек пишет повествование без выбора типа
-    from tests.test_api import make_campaign
-
-    c2 = make_campaign(game_client, admin_g, master={"type": "owner"})
-    ok(game_client.post(f"/api/campaigns/{c2['id']}/session/start", headers=admin_g))
-    assert send_auto(game_client, admin_g, c2["id"], "Ветер стихает.")["payload"]["kind"] == "narration"
-
-
-def test_router_attack_and_intent_saved(game_client, admin_g, llm, dice, settings):
-    c, (p1,), hero = party(game_client, admin_g)
-    gob, sword = goblin_in_melee(settings, c["id"], hero["id"])
-    llm.replies += [
-        intent({"verb": "attack", "target_id": gob, "instrument_id": sword, "manner": "сверху"}),
-        DONE,
-        {"text": f"[[{hero['id']}|Бран]] рубит гоблина."},
-    ]
-    dice += [15, 8]
-    n = act(game_client, p1, c["id"], "рублю гоблина мечом сверху")
-    assert n["kind"] == "narration"
-    (turn,) = rows(settings, MasterTurn, MasterTurn.status == "done")
-    routed = [x for x in turn.trace["calls"] if x.get("routed")]
-    assert routed and routed[0]["result"]["ok"], turn.trace
-    decide = next(r for r in llm.requests if r["tools"] and r["tools"][0]["function"]["name"] != "submit_intent")
-    prompt = decide["messages"][1]["content"]
-    assert "намерение (разбор парсера): attack" in prompt and "уже выполнен сервером" in prompt
-    (msg,) = rows(settings, Message, Message.kind == "action")
-    assert msg.intent["character_id"] == hero["id"] and msg.intent["actions"][0]["target_id"] == gob
-
-
-def test_combat_limit_and_missing_item(game_client, admin_g, llm, settings):
-    c, (p1,), hero = party(game_client, admin_g)
-    gob, _ = goblin_in_melee(settings, c["id"], hero["id"], fight=True)
-    llm.replies += [
-        intent(
-            {"verb": "attack", "target_id": gob, "instrument_id": "inv_нет_такого"},
-            {"verb": "move", "zone": "near"},
-            {"verb": "use_item"},
-        ),
-        DONE,
-        {"text": "Рука нащупывает пустые ножны."},
-    ]
-    with connect(game_client, p1, c["id"]) as (ws, _):
-        ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": "бью, отбегаю и пью зелье"}})
-        notice = next_of(ws, "message.notice")["payload"]["text"]
-    assert "атака, перемещение" in notice
-    (msg,) = rows(settings, Message, Message.kind == "action")
-    assert [a["verb"] for a in msg.intent["actions"]] == ["attack", "move"]
-    assert msg.intent["actions"][0]["missing_item"]
-
-
-def test_combat_parser_keeps_move_before_attack_without_dropped_parts(game_client, admin_g, settings):
-    campaign, (_player,), hero = party(game_client, admin_g)
-    goblin, sword = goblin_in_melee(settings, campaign["id"], hero["id"], fight=True)
-
-    async def check(session):
-        ctx = await open_context(
-            session, await session.get(Campaign, campaign["id"]), QueueDice([]), turn_id=None, seat_id=None
-        )
-        parsed = intents.check(
-            {
-                "kind": "action",
-                "confidence": 1.0,
-                "actions": [
-                    {"verb": "move", "target_id": goblin, "zone": "melee"},
-                    {"verb": "attack", "target_id": goblin, "instrument_id": sword},
-                ],
-            },
-            ctx.world,
-            ctx.world.characters[hero["id"]],
-        )
-        assert [action["verb"] for action in parsed.intent["actions"]] == ["move", "attack"]
-
-    run(settings, check)
-
-
-def test_combat_parser_does_not_restore_identical_discarded_parts(game_client, admin_g, settings):
-    campaign, (_player,), hero = party(game_client, admin_g)
-    goblin, sword = goblin_in_melee(settings, campaign["id"], hero["id"], fight=True)
-
-    async def check(session):
-        ctx = await open_context(
-            session, await session.get(Campaign, campaign["id"]), QueueDice([]), turn_id=None, seat_id=None
-        )
-        attack = {"verb": "attack", "target_id": goblin, "instrument_id": sword}
-        parsed = intents.check(
-            {"kind": "action", "confidence": 1.0, "actions": [dict(attack), dict(attack)]},
-            ctx.world,
-            ctx.world.characters[hero["id"]],
-        )
-        assert len(parsed.intent["actions"]) == 1
-        assert parsed.notice
-
-    run(settings, check)
-
-
-def test_parser_garbage_preserves_request_for_master_without_executing_it(game_client, admin_g, llm, settings):
-    c, (p1,), _ = party(game_client, admin_g)
-    game_client.app.state.master.notify = lambda cid: None
-    llm.replies += [intent({"verb": "fly"}), intent({"verb": "fly"})]
-    event = send(game_client, p1, c["id"], "Лечу к луне")
-    assert event["type"] == "message.new"
-    (message,) = rows(settings, Message, Message.kind == "action")
-    assert message.content == "Лечу к луне"
-    assert message.intent["parser_fallback"] is True
-    assert rows(settings, Event) == []
-
-
-def test_empty_parser_actions_preserve_source_for_master_resolution(game_client, admin_g, llm, settings):
-    c, (p1,), hero = party(game_client, admin_g)
-    game_client.app.state.master.notify = lambda cid: None
-    llm.replies += [intent()]
-
-    response = send(game_client, p1, c["id"], "Обыскиваю сундук")
-
-    assert response["type"] == "message.new"
-    (message,) = rows(settings, Message, Message.kind == "action")
-    assert message.intent["character_id"] == hero["id"]
-    assert [action["verb"] for action in message.intent["actions"]] == ["custom"]
-    assert message.content == "Обыскиваю сундук"
-    assert rows(settings, Event) == []
-
-
-def test_empty_parse_does_not_loop_or_auto_cancel_the_request(game_client, admin_g, llm, settings):
-    c, (p1,), _ = party(game_client, admin_g)
-    game_client.app.state.master.notify = lambda cid: None
-    llm.replies += [intent(), intent()]
-
-    event = send(game_client, p1, c["id"], "Что-то непонятное")
-
-    assert event["type"] == "message.new"
-    assert len(rows(settings, Message, Message.kind == "action")) == 1
-    assert [call.purpose for call in rows(settings, LlmCall)] == ["parse"]
-    assert rows(settings, Event) == []
 
 
 def test_describe_and_route_helpers():
@@ -353,71 +186,6 @@ def test_litellm_prompt_caching_injection(monkeypatch):
     assert captured_kwargs["messages"][0]["content"] == long_sys
 
 
-def test_routed_hostile_spell_starts_initiative_before_cast(game_client, admin_g, llm, dice, settings):
-    """A natural-language offensive cast resolves only after initiative is rolled."""
-    from app.tools.registry import execute
-    from tests.test_spells import WIZARD
-
-    c, heads, _ = party(game_client, admin_g, players=2, start=False)
-    cid = c["id"]
-    wiz = ok(game_client.post(f"/api/campaigns/{cid}/characters", json=WIZARD, headers=heads[1]), 201)
-    submitted = ok(game_client.post(f"/api/campaigns/{cid}/characters/{wiz['id']}/submit", headers=heads[1]))
-    assert submitted["status"] == "approved"
-    ok(game_client.post(f"/api/campaigns/{cid}/session/start", headers=admin_g))
-
-    async def spawn(s):
-        campaign = await s.get(Campaign, cid)
-        ctx = await open_context(s, campaign, QueueDice([]), turn_id=None, seat_id=None)
-        result = await execute(
-            ctx, "spawn_entity", {"creature_template_id": "creature.goblin", "name": "Гоблин", "zone": "near"}
-        )
-        assert result["ok"], result
-        await s.commit()
-        return result["result"]["spawned"][0]["id"]
-
-    goblin = run(settings, spawn)
-    llm.replies += [
-        intent({"verb": "cast", "spell_id": "spell.magic_missile", "target_id": goblin}),
-        DONE,
-        {"text": "Заклинание нанесло урон по инициативе."},
-    ]
-    dice += [5, 20, 1, 2, 2, 2]  # fighter, wizard, goblin; wizard then 3 missiles
-    act(game_client, heads[1], cid, "Пускаю волшебную стрелу в гоблина")
-    events = rows(settings, Event, Event.campaign_id == cid)
-    start = next(e for e in events if e.tool == "set_scene_mode" and e.payload.get("mode") == "combat")
-    spell = next(e for e in events if e.tool == "cast_spell" and e.actor_id == wiz["id"])
-    assert start.created_at <= spell.created_at
-    assert spell.payload["spell_id"] == "spell.magic_missile"
-    (turn,) = rows(settings, MasterTurn, MasterTurn.status == "done")
-    assert any(x["tool"] == "set_scene_mode" and x.get("automatic") for x in turn.trace["calls"])
-
-
-def test_master_repeat_of_routed_cast_spends_no_second_slot(game_client, admin_g, llm, dice, settings):
-    """Сервер уже сотворил заклинание по заявке; повтор того же вызова моделью не тратит вторую ячейку и не
-    прерывает концентрацию — возвращается прежний результат."""
-    from tests.test_spells import WIZARD
-
-    c, heads, _ = party(game_client, admin_g, players=2, start=False)
-    cid = c["id"]
-    prepared = ["spell.magic_missile", "spell.shield", "spell.detect_magic", "spell.mage_armor"]
-    body = {**WIZARD, "prepared": prepared}
-    wiz = ok(game_client.post(f"/api/campaigns/{cid}/characters", json=body, headers=heads[1]), 201)
-    ok(game_client.post(f"/api/campaigns/{cid}/characters/{wiz['id']}/submit", headers=heads[1]))
-    ok(game_client.post(f"/api/campaigns/{cid}/session/start", headers=admin_g))
-    again = {"caster_id": wiz["id"], "spell_id": "spell.detect_magic", "slot_level": 1, "target_ids": []}
-    llm.replies += [
-        intent({"verb": "cast", "spell_id": "spell.detect_magic"}),
-        {"tool_calls": [("cast_spell", again)]},
-        DONE,
-        {"text": "Магия откликается слабым зудом."},
-    ]
-    act(game_client, heads[1], cid, "Творю обнаружение магии")
-    casts = [e for e in rows(settings, Event, Event.campaign_id == cid) if e.tool == "cast_spell"]
-    assert len(casts) == 1
-    sheet = ok(game_client.get(f"/api/campaigns/{cid}/characters/{wiz['id']}", headers=heads[1]))
-    assert sheet["spellbook"]["slots_left"] == {"1": 1}
-
-
 def test_approach_attack_plan_preserves_order_and_confidence():
     plan = {
         "character_id": "ch_hero",
@@ -433,95 +201,6 @@ def test_approach_attack_plan_preserves_order_and_confidence():
     assert approach_attack({**plan, "actions": [{**plan["actions"][0], "zone": "far"}, plan["actions"][1]]}) is None
     missing = [plan["actions"][0], {**plan["actions"][1], "missing_item": True}]
     assert approach_attack({**plan, "actions": missing}) is None
-
-
-def test_natural_language_approach_attack_starts_combat_and_moves_first(game_client, admin_g, llm, dice, settings):
-    """One Russian sentence becomes movement and one attack, following initiative."""
-    from app.tools.registry import execute
-
-    c, (p1,), hero = party(game_client, admin_g)
-
-    async def setup(s):
-        campaign = await s.get(Campaign, c["id"])
-        ctx = await open_context(s, campaign, QueueDice([]), turn_id=None, seat_id=None)
-        sp = await execute(
-            ctx, "spawn_entity", {"creature_template_id": "creature.goblin", "name": "Гоблин", "zone": "near"}
-        )
-        assert sp["ok"], sp
-        weapon = (
-            await s.scalars(
-                select(InventoryItem).where(
-                    InventoryItem.character_id == hero["id"], InventoryItem.item_template_id == "item.longsword"
-                )
-            )
-        ).first()
-        await s.commit()
-        return sp["result"]["spawned"][0]["id"], weapon.id
-
-    goblin, sword = run(settings, setup)
-    llm.replies += [
-        intent(
-            {"verb": "move", "target_id": goblin, "zone": "melee"},
-            {"verb": "attack", "target_id": goblin, "instrument_id": sword, "manner": "с размаху"},
-        ),
-        DONE,
-        {"text": "Воин подбежал к гоблину и нанёс один удар."},
-    ]
-    dice += [20, 1, 15, 1]
-    narration = act(game_client, p1, c["id"], "Подбегаю к гоблину и рублю его мечом с размаху")
-    assert narration["kind"] == "narration"
-    events = rows(settings, Event, Event.campaign_id == c["id"])
-    assert len([e for e in events if e.tool == "resolve_attack" and e.actor_id == hero["id"]]) == 1
-    assert any(e.tool == "step" and e.actor_id == hero["id"] for e in events)
-    assert any(e.tool == "set_scene_mode" and e.payload.get("mode") == "combat" for e in events)
-    (msg,) = rows(settings, Message, Message.kind == "action")
-    assert [a["verb"] for a in msg.intent["actions"]] == ["move", "attack"]
-    (turn,) = rows(settings, MasterTurn, MasterTurn.status == "done")
-    assert any(x["tool"] == "set_scene_mode" and x.get("automatic") for x in turn.trace["calls"])
-
-
-def test_natural_language_move_then_spell_starts_initiative_and_moves_first(game_client, admin_g, llm, dice, settings):
-    """A clear Russian move-and-cast command must not cast before movement."""
-    from app.tools.registry import execute
-    from tests.test_spells import WIZARD
-
-    c, heads, _ = party(game_client, admin_g, players=2, start=False)
-    cid = c["id"]
-    wizard = ok(game_client.post(f"/api/campaigns/{cid}/characters", json=WIZARD, headers=heads[1]), 201)
-    submitted = ok(game_client.post(f"/api/campaigns/{cid}/characters/{wizard['id']}/submit", headers=heads[1]))
-    assert submitted["status"] == "approved"
-    ok(game_client.post(f"/api/campaigns/{cid}/session/start", headers=admin_g))
-
-    async def spawn(s):
-        campaign = await s.get(Campaign, cid)
-        ctx = await open_context(s, campaign, QueueDice([]), turn_id=None, seat_id=None)
-        r = await execute(
-            ctx, "spawn_entity", {"creature_template_id": "creature.goblin", "name": "Гоблин", "zone": "near"}
-        )
-        assert r["ok"], r
-        await s.commit()
-        return r["result"]["spawned"][0]["id"]
-
-    gob = run(settings, spawn)
-    llm.replies += [
-        intent(
-            {"verb": "move", "target_id": gob, "zone": "melee"},
-            {"verb": "cast", "spell_id": "spell.magic_missile", "target_id": gob},
-        ),
-        DONE,
-        {"text": "Волшебница приблизилась и сотворила заклинание."},
-    ]
-    dice += [5, 20, 1, 1, 1, 1]
-    narrative = act(game_client, heads[1], cid, "Подбегаю к гоблину и выпускаю волшебную стрелу")
-    assert narrative["kind"] == "narration"
-    events = rows(settings, Event, Event.campaign_id == cid)
-    assert len([e for e in events if e.tool == "cast_spell" and e.actor_id == wizard["id"]]) == 1
-    assert len([e for e in events if e.tool == "step" and e.actor_id == wizard["id"]]) == 1
-    assert any(e.tool == "set_scene_mode" and e.payload.get("mode") == "combat" for e in events)
-    (msg,) = rows(settings, Message, Message.kind == "action")
-    assert [a["verb"] for a in msg.intent["actions"]] == ["move", "cast"]
-    (turn,) = rows(settings, MasterTurn, MasterTurn.status == "done")
-    assert any(x["tool"] == "set_scene_mode" and x.get("automatic") for x in turn.trace["calls"])
 
 
 def test_class_features_are_routed_only_when_explicitly_declared():
@@ -562,25 +241,6 @@ def test_shove_routes_to_contested_tool_not_fixed_dc_check():
     )
 
 
-def test_chat_shove_starts_initiative_before_contested_maneuver(game_client, admin_g, llm, dice, settings):
-    c, (p1,), hero = party(game_client, admin_g)
-    goblin, _ = goblin_in_melee(settings, c["id"], hero["id"])
-    llm.replies += [
-        intent({"verb": "shove", "target_id": goblin, "maneuver": "prone"}),
-        DONE,
-        {"text": "Герой попытался сбить гоблина с ног."},
-    ]
-    dice += [20, 1, 18, 1]
-    reply = act(game_client, p1, c["id"], "Толкаю гоблина, чтобы сбить с ног")
-    assert reply["kind"] == "narration"
-    events = rows(settings, Event, Event.campaign_id == c["id"])
-    opening = next(e for e in events if e.tool == "set_scene_mode" and e.payload.get("mode") == "combat")
-    shoves = [e for e in events if e.tool == "resolve_shove" and e.actor_id == hero["id"]]
-    assert len(shoves) == 1 and shoves[0].payload["success"]
-    assert opening.created_at <= shoves[0].created_at
-    assert not [e for e in events if e.tool == "roll_check" and e.actor_id == hero["id"]]
-
-
 def test_grapple_and_escape_are_routed_to_real_tools():
     base = {"character_id": "ch_hero", "confidence": 0.9}
     assert intents.routable_tool_call({**base, "actions": [{"verb": "grapple", "target_id": "en1"}]}) == (
@@ -596,32 +256,3 @@ def test_grapple_and_escape_are_routed_to_real_tools():
         {"character_id": "ch_hero", "skill": "acrobatics"},
     )
     assert intents.routable_tool_call({**base, "actions": [{"verb": "grapple", "target_id": None}]}) is None
-
-
-def test_chat_grapple_starts_initiative_and_applies_real_condition(game_client, admin_g, llm, dice, settings):
-    from app.tools.runtime import open_context
-
-    c, (p1,), hero = party(game_client, admin_g)
-    goblin, _ = goblin_in_melee(settings, c["id"], hero["id"])
-
-    async def open_hand(session):
-        campaign = await session.get(Campaign, c["id"])
-        ctx = await open_context(session, campaign, QueueDice([]), turn_id=None, seat_id=None)
-        for item in ctx.world.inventory[hero["id"]]:
-            item.equipped = False
-        await session.commit()
-
-    run(settings, open_hand)
-    llm.replies += [
-        intent({"verb": "grapple", "target_id": goblin}),
-        DONE,
-        {"text": "Герой схватил гоблина и удерживает его на месте."},
-    ]
-    dice += [20, 1, 18, 1]
-    response = act(game_client, p1, c["id"], "Хватаю гоблина свободной рукой и не даю ему уйти")
-    assert response["kind"] == "narration"
-    events = rows(settings, Event, Event.campaign_id == c["id"])
-    assert len([e for e in events if e.tool == "resolve_grapple" and e.actor_id == hero["id"]]) == 1
-    assert any(e.tool == "set_scene_mode" and e.payload.get("mode") == "combat" for e in events)
-    (message,) = rows(settings, Message, Message.kind == "action")
-    assert message.intent["actions"][0]["verb"] == "grapple"

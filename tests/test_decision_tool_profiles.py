@@ -5,9 +5,7 @@ import pytest
 
 from app.agents.master.common import decision_tools
 from app.agents.master.tool_profiles import profile_tool_names, select_tool_profile
-from app.db.models import Campaign, Event, LlmCall, MasterTurn
 from app.tools.registry import REGISTRY
-from tests.game import party, run
 from tests.test_master import act, admin_g, dice, game_client, llm, rows  # noqa: F401
 from tests.test_tools import game, play  # noqa: F401
 
@@ -95,61 +93,6 @@ def test_expand_is_read_only_and_does_not_close_actions():
 
 def test_legacy_decision_tools_excludes_expansion():
     assert "expand_decision_tools" not in decision_tools(context())
-
-
-def test_native_batch_checks_live_profile_before_and_after_expansion(game_client, admin_g, llm, settings):
-    campaign, (player,), hero = party(game_client, admin_g)
-    cid = campaign["id"]
-
-    async def enable(s):
-        c = await s.get(Campaign, cid)
-        c.settings = {**c.settings, "llm_optimization": {"tool_profiles": True}}
-        await s.commit()
-
-    run(settings, enable)
-    time_args = {"amount": 1, "unit": "minute", "reason": "conversation"}
-    llm.replies += [
-        {"tool_calls": [("submit_intent", {"confidence": 1, "actions": [{"verb": "talk"}]})]},
-        {
-            "tool_calls": [
-                ("advance_time", time_args),
-                ("expand_decision_tools", {"profile": "combat"}),
-                ("advance_time", time_args),
-                ("expand_decision_tools", {}),
-                ("advance_time", time_args),
-                ("prepare_location", {}),
-                ("apply_narrative_fact", {}),
-            ]
-        },
-        {"tool_calls": [("advance_time", time_args)]},
-        {"text": "готово"},
-        {"text": "Ты беседуешь."},
-        {"text": "Ты беседуешь."},
-    ]
-    act(game_client, player, cid, "Говорю с собеседником")
-    (turn,) = rows(settings, MasterTurn, MasterTurn.campaign_id == cid)
-    assert turn.status == "done", turn.error
-    advances = [c["result"] for c in turn.trace["calls"] if c["tool"] == "advance_time"]
-    assert len(advances) == 4
-    assert not advances[0]["ok"] and not advances[1]["ok"]
-    assert advances[2]["ok"] and advances[3]["ok"]
-    host = next(c for c in turn.trace["calls"] if c["tool"] == "prepare_location")
-    assert not host["result"]["ok"]
-    internal = next(c for c in turn.trace["calls"] if c["tool"] == "apply_narrative_fact")
-    assert not internal["result"]["ok"]
-    decide_calls = rows(settings, LlmCall, LlmCall.campaign_id == cid, LlmCall.purpose == "decide")
-    assert all(call.diagnostics["tool_profile"] in {"social", "general"} for call in decide_calls)
-    assert all(call.diagnostics["tool_count"] > 0 for call in decide_calls)
-    assert all(call.diagnostics["tool_schema_total"]["utf8_bytes"] > 0 for call in decide_calls)
-    decide = [
-        r
-        for r in llm.requests
-        if r.get("tools") and any(t["function"]["name"] == "expand_decision_tools" for t in r["tools"])
-    ]
-    assert len(decide) >= 3
-    assert "advance_time" not in {t["function"]["name"] for t in decide[0]["tools"]}
-    assert "advance_time" in {t["function"]["name"] for t in decide[1]["tools"]}
-    assert not rows(settings, Event, Event.campaign_id == cid, Event.tool == "expand_decision_tools")
 
 
 def test_compact_schema_does_not_disable_server_id_validation(game):

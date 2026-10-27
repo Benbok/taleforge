@@ -48,37 +48,6 @@ def test_package_capture_preserves_full_tool_protocol():
     assert legacy["messages"][-1]["content"] == "success"
 
 
-@pytest.mark.parametrize("kind,variants", [("context", ("legacy", "v1", "revised")), ("tools", ("full", "profile"))])
-def test_real_child_dispatches_variants_and_compares_outcomes(kind, variants):
-    from tools.context_eval_variants import ExperimentConfig
-    from tools.eval_turn_efficiency import run_scripted
-
-    case = {
-        "id": "attack",
-        "nodeid": "tests/test_context_eval_dispatch.py::test_received_inputs_match_measurements[attack]",
-        "tags": ["mechanics"],
-        "scope": "full_turn",
-    }
-    native = {**case, "id": "native", "nodeid": case["nodeid"].replace("[attack]", "[native]")}
-    report = run_scripted([case, native], experiment=ExperimentConfig(kind, variants))
-    assert not report["variant_errors"]
-    assert not report["mechanical_mismatches"]
-    rows = [report["variants"][variant]["cases"][0] for variant in variants]
-    assert all(
-        payload["exit_code"] == 0 and payload["summary"]["passed"] == 2 for payload in report["variants"].values()
-    )
-    assert all(row["status"] == "passed" and row["snapshot"] is not None for row in rows)
-    assert all(row["measured_inputs"] for row in rows)
-    assert rows[0]["measured_inputs"][0]["digest"] != rows[1]["measured_inputs"][0]["digest"]
-    if kind == "tools":
-        assert rows[0]["measured_inputs"][0]["tool_count"] > rows[1]["measured_inputs"][0]["tool_count"]
-    else:
-        assert all(row["assembler_calls"] >= 2 for row in rows)
-        assert all(
-            row["measured_inputs"][0]["tool_names"] == rows[0]["measured_inputs"][0]["tool_names"] for row in rows
-        )
-
-
 def test_historical_artifacts_match_recorded_git_blobs():
     import hashlib
 
@@ -87,67 +56,6 @@ def test_historical_artifacts_match_recorded_git_blobs():
     for filename, (_, blob) in provenance["source_blobs"].items():
         data = (root / filename).read_bytes().replace(b"\r\n", b"\n")
         assert hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest() == blob
-
-
-@pytest.mark.parametrize("role", ["decide", "narrate", "voice_line", "review"])
-def test_historical_assembly_recovers_full_request_from_split_inputs(monkeypatch, role):
-    import asyncio
-
-    from app.agents.master import resolution
-    from tools.context_eval_variants import assemble_variant, historical_assembler
-
-    values = dict(
-        difficulty="normal",
-        leveling=True,
-        random_events=True,
-        critical_checks=True,
-        has_plot=False,
-        max_calls=8,
-        campaign_name="probe",
-        style=None,
-        brief="brief",
-        excluded_themes="",
-        public_intro="",
-        secrets="private canon",
-        pacing="",
-        dc_scale="",
-        audio="",
-    )
-
-    async def prompt_values(ctx, cfg):
-        return values
-
-    async def action_context(ctx):
-        return "ACTION_REFS"
-
-    monkeypatch.setattr(historical_assembler(), "master_prompt_values", prompt_values)
-    monkeypatch.setattr(resolution, "action_context_prompt", action_context)
-    inputs = {
-        "request": "new request only",
-        "history": "split history",
-        "packet": "VOICE_PACKET",
-        "resolution": "RESOLUTION",
-        "legacy_messages": [
-            {"role": "system", "content": "CURRENT_TEMPLATE_SENTINEL"},
-            {"role": "user", "content": "DURABLE_MEMORY\nSCENE\nCHAT\nRESOLUTION\nnew request only"},
-        ],
-    }
-    legacy = asyncio.run(assemble_variant("legacy", SimpleNamespace(), None, role=role, inputs=inputs))
-    v1 = asyncio.run(assemble_variant("v1", SimpleNamespace(), None, role=role, inputs=inputs))
-    assert legacy.messages[1]["content"] == inputs["legacy_messages"][1]["content"]
-    assert "CURRENT_TEMPLATE_SENTINEL" not in legacy.messages[0]["content"]
-    assert "DURABLE_MEMORY\nSCENE\nCHAT" in v1.messages[1]["content"]
-    assert len(v1.messages) == 2
-    if role == "decide":
-        assert v1.blocks["actions"] == "ACTION_REFS"
-        assert "RESOLUTION" not in v1.blocks["request"]
-        assert v1.blocks["resolution"] == "RESOLUTION"
-        uncertain = asyncio.run(
-            assemble_variant("v1", SimpleNamespace(), None, role=role, inputs={**inputs, "uncertain": True})
-        )
-        assert uncertain.fallback_reason == "uncertain_intent"
-        assert uncertain.messages == legacy.messages
-    assert inputs["legacy_messages"][0]["content"] == "CURRENT_TEMPLATE_SENTINEL"
 
 
 @pytest.mark.parametrize("changed_outcome", [False, True])

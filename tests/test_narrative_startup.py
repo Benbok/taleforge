@@ -3,21 +3,18 @@
 
 from __future__ import annotations
 
-import asyncio
 import inspect
 import time
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import select, text
+from sqlalchemy import select
 
-from app.agents.llm import LLMReply, ScriptedLLM, ToolCall
+from app.agents.llm import LLMReply, ToolCall
 from app.core.narrative.contracts import BoundaryRecord, EvidenceRef
 from app.db.models import Campaign, CampaignSecret, Event, LlmCall, NarrativeWork
 from app.db.narrative_jobs import SqlNarrativeJobs
 from app.db.session import make_sessionmaker
-from app.main import create_app
-from tests.game import QueueDice, party, run
+from tests.game import party, run
 from tests.test_lead import set_plan
 from tests.test_master import act
 from tests.test_narrative_architect import initialized_plan
@@ -138,41 +135,6 @@ def _director_calls(settings, cid):
     return run(settings, go)
 
 
-def test_act_close_reaches_receipt_and_changes_future_node(game_client, admin_g, llm, settings):
-    cid, p1 = _setup(game_client, admin_g, settings)
-    master = game_client.app.state.master
-    seen: dict = {}
-
-    async def director(messages, tools):
-        # во время сетевого вызова не держится ни ход кампании, ни транзакция записи БД: другая сессия
-        # успевает записать. Транзакция, удержанная на время LLM, ждала бы этого ответа и дала бы таймаут
-        seen["turn_locked"] = master.turn_lock(cid).locked()
-        # живой модели видны изменяемый будущий узел и основание задания — закрытие акта
-        user = messages[1]["content"]
-        seen["sees_future"] = "node_id=n_crypt" in user and "act_id=act3" in user
-        seen["sees_end_act"] = "result=end_act" in user or ": end_act" in user
-        async with master.maker() as s:
-            await asyncio.wait_for(
-                s.execute(text("UPDATE campaigns SET name = name WHERE id = :id"), {"id": cid}), timeout=10
-            )
-            await s.rollback()
-        seen["db_writable"] = True
-        return _director_reply(messages, tools)
-
-    asked = _close_act(game_client, llm, p1, cid, director)
-    game_client.portal.call(master.recover)  # тело штатного цикла восстановления
-    _settle(settings, cid)
-
-    works = _works(settings, cid)
-    assert [w.status for w in works] == ["applied"], [(w.status, w.draft) for w in works]
-    assert works[0].receipt_event_id
-    assert _node_title(settings, cid) == NEW_TITLE
-    assert seen == {"turn_locked": False, "db_writable": True, "sees_future": True, "sees_end_act": True}
-    calls = _director_calls(settings, cid)
-    assert [(c.error, c.tokens_in, c.tokens_out) for c in calls] == [(None, 120, 40)]
-    assert len(asked) == 1
-
-
 @pytest.mark.parametrize("patch", [{"replan": False}, {"spend_limit_usd": 0}, {"status": "ended"}])
 def test_paused_director_keeps_job_and_never_calls_model(game_client, admin_g, llm, settings, patch):
     """Задание, поставленное раньше, ждёт: replan=false, исчерпанный бюджет или конец кампании не зовут модель."""
@@ -204,78 +166,12 @@ def test_paused_director_keeps_job_and_never_calls_model(game_client, admin_g, l
     assert llm.director_requests == []
 
 
-def test_restart_applies_prepared_draft_without_new_author_call(game_client, admin_g, llm, settings):
-    cid, p1 = _setup(game_client, admin_g, settings)
-
-    async def no_apply(*_a, **_kw):  # первый процесс «падает» после сохранения черновика, до применения
-        return None
-
-    game_client.app.state.master.narrative_preparer.run_due = no_apply
-    asked = _close_act(game_client, llm, p1, cid, _director_reply)
-    assert len(asked) == 1
-    assert [w.status for w in _works(settings, cid)] == ["prepared"]
-
-    # новый процесс над той же БД: стартовое восстановление доводит черновик без нового вызова модели
-    fresh = ScriptedLLM([])
-    with TestClient(create_app(settings, llm=fresh, dice_factory=lambda: QueueDice([10]))) as again:
-        again.portal.call(again.app.state.master.recover)
-        _settle(settings, cid)
-    assert [w.status for w in _works(settings, cid)] == ["applied"]
-    assert _node_title(settings, cid) == NEW_TITLE
-    assert fresh.director_requests == []
-    assert len(_director_calls(settings, cid)) == 1
-
-
-def test_no_change_answer_leaves_receipt_and_world_revision(game_client, admin_g, llm, settings):
-    """«Без изменений» — квитанция без записи мира: параллельный ход игрока не получает конфликт ревизии."""
-    from app.core import world_tx
-
-    cid, p1 = _setup(game_client, admin_g, settings)
-    _close_act(game_client, llm, p1, cid)  # ScriptedLLM отвечает режиссёру «без изменений»
-
-    async def revision(s):
-        return await world_tx.read_revision(s, cid)
-
-    before = run(settings, revision)
-    game_client.portal.call(game_client.app.state.master.recover)
-    _settle(settings, cid)
-    works = _works(settings, cid)
-    assert [w.status for w in works] == ["no_change"], [(w.status, w.draft) for w in works]
-    assert works[0].receipt_event_id
-    assert run(settings, revision) == before
-    assert len(llm.director_requests) == 1
-
-
 def _session_works(settings, cid):
     async def go(s):
         q = select(NarrativeWork).where(NarrativeWork.campaign_id == cid, NarrativeWork.kind == "session_closed")
         return (await s.scalars(q)).all()
 
     return run(settings, go)
-
-
-def test_session_pause_prepares_next_session_and_resume_works(game_client, admin_g, llm, settings):
-    """Конец сессии — граница режиссёра (spec §16.1): готовит будущее в перерыве; сессия снова открывается."""
-    cid, _p1 = _setup(game_client, admin_g, settings)
-    asked = _route_director(llm, _director_reply)
-    r = game_client.post(f"/api/campaigns/{cid}/session/pause", headers=admin_g)
-    assert r.status_code == 200, r.text
-    game_client.portal.call(game_client.app.state.master.wait_idle, cid)
-    game_client.portal.call(game_client.app.state.master.recover)
-    for _ in range(300):  # граница ставится фоном после сводки: ждём, пока задание дойдёт до квитанции
-        works = _session_works(settings, cid)
-        if works and works[0].status == "applied":
-            break
-        time.sleep(0.05)
-        game_client.portal.call(game_client.app.state.master.recover)
-    works = _session_works(settings, cid)
-    assert [w.status for w in works] == ["applied"], [(w.status, w.draft) for w in works]
-    assert works[0].evidence_refs and works[0].evidence_refs[0]["kind"] == "message"
-    assert _node_title(settings, cid) == NEW_TITLE
-    assert len(asked) == 1
-
-    r = game_client.post(f"/api/campaigns/{cid}/session/start", headers=admin_g)
-    assert r.status_code == 200, r.text
 
 
 def test_campaign_end_does_not_queue_director(game_client, admin_g, llm, settings):

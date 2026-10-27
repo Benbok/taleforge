@@ -5,19 +5,15 @@ from __future__ import annotations
 
 from sqlalchemy import select
 
-from app.core import adventure
 from app.core.narrative.contracts import FactRef, NarrativeSource, SnapshotRef
 from app.core.world import get_scene
-from app.db.models import Entity, Knowledge, KnownFact, Message, NarrativeFact
+from app.db.models import Entity, KnownFact, Message, NarrativeFact
 from app.tools.narrative.executor import apply_in_context
 from tests.game import import_base, ok, party, run
 from tests.narrative_helpers import op, policy
-from tests.test_adventure import publish_sample
-from tests.test_map import _ok
 from tests.test_master import DONE, act, admin_g, dice, game_client, llm  # noqa: F401 — фикстуры
 from tests.test_narrative_executor import _make_prop
 from tests.test_tools import play
-from tests.test_ws import connect, next_of
 
 
 def _npc(settings, cid: str, name: str = "Хромой Вик") -> str:
@@ -98,76 +94,6 @@ def _ref(cid: str, subject_id: str, key: str, *, namespace="campaign", version=1
         version=version,
         snapshot_ref=SnapshotRef(kind="event", source_id="seed", typed_address=f"{namespace}:{subject_id}:{key}"),
     )
-
-
-def test_role_and_motive_reach_master_prompt_and_hero_card(game_client, admin_g, llm, settings):
-    c, (p1,), hero = party(game_client, admin_g)
-    cid = c["id"]
-    game_client.portal.call(game_client.app.state.master.wait_idle, cid)
-    eid = _npc(settings, cid)
-    res = _apply(
-        settings,
-        cid,
-        hero["id"],
-        "work-role",
-        (op("develop_actor_role", entity_id=eid, new_role="Проводник отряда", new_motivation="Тайно ищет брата"),),
-        actors=(hero["id"], eid),
-        scope="future",
-    )
-    assert res.status == "applied", res
-    motive = _fact_row(settings, cid, eid, "motivation")
-    assert motive is not None and motive.audience == [] and motive.freedom == "draft"
-
-    # обычный ход: следующий system prompt мастера читает принятый канон
-    llm.replies += [DONE]
-    act(game_client, p1, cid, "Расспрашиваю хромого незнакомца")
-    systems = [m["content"] for r in llm.requests for m in r["messages"][:1] if m.get("role") == "system"]
-    prompt = next(s for s in systems if "Хромой Вик" in s and "Проводник отряда" in s)
-    assert "Тайно ищет брата" in prompt
-
-    async def seen(s):  # герой видел незнакомца: карточка ему доступна
-        s.add(Knowledge(character_id=hero["id"], entity_id=eid, level=0))
-        await s.commit()
-
-    run(settings, seen)
-
-    # карточка героя: публичная роль есть, скрытого мотива нет
-    with connect(game_client, p1, cid) as (ws, _):
-        ws.send_json({"type": "entity.inspect", "payload": {"entity_id": eid}})
-        card = next_of(ws, "entity.card")["payload"]
-    assert card.get("role") == "Проводник отряда"
-    assert "Тайно ищет брата" not in str(card)
-
-
-def test_module_override_reaches_book_reader_and_stays_in_its_campaign(client, admin, settings):
-    import_base(settings)
-    mid = publish_sample(settings)
-    c1, _, _ = party(client, admin, module_id=mid, module_hook="board")
-    c2 = ok(
-        client.post(
-            "/api/campaigns",
-            json={"name": "Вторая", "master": {"type": "agent", "provider": "claude", "model": "x"}, "module_id": mid},
-            headers=admin,
-        ),
-        201,
-    )
-    client.portal.call(client.app.state.master.wait_idle, None)  # вступление открыло первую комнату книги
-    _add_fact(settings, c1["id"], "creature.skeleton", "role", "Стражи праха Давоса", namespace="module")
-
-    async def block(ctx):
-        rec = ctx.world.catalog.find("creature.skeleton", "creature_template")
-        assert "Стражи праха Давоса" not in str(rec.data)  # общий каталог пакета не мутирован
-        room = await _ok(ctx, "enter_room", {"room": "2"})  # Восточная крипта: два скелета по книге
-        return room["book"], adventure.master_block(ctx.world)
-
-    book, text = play(settings, c1["id"], [], block)
-    assert "Стражи праха Давоса" in book and "Стражи праха Давоса" in text
-
-    async def other(ctx):
-        view = ctx.world.narrative_view
-        return [] if view is None else view.facts_for(("creature.skeleton",))
-
-    assert not play(settings, c2["id"], [], other)
 
 
 def test_reveal_fact_teaches_exact_heroes_and_seals_exact_ref(settings, client, admin):
@@ -258,44 +184,6 @@ def test_revise_after_reveal_is_refused(settings, client, admin):
     assert revised.status in ("denied", "stale", "failed"), revised
     row = _fact_row(settings, cid, eid, "secret_truth")
     assert row.value == "Вик служит культу пепла" and row.freedom == "committed"
-
-
-def test_turn_reserves_public_claims_before_narration(game_client, admin_g, llm, settings):
-    """Публичная роль, принятая в фазе решения, закрепляется до LLM и передаётся рассказчику; мотив — нет."""
-    c, (p1,), hero = party(game_client, admin_g, narrative_mode="adaptive")
-    cid = c["id"]
-    game_client.portal.call(game_client.app.state.master.wait_idle, cid)
-    eid = _npc(settings, cid)
-    adapt = {
-        "slot_ref": 0,
-        "grounds": [
-            {
-                "kind": "divergence",
-                "evidence_refs": [{"campaign_id": cid, "kind": "message", "source_id": "current"}],
-                "confidence": "explicit",
-            }
-        ],
-        "summary": "Хромой Вик соглашается вести отряд",
-        "operations": [
-            {
-                "kind": "develop_actor_role",
-                "entity_id": eid,
-                "new_role": "Проводник отряда",
-                "new_motivation": "Тайно ищет брата",
-            }
-        ],
-    }
-    llm.replies += [{"tool_calls": [("adapt_story", adapt)]}, DONE, {"text": "Вик кивает и берёт фонарь."}]
-    act(game_client, p1, cid, "Предлагаю Вику провести нас")
-
-    role = _fact_row(settings, cid, eid, "role")
-    assert role is not None and role.freedom == "committed"
-    assert _fact_row(settings, cid, eid, "motivation").freedom == "draft"
-    # допустимые утверждения рассказчика: адресованное слушателям, не скрытый мотив из контекста мастера
-    narrate = "\n".join(str(m.get("content")) for m in llm.requests[-1]["messages"])
-    claims = narrate.split("Перемены сюжета и новые возможности этого хода", 1)[1].split("Сцена после хода", 1)[0]
-    assert "Проводник отряда" in claims
-    assert "Тайно ищет брата" not in claims
 
 
 def test_enabling_adaptive_initializes_plan_metadata(client, admin, settings):

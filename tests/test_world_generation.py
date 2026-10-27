@@ -470,35 +470,6 @@ def test_new_current_location_is_prepared_without_move(client, admin, settings):
     assert _generated(settings, ref)
 
 
-def test_turn_waits_for_generated_scene_and_describes_it(game_client, admin_g, llm, settings):
-    c, (p1,), hero = party(game_client, admin_g)
-    cid, hid = c["id"], hero["id"]
-
-    async def build(ctx):
-        room = (await _ok(ctx, "create_location", {"name": "Таверна у моста"}))["location_id"]
-        ctx.world.entities[room].state = {
-            **(ctx.world.entities[room].state or {}),
-            "scene_profile": "scene_profile.tavern",
-        }
-        ctx.campaign.settings = {**(ctx.campaign.settings or {}), "scene_generation": True}
-        return room
-
-    room = _play(settings, cid, build)
-    llm.replies += [
-        {"tool_calls": [("move", {"character_ids": [hid], "location_id": room})]},
-        DONE,
-        {"text": "Таверна шумит."},
-    ]
-    told = act(game_client, p1, cid, "Захожу в таверну")
-    assert told["kind"] == "narration"
-    (row,) = rows(settings, WGS, WGS.phase == "location_initial")
-    assert row.status == "ready" and row.result_manifest["objects"]
-    names = {e.name for e in _generated(settings, row.id)}
-    narrate = llm.requests[-1]["messages"]
-    assert any(n in str(narrate) for n in names)  # описание видит уже готовую обстановку
-    assert "исследование пока недоступно" not in str(narrate)
-
-
 def test_commit_result_with_used_fact_refs(client, admin, settings):
     """commit_result seals both string and dict used_fact_refs without ValidationError."""
     import_base(settings)

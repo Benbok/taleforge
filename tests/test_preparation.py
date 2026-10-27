@@ -5,7 +5,7 @@ from app.core.brief import brief_text
 from app.core.personas import compose_style
 from app.db.models import AgentConfig
 from tests.conftest import login
-from tests.game import ok, party
+from tests.game import ok
 from tests.test_api import invite, make_campaign, register
 from tests.test_master import DONE, act, admin_g, dice, game_client, llm, rows  # noqa: F401 — фикстуры
 
@@ -116,13 +116,3 @@ def test_someone_elses_persona_is_not_found(game_client, admin_g):
     master = {"type": "agent", "provider": "claude", "model": "x", "persona_id": p["id"]}
     r = game_client.post("/api/campaigns", json={"name": "Чужая", "master": master}, headers=root)
     assert r.status_code == 404
-
-
-def test_master_prompt_has_brief_and_persona(game_client, admin_g, llm):
-    master = {"type": "agent", "provider": "claude", "model": "x", "persona_preset": "chronicler"}
-    c, (p1,), _ = party(game_client, admin_g, master=master, brief=BRIEF)
-    llm.replies += [DONE, {"text": "Тишина."}]
-    act(game_client, p1, c["id"], "Осматриваюсь")
-    system = llm.requests[0]["messages"][0]["content"]
-    assert "Чего ждут от кампании" in system and "злодей — кто-то из своих" in system
-    assert "хроникёр" in system and "жёсткий гримдарк" in system

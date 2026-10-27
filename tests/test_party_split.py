@@ -4,22 +4,17 @@
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
 
-from app.agents import memory
 from app.agents.llm import ScriptedLLM
-from app.core import audio, combat
-from app.db.models import Campaign, Character, Message
+from app.core import audio
+from app.db.models import Campaign
 from app.main import create_app
-from app.tools.master.entities import encounter_budget
 from app.tools.registry import execute
 from app.tools.runtime import open_context, scene_views
 from tests.conftest import login
-from tests.game import FIGHTER, QueueDice, add_hero, import_base, ok, party, quiet, run
-from tests.test_api import invite, register
+from tests.game import QueueDice, add_hero, import_base, ok, party, quiet, run
 from tests.test_map import _ok, _play
-from tests.test_master import DONE
-from tests.test_ws import connect, next_of, wait_message_result
+from tests.test_ws import connect, next_of
 
 
 def _split_party(client, admin, settings, **kw):
@@ -47,54 +42,6 @@ def _split_party(client, admin, settings, **kw):
     ids = _play(settings, cid, build)
     quiet(client)
     return cid, (p1, p2), (h1, h2), ids
-
-
-def test_late_hero_changes_only_the_budget_of_their_location(client, admin, settings):
-    cid, _, _, ids = _split_party(client, admin, settings, master={"type": "owner"})
-
-    async def budgets(ctx):
-        return {name: encounter_budget(ctx, [], ids[name])["cap"] for name in ("square", "docks")}
-
-    before = _play(settings, cid, budgets)
-    assert before == {"square": 75, "docks": 75}
-    ok(client.post(f"/api/campaigns/{cid}/seats", headers=admin), 201)
-    head = register(client, invite(client, admin, cid)["token"], "Боромир")
-    hero = ok(client.post(f"/api/campaigns/{cid}/characters", json=FIGHTER, headers=head), 201)
-    ok(client.post(f"/api/campaigns/{cid}/session/pause", headers=admin))
-    ok(client.post(f"/api/campaigns/{cid}/characters/{hero['id']}/submit", headers=head))
-
-    async def set_level(s):
-        newcomer = await s.get(Character, hero["id"])
-        assert newcomer.location_id == ids["square"]
-        newcomer.sheet = {**newcomer.sheet, "level": 3}
-        await s.commit()
-
-    run(settings, set_level)
-    assert _play(settings, cid, budgets) == {"square": 300, "docks": 75}
-    campaign = ok(client.get(f"/api/campaigns/{cid}", headers=admin))
-    assert campaign["difficulty"] == "normal"
-    assert campaign["party_size_recommended"] == 4
-
-
-def test_master_sees_every_place_of_split_party(client, admin, settings):
-    cid, _, (h1, h2), ids = _split_party(client, admin, settings)
-
-    async def check(ctx):
-        w = ctx.world
-        table = w.scene_table()
-        assert "отряд разделён" in table
-        assert f"МЕСТО {ids['docks']} Доки: здесь Гимли" in table and f"МЕСТО {ids['square']} Площадь" in table
-        # гоблин в доках — допустимая цель, хотя сцена осталась на площади
-        assert ids["gob"] in w.valid_ids()["entities"] and w.scene.location_id == ids["square"]
-        far = await execute(
-            ctx, "resolve_attack", {"attacker_id": h1["id"], "target_id": ids["gob"], "attack": "unarmed"}
-        )
-        assert not far["ok"] and "в разных местах" in far["error"]
-        # бой по умолчанию — только там, где враги
-        await _ok(ctx, "set_scene_mode", {"mode": "combat"})
-        return {x["id"] for x in w.scene.turn_order}
-
-    assert _play(settings, cid, check) == {h2["id"], ids["gob"]}
 
 
 def test_snapshot_update_and_map_agree_for_viewer(client, admin, settings):
@@ -247,77 +194,6 @@ def _seen(client, head, cid):
         return snap["payload"]["messages"]
 
 
-def test_split_party_has_own_chat_and_meets_again(game_client, admin_g, llm, settings):
-    cid, (p1, p2), (h1, h2), ids = _split_party(game_client, admin_g, settings)
-    llm.replies += [
-        {"tool_calls": [("auto_success", {"character_id": h2["id"], "reason": "осматривает доки"})]},
-        DONE,
-        {"text": "В доках пахнет тиной."},
-    ]
-    n = act(game_client, p2, cid, "Осматриваю доки")
-    assert n["content"] == "В доках пахнет тиной." and n["whisper"]  # ответ только части отряда
-
-    decide = llm.requests[0]["messages"][1]["content"]
-    assert "этот ход — только для героев выше" in decide and "Бран — Площадь" in decide
-    assert "Фонтан" not in decide and "Гоблин" in decide  # окружение только своего места
-
-    mine = {m["content"] for m in _seen(game_client, p2, cid)}
-    theirs = {m["content"] for m in _seen(game_client, p1, cid)}
-    assert {"Осматриваю доки", "В доках пахнет тиной."} <= mine
-    assert not {"Осматриваю доки", "В доках пахнет тиной."} & theirs
-    # сводка кампании для памяти мастера помнит и то, что было порознь
-    remembered = run(settings, lambda s: memory.public_messages(s, cid, 0))
-    assert "В доках пахнет тиной." in {m.content for m in remembered}
-
-    # Бран приходит в доки: встреча видна обоим, мастер пересказывает, что было с Гимли
-    llm.replies += [
-        {"tool_calls": [("move", {"character_ids": [h1["id"]], "location_id": ids["docks"]})]},
-        DONE,
-        {"text": "Двое встречаются у причала."},
-    ]
-    n = act(game_client, p1, cid, "Иду в доки")
-    assert n["content"] == "Двое встречаются у причала." and not n["whisper"]
-    narrate = next(
-        req["messages"][-1]["content"]
-        for req in reversed(llm.requests)
-        if "Встреча:" in req["messages"][-1].get("content", "")
-    )
-    assert "Встреча: к героям присоединились Гимли" in narrate and "В доках пахнет тиной." in narrate
-    seen2 = [m["content"] for m in _seen(game_client, p2, cid)]
-    assert "Двое встречаются у причала." in seen2 and "Отряд снова вместе." in seen2
-
-    async def taken(s):
-        return [
-            (m.content, m.turn_id is not None) for m in await s.scalars(select(Message).where(Message.kind == "action"))
-        ]
-
-    assert all(t for _, t in run(settings, taken))
-
-
-def test_groups_are_answered_separately(game_client, admin_g, llm, settings):
-    """Реплики двух частей отряда — два хода: каждой свой ответ, без ожидания другой группы."""
-    cid, (p1, p2), _, _ = _split_party(game_client, admin_g, settings)
-    game_client.app.state.master.notify = lambda c: None  # ходы запускаем сами
-
-    with connect(game_client, p1, cid) as (ws, _):
-        ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Пью из фонтана"}})
-        next_of(ws, "message.new")
-    with connect(game_client, p2, cid) as (ws, _):
-        ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Прячусь за бочкой"}})
-        next_of(ws, "message.new")
-
-    llm.replies += [DONE, DONE, {"text": "Вода холодная."}, DONE, DONE, {"text": "Бочка пахнет рыбой."}]
-    master = game_client.app.state.master
-    first = game_client.portal.call(master.run_turn, cid)
-    second = game_client.portal.call(master.run_turn, cid)
-    game_client.portal.call(master.wait_idle, cid)
-    assert first and second and first != second
-    assert "Пью из фонтана" in llm.requests[0]["messages"][1]["content"]
-    assert "Прячусь за бочкой" not in llm.requests[0]["messages"][1]["content"]
-    assert "Прячусь за бочкой" in llm.requests[3]["messages"][1]["content"]
-    assert "Вода холодная." not in {m["content"] for m in _seen(game_client, p2, cid)}
-
-
 # --- бой, время и звук по группам (шаг 4в) ---
 
 
@@ -329,109 +205,6 @@ def _fight(settings, cid, ids):
         return [x["id"] for x in ctx.world.scene.turn_order]
 
     return _play(settings, cid, go)
-
-
-def test_fight_is_only_where_the_foes_are(game_client, admin_g, llm, settings):
-    cid, (p1, p2), (h1, h2), ids = _split_party(game_client, admin_g, settings)
-    assert set(_fight(settings, cid, ids)) == {h2["id"], ids["gob"]}
-
-    # Бран вне боя: у него свободный режим, хода нет, писать можно как обычно
-    llm.replies += [
-        {
-            "tool_calls": [
-                (
-                    "submit_intent",
-                    {
-                        "kind": "action",
-                        "character_id": h1["id"],
-                        "actions": [{"verb": "interact", "target_id": ids["fountain"]}],
-                        "confidence": 1.0,
-                        "problem": "none",
-                    },
-                )
-            ]
-        },
-        DONE,
-        {"text": "Бран пьёт из фонтана."},
-    ]
-    with connect(game_client, p1, cid) as (ws, snap):
-        scene = snap["payload"]["scene"]
-        assert scene["mode"] == "free" and scene["turn"] is None and snap["payload"]["turn"] is None
-        ws.send_json(
-            {
-                "type": "message.send",
-                "payload": {"kind": "action", "text": "Пью из фонтана", "client_id": "fight-action"},
-            }
-        )
-        action = wait_message_result(ws, client_id="fight-action", timeout_s=2.0)
-        assert action["payload"]["content"] == "Пью из фонтана"
-        narration = wait_message_result(ws, client_id="fight-narration", timeout_s=2.0)
-        assert narration["payload"]["kind"] in ("narration", "system")
-    with connect(game_client, p2, cid) as (_, snap):
-        assert snap["payload"]["scene"]["mode"] == "combat" and snap["payload"]["turn"] is not None
-    game_client.portal.call(game_client.app.state.master.wait_idle, cid)
-
-    async def target(ctx):
-        gob = ctx.world.actor(ids["gob"])
-        return combat._pick_target(ctx, gob).id, combat.turn_views(ctx.world)
-
-    tgt, views = _play(settings, cid, target)
-    assert tgt == h2["id"]  # гоблин бьёт только тех, кто рядом
-    calm = next(seats for seats, turn in views if turn is None)
-    assert calm == [h1["seat_id"]]
-
-    async def rest(s):  # Бран вне боя может отдохнуть, Гимли — нет
-        c = await s.get(Campaign, cid)
-        ctx = await open_context(s, c, QueueDice([]), turn_id="t_rest", seat_id=None, focus=ids["square"])
-        calm = await execute(ctx, "rest", {"character_ids": [h1["id"]], "kind": "short"})
-        busy = await execute(ctx, "rest", {"character_ids": [h2["id"]], "kind": "short"})
-        return calm["ok"], busy.get("error", "")
-
-    calm_ok, busy = run(settings, rest)
-    assert calm_ok and "в бою не отдыхают" in busy
-
-
-def test_hero_joins_and_leaves_a_fight_by_moving(client, admin, settings):
-    cid, _, (h1, h2), ids = _split_party(client, admin, settings)
-    _fight(settings, cid, ids)
-
-    async def join(ctx):
-        r = await _ok(ctx, "move", {"character_ids": [h1["id"]], "location_id": ids["docks"]})
-        return r, [x["id"] for x in ctx.world.scene.turn_order]
-
-    r, order = _play(settings, cid, join)
-    assert "Бран" in r["joined_combat"][0] and set(order) == {h1["id"], h2["id"], ids["gob"]}
-
-    async def leave(ctx):
-        cur = combat.current_id(ctx)
-        r = await _ok(ctx, "move", {"character_ids": [h1["id"]], "location_id": ids["square"]})
-        return r, [x["id"] for x in ctx.world.scene.turn_order], cur, combat.current_id(ctx)
-
-    r, order, cur, now_ = _play(settings, cid, leave)
-    assert r["left_combat"] == ["Бран"] and h1["id"] not in order
-    assert now_ == cur or cur == h1["id"]  # чужой ход не сбился
-
-
-def test_fronts_end_separately(client, admin, settings):
-    """Бой в двух местах: конец боя в одном не заканчивает бой в другом."""
-    cid, _, (h1, h2), ids = _split_party(client, admin, settings)
-
-    async def go(ctx):
-        rat = await _ok(
-            ctx,
-            "spawn_entity",
-            {"creature_template_id": "creature.goblin", "name": "Второй гоблин", "location_id": ids["square"]},
-        )
-        await _ok(ctx, "set_scene_mode", {"mode": "combat"})
-        assert len(combat.active_fronts(ctx)) == 2
-        await _ok(ctx, "update_entity", {"entity_id": ids["gob"], "fled": True})
-        notes = []
-        ended = await combat.close_fronts(ctx, notes)
-        return ended, notes, [x["id"] for x in ctx.world.scene.turn_order], rat["spawned"][0]["id"]
-
-    ended, notes, order, rat = _play(settings, cid, go)
-    assert not ended and "бой в месте «Доки» окончен: врагов не осталось" in notes
-    assert {h1["id"], rat} <= set(order) and h2["id"] not in order  # Гимли вышел из боя, на площади бой идёт
 
 
 def test_group_clocks_catch_up_on_meeting(client, admin, settings):

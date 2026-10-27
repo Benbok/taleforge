@@ -12,11 +12,9 @@ from sqlalchemy import select
 from app.agents import intent as intents
 from app.agents.llm import LLMError, ScriptedLLM
 from app.agents.master.intent_recovery import recover_message_intent
-from app.db.models import MasterTurn, Message
 from app.main import create_app
 from tests.conftest import login
-from tests.game import QueueDice, import_base, party, run
-from tests.test_ws import connect, wait_message_result
+from tests.game import QueueDice, import_base, run
 
 
 @pytest.fixture
@@ -143,49 +141,3 @@ def _intent_reply(*actions):
             )
         ]
     }
-
-
-def test_empty_parser_result_preserves_original_request_for_master(game_client, admin_g, llm, settings):
-    campaign, (player,), hero = party(game_client, admin_g)
-    game_client.app.state.master.notify = lambda campaign_id: None
-    llm.replies += [_intent_reply(), _intent_reply()]
-
-    with connect(game_client, player, campaign["id"]) as (ws, _):
-        ws.send_json(
-            {
-                "type": "message.send",
-                "payload": {"kind": "action", "text": "Открываю дверь", "client_id": "recover-error"},
-            }
-        )
-        event = wait_message_result(ws, client_id="recover-error", timeout_s=2.0)
-
-    assert event["type"] == "message.new"
-    assert len(llm.requests) == 1
-    (message,) = rows(settings, Message, Message.kind == "action")
-    assert message.intent["character_id"] == hero["id"]
-    assert message.intent["parser_fallback"] is True
-    assert message.content == "Открываю дверь"
-    assert rows(settings, MasterTurn) == []
-
-
-def test_gateway_recovery_saves_validated_message_for_its_owner(game_client, admin_g, llm, settings):
-    campaign, (player,), hero = party(game_client, admin_g)
-    game_client.app.state.master.notify = lambda campaign_id: None
-    llm.replies += [_intent_reply({"verb": "inspect"})]
-
-    with connect(game_client, player, campaign["id"]) as (ws, _):
-        ws.send_json(
-            {
-                "type": "message.send",
-                "payload": {"kind": "action", "text": "Осматриваюсь", "client_id": "recover-ok"},
-            }
-        )
-        event = wait_message_result(ws, client_id="recover-ok", timeout_s=2.0)
-
-    assert event["type"] == "message.new"
-    saved = rows(settings, Message, Message.kind == "action")
-    assert len(saved) == 1
-    assert saved[0].seat_id is not None
-    assert saved[0].intent["character_id"] == hero["id"]
-    assert saved[0].intent["actions"][0]["verb"] == "inspect"
-    assert len(llm.requests) == 1

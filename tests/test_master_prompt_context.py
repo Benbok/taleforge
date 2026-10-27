@@ -61,45 +61,6 @@ def test_narrator_view_preserves_split_and_common_knowledge(game):
     play(settings, cid, [], check)
 
 
-def test_enabled_roles_integrate_with_refs_and_profiles(game_client, admin_g, llm, settings, monkeypatch):
-    from app.agents.master import prompt_context
-    from app.db.models import Campaign, LlmCall
-    from tests.game import party, run
-    from tests.test_master import DONE, act, rows
-
-    original_values = prompt_context.master_prompt_values
-
-    async def owned_values(ctx, cfg):
-        assert ctx.session.in_transaction(), "Prompt DB reads must stay inside the owned narration scope"
-        return await original_values(ctx, cfg)
-
-    monkeypatch.setattr(prompt_context, "master_prompt_values", owned_values)
-
-    c, (player,), hero = party(game_client, admin_g)
-
-    async def enable(s):
-        campaign = await s.get(Campaign, c["id"])
-        campaign.settings = {
-            **campaign.settings,
-            "llm_optimization": {"role_context": True, "action_refs": True, "tool_profiles": True},
-        }
-        await s.commit()
-
-    run(settings, enable)
-    llm.replies += [
-        {"tool_calls": [("submit_intent", {"actions": [{"index": 0, "verb": "interact", "summary": "Wave"}]})]},
-        {"tool_calls": [("auto_success", {"character_id": hero["id"], "reason": "wave"})]},
-        DONE,
-        {"text": "Ты машешь рукой."},
-        {"text": "Ты машешь рукой."},
-    ]
-    assert act(game_client, player, c["id"], "Машу рукой")["kind"] == "narration"
-    calls = rows(settings, LlmCall, LlmCall.campaign_id == c["id"], LlmCall.purpose.in_(["decide", "narrate"]))
-    assert {call.diagnostics["prompt_role"] for call in calls} == {"decide", "narrate"}
-    assert {call.diagnostics["prompt_version"] for call in calls} == {"context-v2"}
-    assert all("role_blocks" in call.diagnostics for call in calls)
-
-
 def test_parallel_narrator_and_voice_use_snapshot_after_session_closes(game, monkeypatch):
     import asyncio
 

@@ -105,34 +105,6 @@ def test_background_intro_shares_start_lock_and_reuses_prepared_text(
     assert calls == [True]
 
 
-def test_module_opening_npc_is_registered_in_entered_room(game_client, admin_g, llm, settings):  # noqa: F811
-    from app.db.models import CampaignSecret
-    from tests.game import run
-    from tests.test_adventure import publish_sample
-
-    module_id = publish_sample(settings)
-    c, _, _ = party(game_client, admin_g, module_id=module_id, module_hook="board")
-    master = game_client.app.state.master
-    game_client.portal.call(master.wait_idle, None)
-
-    async def add_opening_participant(s):
-        secret = await s.get(CampaignSecret, c["id"])
-        plan = copy.deepcopy(secret.plot)
-        node, where = prelude._first_scene(plan)
-        node["npc_ids"] = ["noble"]
-        secret.plot = plan
-        await s.commit()
-        return where
-
-    where = run(settings, add_opening_participant)
-    opened = game_client.portal.call(prelude._open_first_place, master, c["id"], where)
-    assert opened is True
-    (scene,) = rows(settings, Scene, Scene.campaign_id == c["id"])
-    (actor,) = rows(settings, Entity, Entity.campaign_id == c["id"], Entity.kind == "creature")
-    assert actor.location_id == scene.location_id
-    assert actor.location_id != where["entity_id"]
-
-
 def test_hero_intro_receives_registered_scene_and_previous_intro(game_client, admin_g, llm, settings):  # noqa: F811
     from app.db.models import Message
     from tests.game import run

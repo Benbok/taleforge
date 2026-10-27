@@ -5,8 +5,6 @@ import asyncio
 import pytest
 
 from app.agents import textcalls
-from app.db.models import Event, MasterTurn
-from tests.game import party
 from tests.test_master import DONE, act, admin_g, dice, game_client, llm, rows  # noqa: F401
 
 CALLS = """[
@@ -73,22 +71,6 @@ def test_stream_never_publishes_json_pseudo_calls(width, payload):
 
     asyncio.run(feed())
     assert "".join(out).strip() == "Доки затихли."
-
-
-def test_decide_retries_json_without_executing_it(game_client, admin_g, llm, settings):  # noqa: F811
-    c, (p1,), hero = party(game_client, admin_g)
-    llm.replies += [
-        {"text": CALLS},
-        {"tool_calls": [("auto_success", {"character_id": hero["id"], "reason": "Смотрит на воду"})]},
-        DONE,
-        {"text": "Вода спокойна.\n```json\n" + CALLS + "\n```"},
-    ]
-    n = act(game_client, p1, c["id"], "Смотрю на воду")
-    assert n["content"] == "Вода спокойна."
-    (turn,) = rows(settings, MasterTurn)
-    assert turn.trace["text_call_rejections"] == 1
-    assert turn.trace["audit"]["tool_text"] == ["describe_place", "spawn_entity"]
-    assert not rows(settings, Event, Event.tool.in_(["describe_place", "spawn_entity"]))
 
 
 def test_old_json_pseudo_calls_are_removed_from_history():

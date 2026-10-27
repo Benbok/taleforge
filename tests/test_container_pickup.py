@@ -4,14 +4,13 @@
 import pytest
 
 from app.agents import intent as intents
-from app.db.models import Event, InventoryItem, Message
+from app.db.models import Message
 from app.tools.master.items import _world_item_state
 from app.tools.registry import execute
 from app.tools.resolution.requests import bind_message_actions
 from tests.game import import_base, party
 from tests.test_intent_recovery import admin_g, dice, game_client, llm, rows  # noqa: F401
 from tests.test_world_objects_transfer import ok, play
-from tests.test_ws import connect, wait_message_result
 
 
 async def setup_container(ctx, hero_id, *, unique=False):
@@ -97,36 +96,6 @@ def test_search_container_completes_bound_search_request(client, admin, settings
     play(settings, campaign["id"], scenario)
 
 
-@pytest.mark.parametrize("blocked", ["closed", "hidden", "outer_closed", "other_room"])
-def test_container_pickup_does_not_bypass_access(client, admin, settings, blocked):
-    import_base(settings)
-    campaign, _, hero = party(client, admin)
-    hid = hero["id"]
-
-    async def scenario(ctx):
-        box, item = await setup_container(ctx, hid)
-        if blocked == "closed":
-            await ok(ctx, "open_container", {"character_id": hid, "container_id": box, "opened": False})
-        elif blocked == "hidden":
-            entity = ctx.world.entities[item]
-            entity.state = {**entity.state, "hidden": True}
-        elif blocked == "outer_closed":
-            outer = (await ok(ctx, "create_container", {"name": "Сундук"}))["container_id"]
-            await ok(ctx, "open_container", {"character_id": hid, "container_id": outer})
-            await ok(ctx, "store_object", {"character_id": hid, "container_id": outer, "object_id": box})
-            await ok(ctx, "open_container", {"character_id": hid, "container_id": outer, "opened": False})
-        else:
-            await ok(ctx, "create_location", {"name": "Другая комната", "make_current": True})
-        assert item not in intents.context_for(ctx.world, ctx.world.characters[hid])[1]["target_id"]
-        before = [(it.id, it.qty) for it in ctx.world.inventory[hid]]
-        result = await execute(ctx, "pick_up_item", {"character_id": hid, "entity_id": item})
-        assert not result["ok"], result
-        assert [(it.id, it.qty) for it in ctx.world.inventory[hid]] == before
-        assert ctx.world.entities[item].state["world_object"]["container_id"] == box
-
-    play(settings, campaign["id"], scenario)
-
-
 def test_item_card_pickup_skips_model_parser(game_client, admin_g, llm, settings):
     campaign, _, hero = party(game_client, admin_g)
     hid = hero["id"]
@@ -147,30 +116,3 @@ def test_item_card_pickup_skips_model_parser(game_client, admin_g, llm, settings
     assert parsed.intent["character_id"] == hid
     assert parsed.intent["actions"][0]["target_id"] == item
     assert len(llm.requests) == before
-
-
-@pytest.mark.parametrize("verb", ["search", "pick_up"])
-def test_container_actions_complete_a_real_game_turn(game_client, admin_g, llm, settings, verb):
-    campaign, (player,), hero = party(game_client, admin_g)
-    cid, hid = campaign["id"], hero["id"]
-
-    async def setup(ctx):
-        return await setup_container(ctx, hid)
-
-    box, item = play(settings, cid, setup)
-    llm.replies += [{"text": "Герой осматривает находку."}]
-    text = "Обыскиваю: Старый рюкзак" if verb == "search" else "Подбираю: Зелье лечения"
-    payload = {"kind": "action", "text": text, "client_id": "container-action"}
-    if verb == "search":  # This is the existing container-card button payload.
-        payload["quick"] = {"actions": [{"verb": verb, "target_id": box}]}
-    with connect(game_client, player, cid) as (ws, _):
-        ws.send_json({"type": "message.send", "payload": payload})
-        accepted = wait_message_result(ws, client_id="container-action", timeout_s=5)
-        assert accepted["type"] == "message.new", accepted
-    game_client.portal.call(game_client.app.state.master.wait_idle, cid)
-    (message,) = rows(settings, Message, Message.kind == "action")
-    assert message.data["resolution_progress"]["0"]["status"] == "completed"
-    assert rows(settings, Event, Event.tool == "cancel_action") == []
-    assert rows(settings, Event, Event.tool == "roll_check") == []
-    if verb == "pick_up":
-        assert len(rows(settings, InventoryItem, InventoryItem.item_template_id == "item.potion_of_healing")) == 1

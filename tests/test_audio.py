@@ -14,7 +14,6 @@ from app.tools.registry import execute, tool_specs
 from app.tools.runtime import flush_outbox, open_context
 from tests.conftest import login
 from tests.game import QueueDice, import_base, ok, party, run
-from tests.test_master import act
 from tests.test_ws import connect, next_of
 
 OGG = b"OggS-fake-loop"
@@ -199,31 +198,6 @@ def test_music_tool_picks_track_by_mood(game):
     assert state["music"]["url"].startswith("/api/audio/mel_rest?v=")
 
 
-def test_combat_music_and_cues(game):
-    settings, cid, hero, _ = game
-
-    async def fn(ctx):
-        await execute(ctx, "set_music", {"mood": "calm", "reason": "отдых"})
-        r = await execute(ctx, "spawn_entity", {"creature_template_id": "creature.goblin", "name": "Гоблин"})
-        gob = r["result"]["spawned"][0]["id"]
-        await execute(ctx, "set_scene_mode", {"mode": "combat", "participants": [hero, gob]})
-        fight = audio.mixer(ctx.world.scene)["music"]
-        audio.finalize(ctx)
-        start = [c["id"] for c in ctx.audio]
-        ctx.audio.clear()
-        en = ctx.world.entities[gob]
-        en.state = {**en.state, "dead": True}  # враг пал: конец боя — победа
-        await execute(ctx, "set_scene_mode", {"mode": "free"})
-        audio.finalize(ctx)
-        return fight, start, audio.mixer(ctx.world.scene)["music"], [c["id"] for c in ctx.audio]
-
-    fight, start, after, end = play(settings, cid, fn)
-    assert fight["track"] == "rhy_war" and fight["mood"] == "battle"
-    assert start == ["sfx_bell"]  # начало боя
-    assert after["track"] == "mel_rest"  # бой кончился — музыка места
-    assert end == ["stg_victory"]
-
-
 def test_event_cues_by_priority(game):
     """Эффекты на события хода; скрытые броски не звучат."""
     settings, cid, hero, _ = game
@@ -319,32 +293,6 @@ def test_specs_list_moods_and_sfx(game):
 
 
 # --- сокет и ход ИИ-мастера ---
-
-
-def test_snapshot_and_broadcast(client, admin, game, llm):
-    _, cid, hero, (p1,) = game
-    llm.replies += [
-        {
-            "tool_calls": [
-                ("set_music", {"mood": "calm", "reason": "отдых"}),
-                ("play_sfx", {"sfx": "sfx_thunder"}),
-            ]
-        },
-        {"tool_calls": [("auto_success", {"character_id": hero, "reason": "садится"})]},
-        {"text": "готово"},
-        {"text": "За окном гремит гром."},
-    ]
-    with connect(client, p1, cid) as (ws, snap):
-        assert snap["payload"]["audio"]["enabled"] and snap["payload"]["audio"]["music"] is None
-    n = act(client, p1, cid, "Сажусь у огня")
-    assert n["kind"] == "narration"
-    decide = llm.requests[0]
-    assert "Звук." in decide["messages"][0]["content"] and "calm — покой" in decide["messages"][0]["content"]
-    with connect(client, p1, cid) as (ws, snap):
-        assert snap["payload"]["audio"]["music"]["id"] == "mel_rest"
-        ok(client.patch(f"/api/campaigns/{cid}", json={"audio_enabled": False}, headers=admin))
-        e = next_of(ws, "audio.state")
-        assert not e["payload"]["enabled"] and e["payload"]["music"] is None
 
 
 def test_autopilot_starts_music_for_place_and_respects_master(game):

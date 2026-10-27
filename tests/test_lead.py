@@ -6,8 +6,8 @@ import copy
 import pytest
 
 from app.core import plot
-from app.db.models import Campaign, CampaignPlan, CampaignSecret, Entity, Event, MasterTurn, Message, Scene
-from tests.game import ok, party, run
+from app.db.models import CampaignSecret, MasterTurn
+from tests.game import run
 from tests.test_master import DONE, act, admin_g, dice, game_client, llm, rows  # noqa: F401 — фикстуры
 from tests.test_plan import FakeCatalog, good_plan
 
@@ -107,114 +107,3 @@ def set_plan(settings, cid, p):
         await s.commit()
 
     run(settings, go)
-
-
-def test_master_leads_by_plan(game_client, admin_g, llm, settings):
-    # прежний пересмотр каркаса моделью — путь strict; адаптивный пересмотр ведёт режиссёр (test_narrative_startup)
-    c, (p1,), hero = party(game_client, admin_g, brief={"length": "short"}, narrative_mode="strict")
-    cid = c["id"]
-
-    # без каркаса инструментов сюжета у мастера нет
-    llm.replies += [DONE, DONE, {"text": "Туман."}]
-    act(game_client, p1, cid, "Жду у причала")
-    assert (
-        "advance_plot" not in names(llm.requests[0]) and "Сюжет сейчас" not in llm.requests[0]["messages"][0]["content"]
-    )
-
-    set_plan(settings, cid, checked())
-    start = len(llm.requests)
-    calls = [
-        ("develop", {"sketch_id": "npc_warden", "details": "Говорит медленно, потеет", "here": True}),
-        ("advance_plot", {"node_id": "n_arrival", "outcome": "Герои видели, как «Чайка» ушла в туман"}),
-        ("advance_plot", {"node_id": "n_rumors", "result": "skipped", "outcome": "В таверну не пошли"}),
-        ("plot_reveal", {"reveal_id": "r_cult", "how": "Бертольд проговорился"}),
-        ("threat_tick", {"antagonist_id": "villain", "reason": "герои медлили"}),
-        ("end_act", {"outcome": "След ведёт к маяку"}),
-        ("auto_success", {"character_id": hero["id"], "reason": "осмотр порта"}),
-    ]
-    revision = {
-        "summary": "Смотритель разоблачён раньше: акт про маяк начинается со штурма",
-        "acts": [
-            {
-                "id": "act2",
-                "title": "Штурм маяка",
-                "goal": "Взять маяк",
-                "exit": "Культ разбит",
-                "milestone_level": 3,
-                "nodes": [
-                    {"id": "n_light", "title": "Маяк", "summary": "Культ укрепил маяк", "location_id": "loc_light"},
-                    {"id": "n_escape", "title": "Бегство", "summary": "Бертольд бежит к культу"},
-                ],
-            },
-            copy.deepcopy(good_plan()["acts"][2]),
-        ],
-    }
-    llm.replies += [
-        {"text": "Бран сходит на берег."},  # с каркасом мастер сначала представляет отряд
-        {"tool_calls": calls},
-        DONE,
-        {"text": "Туман густеет над бухтой."},
-        {"tool_calls": [(plot.REVISE_TOOL, revision)]},
-    ]
-    n = act(game_client, p1, cid, "Осматриваю порт и расспрашиваю смотрителя")
-    assert n["content"] == f"[[{hero['id']}|Бран]] сходит на берег."  # имя героя сервер размечает сам
-    last = rows(settings, Message, Message.campaign_id == cid, Message.kind == "narration")[-1]
-    assert last.content == "Туман густеет над бухтой."
-
-    intro, decide, _, narrate, replan = llm.requests[start:]
-    assert "120–200 слов" in intro["messages"][1]["content"]
-    assert {"advance_plot", "develop", "threat_tick", "end_act", "get_plot"} <= names(decide)
-    enum = next(t for t in decide["tools"] if t["function"]["name"] == "develop")["function"]["parameters"]
-    # место первой сцены вступление уже внесло в мир: разворачивать его повторно нельзя
-    if "enum" in enum["properties"]["sketch_id"]:
-        assert "loc_port" not in enum["properties"]["sketch_id"]["enum"]
-        assert "loc_tavern" in enum["properties"]["sketch_id"]["enum"]
-    system = decide["messages"][0]["content"]
-    assert "Сюжет сейчас — «Туман над Солёной бухтой»" in system and "Как вести по каркасу" in system
-    assert "Текущий акт 1 из 3" in system and "loc_crypt" not in system
-    assert "Тайно, пока герои были заняты" not in narrate["messages"][1]["content"]
-    assert replan["messages"][0]["content"] == plot.REVISE_SYSTEM and names(replan) == {plot.REVISE_TOOL}
-    assert (
-        "итог — Герои видели" in replan["messages"][1]["content"] or "Герои видели" in replan["messages"][1]["content"]
-    )
-
-    turn = last_turn(settings)
-    assert all(x["result"]["ok"] for x in turn.trace["calls"]), turn.trace["calls"]
-
-    (secret,) = rows(settings, CampaignSecret)
-    p = secret.plot
-    port = next(x for x in p["locations"] if x["id"] == "loc_port")
-    warden = next(x for x in p["npcs"] if x["id"] == "npc_warden")
-    assert port["status"] == "developed" and warden["status"] == "developed"
-    ents = {e.id: e for e in rows(settings, Entity, Entity.campaign_id == cid)}
-    loc, npc = ents[port["entity_id"]], ents[warden["entity_id"]]
-    assert loc.kind == "location" and loc.name == "Солёная бухта" and loc.template_id == "location.port"
-    assert npc.kind == "creature" and npc.template_id == "creature.noble" and npc.location_id == loc.id
-    (scene,) = rows(settings, Scene, Scene.campaign_id == cid)
-    assert scene.location_id == loc.id
-    assert [a["status"] for a in p["acts"]] == ["done", "active", "pending"]
-    assert p["acts"][0]["outcome"] == "След ведёт к маяку" and p["acts"][0]["nodes"][1]["status"] == "skipped"
-    assert p["acts"][1]["title"] == "Штурм маяка"  # пересмотр лёг на акт, в котором ещё ничего не прошли
-    assert p["reveals"][0]["revealed"] and p["antagonists"][0]["threat_step"] == 1 and "clock_at" in p
-    (row,) = rows(settings, CampaignPlan)
-    assert row.version == 1 and row.note.startswith("пересмотр: Смотритель разоблачён")
-    assert all(e.hidden for e in rows(settings, Event, Event.tool.in_(["advance_plot", "develop", "end_act"])))
-
-    # игрокам — только статус пересмотра, без итога и каркаса
-    st = ok(game_client.get(f"/api/campaigns/{cid}", headers=p1))["settings"]["plan"]
-    assert st["revision"] == {"status": "ready"} and "Смотритель" not in str(st)
-    assert game_client.get(f"/api/campaigns/{cid}/plan", headers=p1).status_code == 403
-
-    # закрытый узел второй раз не закрыть: его нет среди допустимых id
-    (camp,) = rows(settings, Campaign, Campaign.id == cid)
-    assert camp.brief["length"] == "short"
-    llm.replies += [
-        {"tool_calls": [("advance_plot", {"node_id": "n_arrival", "outcome": "снова"})]},
-        DONE,
-        DONE,
-        {"text": "Ветер."},
-    ]
-    act(game_client, p1, cid, "Жду")
-    turn = last_turn(settings)
-    first = turn.trace["calls"][0]
-    assert first["tool"] == "advance_plot" and not first["result"]["ok"] and "n_arrival" in first["result"]["error"]

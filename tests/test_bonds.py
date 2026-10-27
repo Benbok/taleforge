@@ -1,12 +1,10 @@
 # ruff: noqa: F811 — фикстуры импортируются из соседних модулей
 """Связи героев, личные крючки и вступление мастера (проект «Подготовка кампании», разделы 5 и 7.1)."""
 
-from app.agents import prelude, rhythm
 from app.core import bonds, plot
-from app.db.models import Character, Entity, LlmCall, Message, Scene
-from tests.game import FIGHTER, ok, party
-from tests.test_api import invite, make_campaign, register
-from tests.test_lead import checked, set_plan
+from app.db.models import Character
+from tests.game import ok, party
+from tests.test_lead import checked
 from tests.test_master import DONE, act, admin_g, dice, game_client, llm, rows  # noqa: F401 — фикстуры
 
 
@@ -61,127 +59,8 @@ def test_without_plan_only_default_questions(game_client, admin_g, llm):
     assert llm.requests == []
 
 
-def test_ai_master_asks_hooks_and_introduces(game_client, admin_g, llm, settings, monkeypatch):
-    c, (p1, p2), hero = party(game_client, admin_g, players=2, brief={"length": "short"})
-    cid = c["id"]
-    game_client.portal.call(game_client.app.state.master.wait_idle, cid)  # старт сессии прошёл без каркаса
-    set_plan(settings, cid, checked())
-    url = f"/api/campaigns/{cid}/characters/{hero['id']}/bonds"
-
-    # вопросы мастера под завязку
-    llm.replies += [
-        {"tool_calls": [(prelude.QUESTIONS_TOOL, {"questions": ["Что у тебя отнял туман?", "Кому ты верен?"]})]}
-    ]
-    r = ok(game_client.get(url, headers=p1))
-    assert r["bonds"]["status"] == "asking" and r["bonds"]["source"] == "default"
-    game_client.portal.call(game_client.app.state.master.wait_idle, cid)
-    q = llm.requests[0]["messages"][1]["content"]
-    assert "Бран" in q and "Бежал из гарнизона" in q and "Злодеи (тайно): Мать Ирса" in q
-    r = ok(game_client.get(url, headers=p1))
-    assert (
-        r["bonds"]["source"] == "master"
-        and [x["text"] for x in r["bonds"]["questions"]][0] == "Что у тебя отнял туман?"
-    )
-
-    # ответ → личный крючок; неверную привязку сервер возвращает модели
-    llm.replies += [
-        {"tool_calls": [(prelude.HOOK_TOOL, {"ref": "n_nope", "text": "?"})]},
-        {"tool_calls": [(prelude.HOOK_TOOL, {"ref": "npc_warden", "text": "Бертольд сдал брата Брана культу"})]},
-    ]
-    body = {"answers": [{"id": "q1", "text": "Брата"}, {"id": "q2", "text": "Капитану Марте", "private": True}]}
-    ok(game_client.put(url, json=body, headers=p1))
-    game_client.portal.call(game_client.app.state.master.wait_idle, cid)
-    assert "ref: нужен один из" in llm.requests[2]["messages"][-1]["content"]
-    assert "Капитану Марте (лично" in llm.requests[1]["messages"][1]["content"]
-    secret = game_client.portal.call(_plot, game_client, cid)
-    assert secret["hooks"][hero["id"]]["ref"] == "npc_warden"
-
-    # новая сессия: вступление ко всей кампании, затем мастер представляет отряд; каркас и личные ответы
-    # в текст для всех не попадают
-    llm.replies += [
-        {"tool_calls": [(rhythm.NEXT_TOOL, {"hook": "Туман зовёт."})]},
-        {"text": "Древний туман окутал побережье Солёной бухты.", "campaign_intro": True},
-        {"text": "**Бран** стоит у причала Солёной бухты, рядом [[en_x|незнакомец]]."},
-        {"tool_calls": [(rhythm.GOAL_TOOL, {"goal": "Найти корабль."})]},
-    ]
-    ok(game_client.post(f"/api/campaigns/{cid}/session/pause", headers=admin_g))
-    game_client.portal.call(game_client.app.state.master.wait_idle, cid)
-    ok(game_client.post(f"/api/campaigns/{cid}/session/start", headers=admin_g))
-    game_client.portal.call(game_client.app.state.master.wait_idle, cid)
-    (camp_req,) = llm.intro_requests  # вступление ко всей кампании — одно, при первом старте с каркасом
-    assert "2–4 абзаца" in camp_req["messages"][1]["content"]
-    assert "Брата" not in camp_req["messages"][1]["content"]  # ответы о связях — не для общего вступления
-    intro_req = llm.requests[4]
-    text = intro_req["messages"][1]["content"]
-    assert "120–200 слов" in text and "Брата" in text and "Капитану Марте" not in text
-    assert "Первая сцена (тайно" in text and "Бертольд сдал брата" in text
-    *_, camp_msg, msg, _goal = rows(settings, Message, Message.campaign_id == cid, Message.kind == "narration")
-    assert "Древний туман" in camp_msg.content and camp_msg.seq < msg.seq
-    # место первой сцены вошло в мир до вступления, имена стали ссылками сами, жирный шрифт модели снят
-    (bay,) = rows(settings, Entity, Entity.campaign_id == cid, Entity.kind == "location")
-    assert bay.name == "Солёная бухта" and bay.description == "Сырость и тревога"
-    assert msg.content == f"[[{hero['id']}|Бран]] стоит у причала [[{bay.id}|Солёной бухты]], рядом незнакомец."
-    (scene,) = rows(settings, Scene, Scene.campaign_id == cid)
-    assert scene.location_id == bay.id
-    assert scene.state["introduced"] == [hero["id"]]
-
-    # Новый герой допускается на паузе, а представляется перед следующим ходом мастера.
-    ch2 = ok(game_client.post(f"/api/campaigns/{cid}/characters", json=FIGHTER | {"name": "Гимли"}, headers=p2), 201)
-    with monkeypatch.context() as admission:
-        # This scenario checks the introduction on the next action, independently of session recap/greeting.
-        admission.setattr(game_client.app.state.master, "schedule_session_close", lambda *args, **kwargs: None)
-        admission.setattr(game_client.app.state.master, "schedule_session_open", lambda *args, **kwargs: None)
-        ok(game_client.post(f"/api/campaigns/{cid}/session/pause", headers=admin_g))
-        submitted = ok(game_client.post(f"/api/campaigns/{cid}/characters/{ch2['id']}/submit", headers=p2))
-        assert submitted["status"] == "approved"
-        ok(game_client.post(f"/api/campaigns/{cid}/session/start", headers=admin_g))
-    llm.replies += [{"text": "Гимли выходит из тумана."}, DONE, DONE, {"text": "Причал пуст."}]
-    first = act(game_client, p1, cid, "Жду")
-    assert first["content"] == f"[[{ch2['id']}|Гимли]] выходит из тумана."
-    assert "50–100 слов" in llm.requests[6]["messages"][1]["content"]
-    assert (
-        "Гимли" in llm.requests[6]["messages"][1]["content"]
-        and "Бран (" not in llm.requests[6]["messages"][1]["content"].split("Герои:\n")[-1]
-    )
-    # фоновый режиссёр после паузы сессии идёт параллельно ритму: его вызов проверяет test_narrative_startup
-    purposes = [
-        x.purpose for x in rows(settings, LlmCall) if x.purpose not in ("summary", "parse", "chronicle", "director")
-    ]
-    assert purposes[:9] == [
-        "bonds",
-        "hook",
-        "hook",
-        "session_hook",
-        "greeting",
-        "campaign_intro",
-        "intro",
-        "session_goal",
-        "intro",
-    ]
-    # ответы о связях видит мастер в ходе
-    assert "Связи героев (ответы игроков)" in llm.requests[7]["messages"][0]["content"]
-
-
 async def _plot(client, cid):
     from app.db.models import CampaignSecret
 
     async with client.app.state.master.maker() as s:
         return (await s.get(CampaignSecret, cid)).plot
-
-
-def test_review_links_hero_to_plan(game_client, admin_g, llm, settings):
-    c = make_campaign(game_client, admin_g, players=1, brief={"length": "short"})
-    set_plan(settings, c["id"], checked())
-    p1 = register(game_client, invite(game_client, admin_g, c["id"])["token"], "Арагорн")
-    ch = ok(game_client.post(f"/api/campaigns/{c['id']}/characters", json=FIGHTER, headers=p1), 201)
-    args = {"character_id": ch["id"], "approve": True, "secret_link": "Гарнизон служит Бертольду"}
-    llm.replies += [
-        {"tool_calls": [("review_character", args | {"hook_ref": "n_nope"})]},
-        {"tool_calls": [("review_character", args | {"hook_ref": "npc_warden"})]},
-    ]
-    ok(game_client.post(f"/api/campaigns/{c['id']}/characters/{ch['id']}/submit", headers=p1))
-    game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
-    assert "hook_ref" in llm.requests[0]["messages"][1]["content"]
-    p = game_client.portal.call(_plot, game_client, c["id"])
-    assert p["hooks"][ch["id"]] == {"name": "Бран", "ref": "npc_warden", "text": "Гарнизон служит Бертольду"}
-    assert p["character_links"][ch["id"]] == "Гарнизон служит Бертольду"

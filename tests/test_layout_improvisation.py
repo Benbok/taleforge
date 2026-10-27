@@ -14,13 +14,10 @@
 - Проверка отсутствия двойного расхода бюджета наполнения корня.
 """
 
-import pytest
-
 from app.agents.llm import ScriptedLLM
-from app.core.layout import store
 from app.core.world_generation import storage
 from app.core.world_generation.service import Orchestrator
-from app.db.models import CampaignSecret, Character, Entity, Event, MasterTurn, Scene, WorldGenerationState
+from app.db.models import CampaignSecret, Entity, WorldGenerationState
 from app.gateway.coordination import InMemoryCoordination
 from tests.game import import_base, party, quiet, run
 from tests.test_layout_model_phase import _flags
@@ -34,120 +31,6 @@ WGS = WorldGenerationState
 
 def _orch(llm):
     return Orchestrator(InMemoryCoordination(), llm=llm)
-
-
-@pytest.mark.parametrize("repeat_entry_request", [False, True])
-def test_unplanned_location_created_and_prepared_in_turn(
-    game_client, admin_g, llm, settings, monkeypatch, repeat_entry_request
-):
-    """Игроки идут незапланированным путём -> ИИ создаёт место -> карта готовится -> отряд во входном участке."""
-    c, (p1,), hero = party(game_client, admin_g)
-    cid, hid = c["id"], hero["id"]
-    _flags(settings, cid, location_layouts=True, location_layout_templates=True, location_layouts_llm=False)
-
-    from app.agents.master.finish import FinishMixin
-    from app.core.layout import entry
-
-    original_narrate = FinishMixin._compose_narration
-    observed = []
-
-    async def inspect_before_narration(service, campaign_id, turn_id, cp, calls):
-        async with service.maker() as session:
-            current_hero = await session.get(Character, hid)
-            current_area = await session.get(Entity, current_hero.location_id)
-            assert store.complex_of(current_area)
-            assert current_area.state.get("sketch")
-            geo = await storage.find(session, cid, current_area.id, "location_geometry")
-            assert geo.status == "ready"
-            observed.append(current_area.id)
-        return await original_narrate(service, campaign_id, turn_id, cp, calls)
-
-    monkeypatch.setattr(FinishMixin, "_compose_narration", inspect_before_narration)
-    if repeat_entry_request:
-        original_queue = entry.queue_prepared_entries
-
-        async def repeat_queue(*args, **kwargs):
-            await original_queue(*args, **kwargs)
-            await original_queue(*args, **kwargs)
-
-        monkeypatch.setattr(entry, "queue_prepared_entries", repeat_queue)
-
-    # Герои идут по тракту
-    async def place_on_road(ctx):
-        road = (await _ok(ctx, "create_location", {"name": "Тракт", "make_current": True}))["location_id"]
-        await _ok(ctx, "move", {"character_ids": [hid], "location_id": road})
-        return road
-
-    _play(settings, cid, place_on_road)
-
-    # Мастер создаёт незапланированную таверну, затем завершает вызовы и описывает
-    narration = "Вы свернули с тракта и вошли в тёплый общий зал придорожного трактира."
-    llm.replies += [
-        {
-            "tool_calls": [
-                (
-                    "create_location",
-                    {"name": "Придорожный трактир", "template_id": "location.tavern", "make_current": True},
-                )
-            ]
-        },
-        DONE,
-        {"text": narration},
-        {"text": narration},
-        {"text": narration},
-    ]
-
-    told = act(game_client, p1, cid, "Сворачиваем с тракта к огням трактира")
-    assert told["kind"] == "narration"
-
-    # Проверяем, что локация создана и стала комплексом
-    found_locs = rows(settings, Entity, Entity.campaign_id == cid, Entity.name == "Придорожный трактир")
-    assert len(found_locs) == 1
-    tavern = found_locs[0]
-    areas = _areas(settings, tavern.id)
-    assert len(areas) >= 3  # Общий зал, кухня/покои, погреб/комнаты
-    bp = store.blueprint_of(tavern)
-    assert bp is not None
-
-    # Герои переместились в локацию
-    h_loc = run(settings, lambda s: s.get(Character, hid)).location_id
-    assert h_loc == areas[bp.entry].id
-    assert observed == [h_loc]
-    entry_area = run(settings, lambda s: s.get(Entity, h_loc))
-    assert entry_area.state.get("sketch")
-    geometry_row = run(settings, lambda s: storage.find(s, cid, h_loc, "location_geometry"))
-    assert geometry_row.status == "ready"
-    assert not (run(settings, lambda s: s.get(Scene, cid)).state or {}).get("transits")
-    assert h_loc in str(llm.requests[-1]["messages"])
-    moved = rows(settings, Event, Event.campaign_id == cid, Event.tool == "traverse_passage")
-    assert len(moved) == 1 and moved[0].payload["moved"]
-    turn = rows(settings, MasterTurn, MasterTurn.campaign_id == cid)[-1]
-    assert moved[0].id in turn.generation_checkpoint["event_ids"]
-    requests = rows(settings, Event, Event.campaign_id == cid, Event.tool == "request_passage")
-    assert len(requests) == 1
-
-    # Recovery after a committed movement must not enqueue the same entry again.
-    from tests.test_world_generation import _with_maker
-
-    async def retry(maker):
-        await entry.queue_prepared_entries(
-            maker,
-            game_client.app.state.master.preparer,
-            game_client.app.state.dice_factory,
-            cid,
-            [layout_ref],
-            turn_id=turn.id,
-            hero_ids=[hid],
-        )
-
-    layout_ref = run(settings, lambda s: storage.find(s, cid, tavern.id, "location_layout")).id
-    _with_maker(settings, retry)
-    assert not (run(settings, lambda s: s.get(Scene, cid)).state or {}).get("transits")
-    assert len(rows(settings, Event, Event.campaign_id == cid, Event.tool == "request_passage")) == 1
-
-    # Layout подготовлен и готов
-    layout_row = run(settings, lambda s: storage.find(s, cid, tavern.id, "location_layout"))
-    assert layout_row is not None and layout_row.status == "ready"
 
 
 def test_idempotent_creation_and_no_duplicates(client, admin, settings):

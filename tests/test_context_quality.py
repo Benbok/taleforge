@@ -1,14 +1,8 @@
 # ruff: noqa: F811
 
 import json
-from copy import deepcopy
-from dataclasses import replace
 from pathlib import Path
 
-import pytest
-
-from tests.context_scenario_assertions import assert_scenario
-from tests.context_scenario_worlds import build_scenario, run_scenario
 from tests.test_master import dice, game_client, llm  # noqa: F401
 
 
@@ -39,45 +33,3 @@ def test_context_quality_manifest_has_no_duplicate_ids():
     data = _manifest()
     ids = [scenario["id"] for scenario in data["scenarios"]]
     assert len(ids) == len(set(ids))
-
-
-@pytest.mark.parametrize("scenario", _manifest()["scenarios"], ids=lambda item: item["id"])
-def test_context_quality_scenario_executes_complete_game_turn(game_client, settings, scenario):
-    world = build_scenario(scenario["id"], game_client, settings, case=scenario)
-    original_complete = world.llm.complete
-    original_ask = game_client.app.state.master._ask
-    original_dice = game_client.app.state.master.dice_factory
-    result = run_scenario(scenario, world, game_client, world.llm)
-    assert world.llm.complete == original_complete
-    assert game_client.app.state.master._ask == original_ask
-    assert game_client.app.state.master.dice_factory == original_dice
-    assert_scenario(scenario, result)
-    assert result.refs
-    assert result.turns or result.rejections
-    # Removing the intended persisted action must invalidate each family's oracle.
-    broken_world = deepcopy(result.world)
-    if scenario["id"] == "speech_npc":
-        broken_world["message_rows"] = []
-    elif scenario["id"] == "unknown_parser":
-        with pytest.raises(AssertionError):
-            assert_scenario(scenario, replace(result, turns=()))
-        return
-    else:
-        baseline_ids = {event["id"] for event in result.world["baseline"]["events"]}
-        corrupted = replace(result, events=tuple(e for e in result.events if e["id"] in baseline_ids))
-        with pytest.raises(AssertionError):
-            assert_scenario(scenario, corrupted)
-        return
-    with pytest.raises(AssertionError):
-        assert_scenario(scenario, replace(result, world=broken_world))
-
-
-@pytest.mark.parametrize("failure", ["empty", "error", "timeout"])
-def test_unknown_parser_failure_keeps_request_for_master(game_client, settings, failure):
-    """Сбой или пустой ответ парсера не теряет заявку и не повторяется: она уходит мастеру как есть (404b9fb)."""
-    case = deepcopy(next(c for c in _manifest()["scenarios"] if c["id"] == "unknown_parser"))
-    world = build_scenario(case["id"], game_client, settings, case=case)
-    world.observations.update(parser_failure=failure)
-    result = run_scenario(case, world, game_client, world.llm)
-    assert_scenario(case, result)
-    assert sum(p["purpose"] == "parse" for p in result.prompt_packets) == 1

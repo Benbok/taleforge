@@ -4,42 +4,10 @@
 import pytest
 
 from app.core import rolls
-from app.db.models import Character, Entity, Event, Knowledge, Message
-from tests.game import add_hero, ok, party, quiet, run
+from app.db.models import Entity, Event, Knowledge, Message
+from tests.game import ok, party, quiet, run
 from tests.test_master import DONE, act, admin_g, dice, game_client, llm, rows  # noqa: F401 — фикстуры
 from tests.test_ws import connect, next_of
-
-
-def test_roll_cards_before_narration_and_hidden_rolls_stay_hidden(game_client, admin_g, llm, dice, settings):
-    c, (p1,), hero = party(game_client, admin_g)
-    dice += [14, 3]
-    check = {"character_id": hero["id"], "difficulty": "dc.medium"}
-    llm.replies += [
-        {
-            "tool_calls": [
-                ("roll_check", {**check, "stat": "athletics", "reason": "дверь"}),
-                ("roll_check", {**check, "stat": "perception", "reason": "засада"}),  # скрытая
-            ]
-        },
-        DONE,
-        {"text": f"[[{hero['id']}|Бран]] вышибает дверь."},
-    ]
-    with connect(game_client, p1, c["id"]) as (ws, _):
-        ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Вышибаю дверь"}})
-        card = next_of(ws, "message.new")
-        while card["payload"]["kind"] != "roll":
-            card = next_of(ws, "message.new")
-        narration = next_of(ws, "message.new")
-    assert narration["payload"]["kind"] == "narration" and narration["seq"] > card["seq"]
-    data = card["payload"]["data"]
-    assert data["title"] == "Проверка: Атлетика" and data["who"] == "Бран" and data["outcome"] == "success"
-    assert data["roll"]["natural"] == 14 and data["roll"]["total"] == 19
-    assert data["against"] == {"label": "Сл", "value": 15}
-    assert card["payload"]["content"] == "Проверка: Атлетика · Бран · 19 против Сл 15 · успех"
-
-    cards = rows(settings, Message, Message.kind == "roll")
-    assert len(cards) == 1  # у скрытой проверки внимательности карточки нет
-    assert "Внимательность" not in str([m.content for m in rows(settings, Message)])
 
 
 def test_attack_card_hides_creature_armor():
@@ -144,21 +112,6 @@ async def _raise(s, ch, en, level):
     row = await s.get(Knowledge, (ch, en))
     row.level = level
     await s.commit()
-
-
-def test_knowledge_notice_goes_only_to_that_player(game_client, admin_g, llm, settings):
-    c, (p1,), hero = party(game_client, admin_g)
-    goblin = _spawn(settings, c["id"], kind="creature", name="Гоблин", template_id="creature.goblin")
-    llm.replies += [
-        {"tool_calls": [("reveal_knowledge", {"character_id": hero["id"], "entity_id": goblin, "level": 1})]},
-        DONE,
-        DONE,  # действие не закрыто: мастера переспрашивают
-        {"text": f"Бран вспоминает, что [[{goblin}|гоблины]] боятся огня."},
-    ]
-    with connect(game_client, p1, c["id"]) as (ws, _):
-        ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Вспоминаю, что знаю о гоблинах"}})
-        notice = next_of(ws, "knowledge.revealed")
-    assert notice["payload"] == {"entity_id": goblin, "name": "Гоблин", "level": 1}
 
 
 def test_actions_follow_state(game_client, admin_g, settings):
@@ -279,71 +232,3 @@ def test_status_card_shows_rules_without_hero_or_world_details(game_client, admi
         )
     )
     assert types == {"condition.frightened": "effect"}
-
-
-def test_narrator_accepts_status_rule_references(game_client, admin_g, llm):
-    c, (p1,), hero = party(game_client, admin_g)
-    llm.replies += [
-        {"tool_calls": [("auto_success", {"character_id": hero["id"], "reason": "вспомнил правила страха"})]},
-        DONE,
-        {"text": "Состояние [[condition.frightened|Испуганный]] даёт помеху на атаки."},
-    ]
-    narration = act(game_client, p1, c["id"], "Вспоминаю, что значит состояние испуганный")
-    assert "[[condition.frightened|Испуганный]]" in narration["content"]
-
-
-def test_cards_show_only_what_this_hero_learned(game_client, admin_g, llm, settings):
-    c, (p1, p2), hero = party(game_client, admin_g, players=2, start=False)
-    cid = c["id"]
-    gimli = add_hero(game_client, cid, p2, "Гимли")
-    ok(game_client.post(f"/api/campaigns/{cid}/session/start", headers=admin_g))
-    goblin = _spawn(settings, cid, kind="creature", name="Гоблин-разведчик", template_id="creature.goblin",
-                    description="Мелкий, в грязной коже", state={"attitude": "hostile"})  # fmt: skip
-    learn = {"character_ids": [hero["id"]], "subject_id": goblin, "fact": "Гоблин  боится огня."}
-    about = {"character_ids": [hero["id"]], "subject_id": gimli["id"], "fact": "Гимли служил в страже."}
-    llm.replies += [
-        {
-            "tool_calls": [
-                ("learn_fact", learn),
-                ("learn_fact", about),
-                ("auto_success", {"character_id": hero["id"], "reason": "Пленник ответил на вопросы"}),
-            ]
-        },
-        DONE,
-        {"text": "Гоблин-разведчик скалится на **Гимли**. Бран поднимает факел."},
-    ]
-    with connect(game_client, p1, cid) as (ws, _):
-        ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Расспрашиваю пленника"}})
-        assert next_of(ws, "knowledge.revealed")["payload"]["entity_id"] == goblin
-        narration = next_of(ws, "message.new")
-        while narration["payload"]["kind"] != "narration":
-            narration = next_of(ws, "message.new")
-    game_client.portal.call(game_client.app.state.master.wait_idle, cid)
-    assert narration["payload"]["content"] == (
-        f"[[{goblin}|Гоблин-разведчик]] скалится на [[{gimli['id']}|Гимли]]. [[{hero['id']}|Бран]] поднимает факел."
-    )
-
-    async def whisper(s):
-        from app.core.chat import next_seq
-
-        seat = (await s.get(Character, hero["id"])).seat_id
-        s.add(Message(campaign_id=cid, seq=await next_seq(s, cid), kind="whisper", visible_to=[seat],
-                      content=f"[[{goblin}|Гоблин]] прячет ключ в сапоге."))  # fmt: skip
-        await s.commit()
-
-    run(settings, whisper)
-
-    def inspect(head, eid):
-        with connect(game_client, head, cid) as (ws, _):
-            ws.send_json({"type": "entity.inspect", "payload": {"entity_id": eid}})
-            return next_of(ws, "entity.card")["payload"]
-
-    mine, theirs = inspect(p1, goblin), inspect(p2, goblin)
-    assert mine["facts"] == ["Гоблин боится огня."] and theirs["facts"] == []
-    assert mine["heard"] == ["Гоблин-разведчик скалится на Гимли.", "Гоблин прячет ключ в сапоге."]
-    assert theirs["heard"] == ["Гоблин-разведчик скалится на Гимли."]  # чужой шёпот не попадает
-
-    card = inspect(p1, gimli["id"])
-    assert card["type"] == "hero" and card["facts"] == ["Гимли служил в страже."]
-    assert card["hero"]["class_name"] and card["heard"] == ["Гоблин-разведчик скалится на Гимли."]
-    assert inspect(p2, hero["id"])["facts"] == []

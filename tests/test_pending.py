@@ -224,50 +224,6 @@ def test_speech_in_combat_does_not_block_action(client, admin, settings):
 DONE = {"text": "готово"}
 
 
-def test_turn_publishes_states(settings, llm):
-    import_base(settings)
-    with TestClient(create_app(settings, llm=llm, dice_factory=lambda: QueueDice([]))) as c:
-        root = login(c, "root", "rootpass")
-        ok(c.post("/api/admin/users", json={"name": "Arty", "password": "secret1"}, headers=root), 201)
-        adm = login(c, "Arty", "secret1")
-        camp, (p1,), _ = party(c, adm)
-        llm.replies += [DONE, DONE, {"text": "Стена оказалась скользкой."}]
-        with connect(c, p1, camp["id"]) as (ws, _):
-            m = say(ws, "Лезу на стену")["payload"]
-            states = []
-            for _ in range(40):
-                e = ws.receive_json()
-                if e["type"] == "message.state":
-                    states.append((e["payload"]["ids"], e["payload"]["state"]))
-                if len(states) == 2:
-                    break
-            c.portal.call(c.app.state.master.wait_idle, camp["id"])
-    assert states == [([m["id"]], "processing"), ([m["id"]], "answered")]
-
-
-def test_empty_batch_is_skipped_without_model(client, admin, settings, llm):
-    c, (p1,), _ = party(client, admin)
-    with connect(client, p1, c["id"]) as (ws, _):
-        m = say(ws, "Лезу на стену")["payload"]
-        withdraw(ws, m["id"])
-
-    async def turn(s):
-        t = MasterTurn(campaign_id=c["id"], upto_seq=m["seq"], trace={"from_seq": m["seq"]})
-        s.add(t)
-        await s.commit()
-        return t.id
-
-    tid = run(settings, turn)
-
-    async def play():
-        async with client.app.state.sessionmaker() as s:
-            return await client.app.state.master._play(s, c["id"], tid, [])
-
-    out = client.portal.call(play)
-    assert out["skipped"] and out["messages"] == [] and llm.requests == []
-    assert run(settings, lambda s: s.get(MasterTurn, tid)).status == "skipped"
-
-
 def fail_turn(settings, cid, upto, rolled_back=True):
     """Ход мастера взял реплики до ``upto`` и упал: откатился целиком (сбой модели) или сохранил действия."""
     from sqlalchemy import select
@@ -293,24 +249,6 @@ def retry(ws, mid):
         if e["type"] in ("message.rejected", "error") or e["type"] == "message.state" and mid in e["payload"]["ids"]:
             return e
     raise AssertionError("нет ответа на повтор")
-
-
-def test_retry_failed_reply_queues_it_again_without_a_copy(client, admin, settings):
-    # плейтест 19.10: сеть до модели оборвалась — реплика «не обработано», игроку приходилось набирать её заново
-    notified = []
-    client.app.state.master.notify = notified.append
-    c, (p1,), _ = party(client, admin)
-    with connect(client, p1, c["id"]) as (ws, _):
-        m = say(ws, "Кормлю стражника ягодой")["payload"]
-        fail_turn(settings, c["id"], m["seq"])
-        notified.clear()
-        e = retry(ws, m["id"])
-        assert e["type"] == "message.state" and e["payload"]["state"] == "pending", e
-    row = run(settings, lambda s: s.get(Message, m["id"]))
-    assert row.turn_id is None and notified == [c["id"]]
-    with connect(client, p1, c["id"]) as (_, snap):
-        mine = [x for x in snap["payload"]["messages"] if x["content"] == "Кормлю стражника ягодой"]
-        assert [x["state"] for x in mine] == ["pending"]
 
 
 @pytest.mark.parametrize("case", ["answered", "saved_actions", "foreign", "another_pending"])

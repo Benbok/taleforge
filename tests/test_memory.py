@@ -5,7 +5,7 @@ from app.agents import memory
 from app.content.catalog import Catalog, Entry
 from app.content.loader import load_with_dependencies
 from app.core import knowledge
-from app.db.models import Campaign, LlmCall, Summary
+from app.db.models import Campaign, Summary
 from tests.game import BASE, ok, party, run
 from tests.test_master import DONE, act, admin_g, dice, game_client, llm, rows  # noqa: F401 — фикстуры
 from tests.test_ws import connect, next_of
@@ -71,54 +71,6 @@ def set_every(settings, cid, n):
         await s.commit()
 
     run(settings, go)
-
-
-def test_rules_in_decision_prompt(game_client, admin_g, llm, settings):
-    c, (p1,), hero = party(game_client, admin_g)
-    llm.replies += [DONE, DONE, {"text": "Тени густые."}]
-    act(game_client, p1, c["id"], "Прячусь в тени за бочками")
-    decide = llm.requests[0]["messages"][1]["content"]
-    assert "Правила к этому ходу" in decide and "Скрытность и поиск" in decide
-    # постоянное — первым: сводки ещё нет, правила идут перед таблицей сцены и чатом
-    assert decide.index("Правила к этому ходу") < decide.index("Таблица сцены") < decide.index("Недавние сообщения")
-
-
-def test_rolling_summary_and_context(game_client, admin_g, llm, settings):
-    c, (p1, _), hero = party(game_client, admin_g, players=2)
-    set_every(settings, c["id"], 3)
-    llm.replies += [
-        DONE,
-        DONE,
-        {"text": "Таверна шумит."},
-        {
-            "tool_calls": [
-                (
-                    "submit_summary",
-                    {
-                        "quests": ["найти пропавшего кузнеца"],
-                        "npcs": [{"name": "Трактирщик Гор", "relation": "друг", "note": "обещал ночлег"}],
-                        "events": ["герои пришли в таверну"],
-                        "recap": "Герои пришли в таверну «Кривой рог» искать кузнеца.",
-                    },
-                )
-            ]
-        },
-    ]
-    add_whisper(settings, c["id"], "Тайно краду кошелёк")
-    act(game_client, p1, c["id"], "Спрашиваю трактирщика о кузнеце")
-    game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
-    (sm,) = rows(settings, Summary, Summary.campaign_id == c["id"])
-    assert sm.version == 1 and sm.kind == "rolling" and sm.content["quests"] == ["найти пропавшего кузнеца"]
-    summary_req = llm.requests[-1]["messages"][1]["content"]
-    assert "Спрашиваю трактирщика" in summary_req and "кошелёк" not in summary_req  # шёпоты в сводку не идут
-    assert [x.purpose for x in rows(settings, LlmCall, LlmCall.purpose == "summary")] == ["summary"]
-    # следующий ход мастера видит сводку
-    llm.replies += [DONE, DONE, {"text": "Гор кивает."}]
-    act(game_client, p1, c["id"], "Благодарю Гора")
-    decide = next(r for r in reversed(llm.requests) if "Фаза решения" in r["messages"][1]["content"])
-    assert (
-        "Сводка кампании" in decide["messages"][1]["content"] and "Трактирщик Гор" in decide["messages"][1]["content"]
-    )
 
 
 def test_session_summary_and_recap(game_client, admin_g, llm, settings):

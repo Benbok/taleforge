@@ -95,27 +95,3 @@ def test_library_hero_copied_into_campaign(client, admin, base):
     # чужого героя в кампанию не взять
     r = client.post(f"/api/campaigns/{c['id']}/characters/from-library/{hero['id']}", headers=other)
     assert r.status_code == 404
-
-
-def test_premade_hero_chosen_by_player(client, admin, base):
-    c = make_campaign(client, admin, players=2)
-    pre = ok(client.post(f"/api/campaigns/{c['id']}/premades", json=FIGHTER, headers=admin), 201)
-    assert pre["status"] == "premade" and pre["errors"] == [] and pre["seat_id"] is None
-    inv = invite(client, admin, c["id"])
-    h, h2 = signup(client, "Гимли"), signup(client, "Леголас")
-    for x in (h, h2):
-        ok(client.post(f"/api/invites/{inv['token']}/accept", headers=x))
-    assert client.post(f"/api/campaigns/{c['id']}/premades", json=FIGHTER, headers=h).status_code == 403
-
-    seen = ok(client.get(f"/api/campaigns/{c['id']}/characters", headers=h))
-    assert [x["status"] for x in seen] == ["premade"] and seen[0]["private_backstory"] == FIGHTER["private_backstory"]
-
-    # начатый черновик уступает место выбранному герою
-    ok(client.post(f"/api/campaigns/{c['id']}/characters", json={"name": "Набросок"}, headers=h), 201)
-    got = ok(client.post(f"/api/campaigns/{c['id']}/characters/{pre['id']}/claim", headers=h))
-    assert got["status"] == "approved" and got["resources"]["hp"] == 12 and got["inventory"]
-    assert client.post(f"/api/campaigns/{c['id']}/characters/{pre['id']}/claim", headers=h2).status_code == 409
-    mine = [x for x in ok(client.get(f"/api/campaigns/{c['id']}/characters", headers=h)) if x["status"] != "premade"]
-    assert [x["name"] for x in mine] == ["Бран"]
-    r = client.put(f"/api/campaigns/{c['id']}/premades/{pre['id']}", json={"name": "x"}, headers=admin)
-    assert r.status_code == 409

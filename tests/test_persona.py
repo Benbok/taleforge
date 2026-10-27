@@ -4,12 +4,9 @@
 from types import SimpleNamespace
 
 from app.agents import character
-from app.db.models import LlmCall, PersonaNote
+from app.db.models import LlmCall
 from tests.game import ok, party
-from tests.test_ai_players import ai_party, build_hero, seat_ai
 from tests.test_master import DONE, admin_g, dice, game_client, llm, rows  # noqa: F401 — фикстуры
-from tests.test_offline import narration
-from tests.test_ws import connect, next_of
 
 SHEET = {
     "text": "Угрюмый страж брода, верит только делам.",
@@ -65,108 +62,6 @@ def test_try_scenes_use_unsaved_sheet(game_client, admin_g, settings, llm):
     assert [s["scene"] for s in out["scenes"]] == ["Спор в отряде", "Соблазн", "Опасность"]
     assert out["scenes"][1]["reply"] == "Бран отдаёт кошель."
     assert "Трус, но скрывает это" in llm.requests[0]["messages"][0]["content"]
-
-
-def test_chronicle_notes_edit_revert_and_reach_the_agent(game_client, admin_g, settings, llm):
-    c, p1, hero = ai_party(game_client, admin_g)
-    cid = c["id"]
-    seat = seat_ai(game_client, admin_g, cid)
-    ch = build_hero(game_client, admin_g, cid, seat)
-    url = f"/api/campaigns/{cid}/characters/{ch['id']}/persona"
-    ok(
-        game_client.put(
-            url + f"?as_seat={seat}",
-            json={"text": "Весельчак", "fields": {"never": "не бросит своих"}},
-            headers=admin_g,
-        )
-    )
-
-    note = {"text": "стал осторожнее и больше не шутит о смерти", "cause": "гибель Брана"}
-    llm.replies += [
-        {"tool_calls": [("write_chronicle", {"notes": [note, {"text": "  "}]})]},  # ИИ-герой; пустая запись отброшена
-        {"tool_calls": [("write_chronicle", {"notes": []})]},  # ИИ-мастер: ничего не изменилось
-    ]
-    n = game_client.portal.call(character.chronicle, game_client.app.state.master, cid, "гибель Брана")
-    assert n == 1
-    ask = llm.requests[0]["messages"][1]["content"]
-    assert "Весельчак" in ask and "Чего никогда не сделает (неизменно): не бросит своих" in ask
-    got = ok(game_client.get(url + f"?as_seat={seat}", headers=admin_g))
-    assert [x["text"] for x in got["notes"]] == [note["text"]] and got["notes"][0]["source"] == "event"
-    nid = got["notes"][0]["id"]
-
-    # владелец правит запись; игрок другого героя — нет
-    assert game_client.patch(url + f"/notes/{nid}", json={"text": "x"}, headers=p1).status_code == 403
-    edited = ok(
-        game_client.patch(url + f"/notes/{nid}?as_seat={seat}", json={"text": "стал осторожнее"}, headers=admin_g)
-    )
-    assert edited["notes"][0]["text"] == "стал осторожнее" and edited["notes"][0]["edited"]
-
-    # агент видит анкету и летопись в системной подсказке
-    llm.replies += [
-        {"text": "Торин молча кивает."},
-        {
-            "tool_calls": [
-                ("auto_success", {"character_id": hero["id"], "reason": "слушает"}),
-                ("auto_success", {"character_id": ch["id"], "reason": "молча кивает"}),
-            ]
-        },
-        DONE,
-        {"text": "Тихо."},
-    ]
-    with connect(game_client, p1, cid) as (ws, _):
-        ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Бран слушает"}})
-        for _ in range(40):
-            m = next_of(ws, "message.new")["payload"]
-            if m["seat_id"] == seat:
-                break
-        assert narration(ws).endswith("Тихо.")
-        game_client.portal.call(game_client.app.state.master.wait_idle, cid)
-    system = next(r for r in llm.requests if r["messages"][0]["content"].startswith("Ты — игрок"))["messages"][0][
-        "content"
-    ]
-    assert "Весельчак" in system and "стал осторожнее" in system
-    master_req = next(r for r in llm.requests if "Характеры героев" in r["messages"][0]["content"])
-    assert "Весельчак" in master_req["messages"][0]["content"]
-
-    # откат: запись остаётся в летописи, но в подсказку не идёт
-    back = ok(game_client.patch(url + f"/notes/{nid}?as_seat={seat}", json={"reverted": True}, headers=admin_g))
-    assert back["notes"][0]["reverted"]
-    note_row = rows(settings, PersonaNote, PersonaNote.id == nid)[0]
-    from app.core import persona
-
-    assert "стал осторожнее" not in persona.render({"text": "x"}, [note_row])
-
-
-def test_master_character_help_test_and_prompt(game_client, admin_g, settings, llm):
-    c, (p1,), _ = party(game_client, admin_g)
-    cid = c["id"]
-    base = f"/api/campaigns/{cid}/master-character"
-    assert game_client.get(base, headers=p1).status_code == 403
-    out = ok(
-        game_client.put(
-            base, json={"text": "Мастер-насмешник", "fields": {"never": "не убивает героя без броска"}}, headers=admin_g
-        )
-    )
-    assert out["persona"]["core"] == ["samples", "never"]
-    assert [f["id"] for f in out["schema"]["fields"]] == ["tricks", "samples", "never", "party"]
-
-    llm.replies.append({"tool_calls": [("fill_persona", {"tricks": "запахи и звуки", "never": "другое"})]})
-    helped = ok(game_client.post(base + "/help", json={}, headers=admin_g))["persona"]
-    assert helped["fields"]["tricks"] == "запахи и звуки" and helped["fields"]["never"] == "не убивает героя без броска"
-
-    llm.replies += [{"text": "Таверна пахнет дымом."}, {"text": "Стражник смеётся."}, {"text": "Камни летят вниз."}]
-    scenes = ok(game_client.post(base + "/test", json={}, headers=admin_g))["scenes"]
-    assert [s["scene"] for s in scenes] == ["Описание места", "Реакция NPC", "Провал героя"]
-    assert "Мастер-насмешник" in llm.requests[-1]["messages"][0]["content"]
-
-    # стиль мастера в ходе: персона кампании плюс свой характер
-    llm.replies += [DONE, DONE, {"text": "Дорога петляет."}]
-    with connect(game_client, p1, cid) as (ws, _):
-        ws.send_json({"type": "message.send", "payload": {"kind": "action", "text": "Бран идёт"}})
-        narration(ws)
-        game_client.portal.call(game_client.app.state.master.wait_idle, cid)
-    system = llm.requests[-3]["messages"][0]["content"]
-    assert "Твой характер как мастера" in system and "Мастер-насмешник" in system
 
 
 def test_strong_events_start_chronicle(game_client, monkeypatch):

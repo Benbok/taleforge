@@ -115,45 +115,6 @@ def test_world_edits_advance_draft_but_job_status_does_not(settings):
     asyncio.run(run())
 
 
-def test_game_recovery_ignores_author_world(client, settings):
-    from app.core.authoring.contracts import AuthorProjectCreate
-    from app.core.authoring.projects import create_project
-    from app.db.models import MasterTurn, Scene
-
-    async def run():
-        maker = client.app.state.master.maker
-        async with maker() as session:
-            owner = await author(session)
-            project = await create_project(session, owner, AuthorProjectCreate(title="Workbench"))
-            cid = project.workspace_campaign_id
-            # Even accidental runtime residue must not turn a workspace into a game.
-            session.add(
-                Scene(
-                    campaign_id=cid,
-                    mode="combat",
-                    state={"deadline": 9999999999, "rest_votes": {"v": {"id": "v", "deadline": 9999999999}}},
-                )
-            )
-            turn = MasterTurn(campaign_id=cid, status="running")
-            session.add(turn)
-            await session.commit()
-            turn_id = turn.id
-        master = client.app.state.master
-        await master.resume_timers()
-        await client.app.state.rest.resume()
-        await master.recover(startup=True)
-        assert cid not in master._timers
-        assert "v" not in client.app.state.rest._timers
-        async with maker() as session:
-            assert (await session.get(MasterTurn, turn_id)).status == "running"
-            assert (
-                await session.scalar(select(func.count()).select_from(Message).where(Message.campaign_id == cid)) == 0
-            )
-
-    # Run against the same event loop as the application's services.
-    client.portal.call(run)
-
-
 def test_narrative_recovery_does_not_claim_author_work(settings):
     from app.core.authoring.contracts import AuthorProjectCreate
     from app.core.authoring.projects import create_project

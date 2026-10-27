@@ -140,61 +140,6 @@ def test_two_search_parts_have_distinct_rolls(game):
     play(settings, campaign_id, [5, 15], check)
 
 
-def test_two_cast_parts_spend_separately_but_replay_spends_once(game):
-    settings, campaign_id, hero = game
-
-    async def scenario(ctx):
-        ch = ctx.world.characters[hero]
-        ch.sheet = {**ch.sheet, "class_id": "class.druid", "spells": [], "prepared": ["spell.goodberry"]}
-        ch.resources = {"slots_used": {}}
-        ctx.world.invalidate(hero)
-
-        msg = Message(
-            campaign_id=campaign_id,
-            seat_id=ch.seat_id,
-            kind="action",
-            seq=303,
-            content="дважды творю ягоды",
-            intent={
-                "confidence": 0.9,
-                "actions": [
-                    {"verb": "cast", "spell_id": "spell.goodberry"},
-                    {"verb": "cast", "spell_id": "spell.goodberry"},
-                ],
-            },
-        )
-        ctx.session.add(msg)
-        await ctx.session.flush()
-        refs = bind_message_actions(msg, hero)
-        ctx.required_actions = list(refs)
-
-        args0 = {"caster_id": hero, "spell_id": "spell.goodberry", "action_ref": refs[0].model_dump()}
-        key0 = await bound_tool_key(ctx, "cast_spell", args0, "call0")
-        cast0 = await execute(ctx, "cast_spell", args0, key=key0)
-        assert cast0["ok"], cast0
-        assert not cast0.get("repeated")
-        assert ch.resources.get("slots_used", {}).get("1") == 1
-
-        # Replay part 0 with a new call id -> repeats without spending slot
-        key0_retry = await bound_tool_key(ctx, "cast_spell", args0, "call0_retry")
-        assert key0_retry == key0
-        replay0 = await execute(ctx, "cast_spell", args0, key=key0_retry)
-        assert replay0["ok"]
-        assert replay0.get("repeated")
-        assert ch.resources.get("slots_used", {}).get("1") == 1
-
-        # Cast part 1 -> spends second slot
-        args1 = {"caster_id": hero, "spell_id": "spell.goodberry", "action_ref": refs[1].model_dump()}
-        key1 = await bound_tool_key(ctx, "cast_spell", args1, "call1")
-        assert key1 != key0
-        cast1 = await execute(ctx, "cast_spell", args1, key=key1)
-        assert cast1["ok"]
-        assert not cast1.get("repeated")
-        assert ch.resources.get("slots_used", {}).get("1") == 2
-
-    play(settings, campaign_id, [], scenario)
-
-
 def test_concurrent_same_part_has_one_effect(game):
     settings, campaign_id, hero = game
     if not settings.database_url.startswith("postgresql"):

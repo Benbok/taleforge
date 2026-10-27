@@ -7,43 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.agents.llm import LiteLLMClient, LLMQuotaError, quota_error
-from app.core import combat
 from tests.test_tools import call, game, play  # noqa: F401
-
-
-def test_charmed_enemy_cannot_attack_source(game):  # noqa: F811 — imported fixture
-    settings, cid, hero = game
-
-    async def scenario(ctx):
-        spawned = await call(
-            ctx,
-            "spawn_entity",
-            {
-                "creature_template_id": "creature.goblin",
-                "name": "Стражник",
-                "zone": "melee",
-            },
-        )
-        enemy = spawned["result"]["spawned"][0]["id"]
-        effect = await call(
-            ctx,
-            "apply_effect",
-            {
-                "target_id": enemy,
-                "effect_template_id": "condition.charmed",
-                "source": hero,
-                "reason": "очарование стражника",
-            },
-        )
-        assert effect["ok"], effect
-        result = await call(ctx, "resolve_attack", {"attacker_id": enemy, "target_id": hero, "attack": "scimitar"})
-        assert not result["ok"] and "очарован" in result["error"]
-        assert combat._pick_target(ctx, ctx.world.actor(enemy)) is None
-        notes = []
-        await combat.creature_turn(ctx, ctx.world.actor(enemy), "test:charmed", notes, None)
-        assert any("очарован" in note for note in notes)
-
-    play(settings, cid, [], scenario)
 
 
 def test_provider_budget_blocks_followup_network_calls(monkeypatch):

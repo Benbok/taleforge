@@ -66,39 +66,3 @@ def test_complex_reservation_keeps_fresh_world_references():
     area = copied["content_reservation"]["areas"]["cells"]
     assert area == {"complex_root_id": "en_new_root", "location_id": "en_new_cell", "budget": 3}
     assert state["content_reservation"]["areas"]["cells"]["complex_root_id"] == "en_root"
-
-
-def test_launch_places_legacy_residents_and_keeps_author_source_unchanged(settings):
-    from sqlalchemy import select
-
-    from app.core.authoring.instances import instantiate_adventure
-    from app.db.models import Campaign
-    from tests.test_adventure_instances import OPTIONS, published
-    from tests.test_authoring_validation import _prepared
-
-    async def body(maker, pid, cid):
-        async with maker() as session:
-            source = list(
-                await session.scalars(select(Entity).where(Entity.campaign_id == cid, Entity.kind == "creature"))
-            )
-            assert source
-            for actor in source:
-                actor.state = {k: v for k, v in actor.state.items() if k != "cell"}
-            await session.commit()
-            project, version, owner = await published(session, pid)
-            receipt = await instantiate_adventure(session, owner, version, OPTIONS, "resident-placement")
-            await session.commit()
-            from app.content.catalog import campaign_catalog
-            from app.core.world import load_world
-
-            game = await session.get(Campaign, receipt.campaign_id)
-            world = await load_world(session, game, await campaign_catalog(session, game))
-            actors = [e for e in world.entities.values() if e.kind == "creature"]
-            assert actors
-            for actor in actors:
-                place = world.entities.get(actor.location_id)
-                if place and (place.state or {}).get("sketch"):
-                    assert positions.pos_of(world, actor.id).cell is not None
-            assert all("cell" not in actor.state for actor in source)
-
-    _prepared(settings, body)

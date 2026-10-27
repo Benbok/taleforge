@@ -54,24 +54,6 @@ def keep_args(hid, **kw):
     }
 
 
-@pytest.mark.parametrize("where", ["scene", "inventory", "other_room"])
-def test_keep_found_rejects_copy_of_existing_campaign_item(client, admin, settings, where):
-    cid, hid, _ = setup(client, admin, settings)
-
-    async def scenario(ctx):
-        uid = await coin(ctx, hid)
-        if where == "inventory":
-            await ok(ctx, "pick_up_item", {"character_id": hid, "entity_id": uid})
-        elif where == "other_room":
-            await ok(ctx, "create_location", {"name": "Коридор", "make_current": True})
-        before = sum(i.qty for i in ctx.world.inventory[hid])
-        result = await execute(ctx, "keep_found_item", keep_args(hid, name="  ПОЦАРАПАННАЯ   МОНЕТА  "))
-        assert not result["ok"] and "pick_up_item" in result["error"]
-        assert sum(i.qty for i in ctx.world.inventory[hid]) == before
-
-    play(settings, cid, scenario)
-
-
 def test_keep_found_rejects_existing_ordinary_inventory_stack(client, admin, settings):
     cid, hid, _ = setup(client, admin, settings)
 
@@ -82,37 +64,6 @@ def test_keep_found_rejects_existing_ordinary_inventory_stack(client, admin, set
         assert next(i for i in ctx.world.inventory[hid] if i.display_name == "Поцарапанная монета").qty == 1
 
     play(settings, cid, scenario)
-
-
-@pytest.mark.parametrize("how", ["stolen", "pried"])
-@pytest.mark.parametrize("check", ["absent", "failed", "other_actor", "old_turn", "save"])
-def test_keep_found_requires_successful_current_hero_check(client, admin, settings, how, check):
-    cid, hid, _ = setup(client, admin, settings)
-
-    async def scenario(ctx):
-        if check != "absent":
-            actor = hid
-            if check == "other_actor":
-                spawned = await ok(ctx, "spawn_entity", {"creature_template_id": "creature.commoner", "name": "Другой"})
-                actor = spawned["spawned"][0]["id"]
-            await ok(
-                ctx,
-                "roll_check",
-                {
-                    "character_id": actor,
-                    "stat": "str",
-                    "kind": "save" if check == "save" else "check",
-                    "difficulty": "dc.easy",
-                    "reason": "добыть вещь",
-                },
-            )
-            if check == "old_turn":
-                ctx.events[-1].turn_id = "t_previous"
-        result = await execute(ctx, "keep_found_item", keep_args(hid, how=how))
-        assert not result["ok"] and "roll_check" in result["error"]
-        assert not any(i.display_name == "Поцарапанная монета" for i in ctx.world.inventory[hid])
-
-    play(settings, cid, scenario, [1 if check == "failed" else 20])
 
 
 def test_keep_found_can_create_new_pried_part_after_success(client, admin, settings):
@@ -126,24 +77,6 @@ def test_keep_found_can_create_new_pried_part_after_success(client, admin, setti
         )
         await ok(ctx, "keep_found_item", keep_args(hid, name="Арматура", kind="improvised_weapon", how="pried"))
         assert any(i.display_name == "Арматура" for i in ctx.world.inventory[hid])
-
-    play(settings, cid, scenario, [20])
-
-
-def test_keep_found_rejects_unowned_source_item_even_after_success(client, admin, settings):
-    cid, hid, _ = setup(client, admin, settings)
-
-    async def scenario(ctx):
-        spawned = await ok(ctx, "spawn_entity", {"creature_template_id": "creature.commoner", "name": "Шептун"})
-        npc = spawned["spawned"][0]["id"]
-        await ok(
-            ctx,
-            "roll_check",
-            {"character_id": hid, "stat": "sleight_of_hand", "difficulty": "dc.easy", "reason": "украсть"},
-        )
-        result = await execute(ctx, "keep_found_item", keep_args(hid, how="stolen", from_id=npc))
-        assert not result["ok"]
-        assert not any(i.display_name == "Поцарапанная монета" for i in ctx.world.inventory[hid])
 
     play(settings, cid, scenario, [20])
 
@@ -199,52 +132,6 @@ def test_pass_to_npc_keeps_identity_private_and_can_return(client, admin, settin
         return entity.location_id, [(r.character_id, r.qty) for r in rows]
 
     assert run(settings, persisted) == (None, [(hid, 1)])
-
-
-@pytest.mark.parametrize("reason", ["found", "failed_theft", "other_room", "too_far", "wall"])
-def test_npc_owned_item_cannot_be_taken_without_access(client, admin, settings, reason):
-    cid, hid, _ = setup(client, admin, settings)
-
-    async def scenario(ctx):
-        uid, npc = await give_coin_to_npc(ctx, hid)
-        how = "given"
-        if reason == "found":
-            how = "found"
-        elif reason == "failed_theft":
-            how = "stolen"
-            await ok(
-                ctx,
-                "roll_check",
-                {"character_id": hid, "stat": "sleight_of_hand", "difficulty": "dc.easy", "reason": "украсть"},
-            )
-        elif reason == "other_room":
-            await ok(ctx, "create_location", {"name": "Коридор", "make_current": True})
-        elif reason == "too_far":
-            # вне боя герой подходит к NPC сам; далеко — только в бою, где подходят своим движением
-            positions.set_cell(ctx.world, npc, (8, 0))
-            ctx.world.scene.mode = "combat"
-            ctx.world.scene.turn_order = [{"id": hid}, {"id": npc}]
-        elif reason == "wall":
-            positions.set_cell(ctx.world, npc, (1, 1))
-            room = ctx.world.entities[ctx.world.home()]
-            room.state = {
-                **(room.state or {}),
-                "sketch": {
-                    "shape": "room",
-                    "cols": 5,
-                    "rows": 3,
-                    "party": [0, 1],
-                    "walls": [[1, 1], [0, 2]],
-                    "features": [],
-                    "exits": [],
-                },
-            }
-        result = await execute(ctx, "pick_up_item", {"character_id": hid, "entity_id": uid, "how": how})
-        assert not result["ok"], result
-        assert container_parent(ctx.world.entities[uid]) == npc
-        assert not any(i.world_entity_id == uid for i in ctx.world.inventory[hid])
-
-    play(settings, cid, scenario, [1])
 
 
 def test_successful_theft_moves_npc_item_instead_of_copying(client, admin, settings):

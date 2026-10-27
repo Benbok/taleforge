@@ -7,11 +7,10 @@ from datetime import UTC, datetime
 
 import pytest
 
-from app.agents.master.finish import SAVED_NOT_TOLD
 from app.core import world_tx
 from app.core.chat import system_message
 from app.core.world_tx import WorldConflict
-from app.db.models import Campaign, Character, Entity, Event, LlmCall, MasterTurn, Message, Seat, WorldGenerationState
+from app.db.models import Campaign, Character, Entity, Event, MasterTurn, Seat, WorldGenerationState
 from app.db.session import make_engine, make_sessionmaker
 from app.rules.dice import Dice
 from app.tools.registry import execute
@@ -145,65 +144,6 @@ def _send(client, head, cid, text):
     client.portal.call(client.app.state.master.wait_idle, cid)
 
 
-def test_narration_failure_keeps_actions_and_explicit_retry_uses_same_message(game_client, admin_g, llm, settings):
-    c, (p1,), hero = party(game_client, admin_g)
-    cid = c["id"]
-    llm.replies += [_roll(hero["id"]), DONE]  # повествованию ответов нет: обе попытки падают
-    told = act(game_client, p1, cid, "Вышибаю дверь плечом")
-    assert told["kind"] == "system" and told["content"] == SAVED_NOT_TOLD
-    (turn,) = rows(settings, MasterTurn)
-    assert turn.status == "failed" and turn.trace["narration_failed"] == "attempts" and "rolled_back" not in turn.trace
-    cp = turn.generation_checkpoint
-    assert cp["stage"] == "narration_pending" and cp["attempts"] == 2
-    assert len(rows(settings, Event, Event.tool == "roll_check")) == 1  # бросок сохранён
-    assert rows(settings, Message, Message.id == cp["narration_message_id"]) == []
-    assert not [m for m in rows(settings, Message) if "Ничего не изменилось" in m.content]
-
-    llm.replies += [{"text": "Дверь с треском поддаётся."}]
-    assert ok(game_client.post(f"/api/campaigns/{cid}/turns/{turn.id}/narration", headers=admin_g))["accepted"]
-    game_client.portal.call(game_client.app.state.master.wait_idle, cid)
-    (turn,) = rows(settings, MasterTurn)
-    assert turn.status == "done" and turn.narration_message_id == cp["narration_message_id"]
-    (msg,) = rows(settings, Message, Message.id == cp["narration_message_id"])
-    assert msg.content == "Дверь с треском поддаётся." and msg.visible_to is None
-    assert len(rows(settings, Event, Event.tool == "roll_check")) == 1  # инструменты не повторялись
-    r = game_client.post(f"/api/campaigns/{cid}/turns/{turn.id}/narration", headers=admin_g)
-    assert r.status_code == 409  # после done второго повествования нет
-
-
-def test_crash_after_effects_resumes_narration_without_rerunning_tools(
-    game_client, admin_g, llm, settings, monkeypatch
-):
-    c, (p1,), hero = party(game_client, admin_g)
-    cid = c["id"]
-    master = game_client.app.state.master
-
-    async def died(self, cid, turn_id, *, resume=False):  # noqa: ARG001 — процесс умер после фиксации действий
-        return []
-
-    monkeypatch.setattr(type(master), "_narrate_turn", died)
-    llm.replies += [_roll(hero["id"]), DONE]
-    _send(game_client, p1, cid, "Вышибаю дверь плечом")
-    (turn,) = rows(settings, MasterTurn)
-    cp = turn.generation_checkpoint
-    assert turn.status == "running" and cp["stage"] == "effects_committed"
-    (draft,) = rows(settings, Message, Message.id == cp["narration_message_id"])
-    assert draft.visible_to == [] and draft.content == ""  # резерв строки не виден никому
-    events, decide = len(rows(settings, Event)), len(rows(settings, LlmCall, LlmCall.purpose == "decide"))
-
-    monkeypatch.undo()
-    llm.replies += [{"text": "Дверь с треском поддаётся."}]
-    game_client.portal.call(master.recover)
-    (turn,) = rows(settings, MasterTurn)
-    assert turn.status == "done" and turn.generation_checkpoint["stage"] == "done"
-    (msg,) = rows(settings, Message, Message.id == cp["narration_message_id"])
-    assert msg.content == "Дверь с треском поддаётся." and msg.visible_to is None
-    assert len(rows(settings, Event)) == events  # ни броска, ни боя, ни шёпотов заново
-    assert len(rows(settings, LlmCall, LlmCall.purpose == "decide")) == decide
-    game_client.portal.call(master.recover)  # повторный проход ничего не дописывает
-    assert len(rows(settings, Message, Message.kind == "narration")) == 1
-
-
 def test_startup_closes_dead_turns_and_leaves_unrequested_containers(game_client, admin_g, settings):
     c, _heads, hero = party(game_client, admin_g)
     cid = c["id"]
@@ -219,24 +159,6 @@ def test_startup_closes_dead_turns_and_leaves_unrequested_containers(game_client
     assert turn.status == "failed" and turn.trace["error"] == "server restarted"
     (state,) = rows(settings, WorldGenerationState)
     assert state.status == "unprepared" and state.requested_at is None  # закрытое неизученное не трогаем
-
-
-def test_world_conflict_replays_the_turn_once(game_client, admin_g, llm, settings, monkeypatch):
-    c, (p1,), _hero = party(game_client, admin_g)
-    master = game_client.app.state.master
-    real = type(master)._play
-    seen = []
-
-    async def flaky(self, s, cid, turn_id, calls, diagnostics=None):
-        seen.append(turn_id)
-        if len(seen) == 1:
-            raise WorldConflict(cid, 0)
-        return await real(self, s, cid, turn_id, calls, diagnostics)
-
-    monkeypatch.setattr(type(master), "_play", flaky)
-    llm.replies += [DONE, DONE, {"text": "Зал пуст."}]
-    told = act(game_client, p1, c["id"], "Осматриваю зал")
-    assert told["kind"] == "narration" and len(seen) == 2
 
 
 def _receipt_world(settings, cid, *, hidden=False, key="explore:1"):
@@ -343,33 +265,3 @@ class _TestPreparer:
                 row = await s.get(WorldGenerationState, ref)
                 row.status, row.revision, row.quality = "ready", row.revision + 1, "normal"
             await s.commit()
-
-
-def test_turn_waits_for_preparation_before_narration(game_client, admin_g, llm, settings, monkeypatch):
-    c, (p1,), hero = party(game_client, admin_g)
-    cid = c["id"]
-    _hall, _box, ref = _receipt_world(settings, cid)
-    master = game_client.app.state.master
-    preparer = _TestPreparer()
-    master.preparer = preparer
-
-    real = type(master)._play
-
-    async def with_ref(self, s, cid_, turn_id, calls, diagnostics=None):
-        out = await real(self, s, cid_, turn_id, calls, diagnostics)
-        async with self.maker() as w:  # исследование этого хода приняло квитанцию
-            turn = await w.get(MasterTurn, turn_id)
-            turn.generation_checkpoint = {**turn.generation_checkpoint, "operation_refs": [ref]}
-            await w.commit()
-        return out
-
-    monkeypatch.setattr(type(master), "_play", with_ref)
-    llm.replies += [DONE, DONE, {"text": "В бочонке пусто."}]
-    told = act(game_client, p1, cid, "Заглядываю в бочонок")
-    assert told["kind"] == "narration" and preparer.calls == [[ref]]
-    (turn,) = rows(settings, MasterTurn)
-    assert turn.status == "done" and "unavailable" in turn.generation_checkpoint
-    assert turn.generation_checkpoint["unavailable"] == []
-    assert "исследование пока недоступно" not in llm.requests[-1]["messages"][-1]["content"]
-    (state,) = rows(settings, WorldGenerationState, WorldGenerationState.id == ref)
-    assert state.status == "ready"

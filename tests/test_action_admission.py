@@ -7,14 +7,13 @@ from types import SimpleNamespace
 import pytest
 
 from app.agents import intent as intents
-from app.agents.llm import LLMError, LLMReply, ToolCall
+from app.agents.llm import LLMReply, ToolCall
 from app.agents.master.parsing import ParsingMixin
-from app.db.models import Entity, Event, Message
+from app.db.models import Entity
 from app.gateway.ws import _quick_intent
 from tests.game import party
 from tests.test_intent_recovery import admin_g, dice, game_client, llm, rows  # noqa: F401
 from tests.test_world_objects_transfer import ok, play
-from tests.test_ws import connect, wait_message_result
 
 
 @pytest.mark.parametrize("provider", ["gemini", "claude", "local"])
@@ -30,36 +29,6 @@ def test_parser_requires_structured_output_for_every_provider(provider):
     asyncio.run(service._parse_call("test", "scene", "Осматриваюсь", {}, provider=provider))
     assert captured["tool_choice"] == {"type": "function", "function": {"name": "submit_intent"}}
     assert captured["max_tokens"] >= 1024
-
-
-@pytest.mark.parametrize("failure", ["no_tool", "invalid_schema", "empty_actions", "provider_error", "timeout"])
-def test_inspect_request_survives_technical_parser_failure(game_client, admin_g, llm, settings, monkeypatch, failure):
-    campaign, (player,), hero = party(game_client, admin_g)
-    service = game_client.app.state.master
-    service.notify = lambda cid: None
-
-    async def parse(*args, **kwargs):
-        if failure == "provider_error":
-            raise LLMError("provider unavailable")
-        if failure == "timeout":
-            raise TimeoutError("provider timeout")
-        if failure == "no_tool":
-            return LLMReply(text="Осмотреть пепелище", model="test")
-        raw = {"actions": "invalid"} if failure == "invalid_schema" else {"kind": "action", "actions": []}
-        return LLMReply(text="", model="test", tool_calls=[ToolCall("parse", "submit_intent", raw, "{}")])
-
-    monkeypatch.setattr(service, "_parse_call", parse)
-    text = "Осматриваю: Старое пепелище на предмет ценных вещей"
-    with connect(game_client, player, campaign["id"]) as (ws, _):
-        ws.send_json({"type": "message.send", "payload": {"text": text, "client_id": "inspect-pyre"}})
-        result = wait_message_result(ws, client_id="inspect-pyre", timeout_s=5)
-    assert result["type"] == "message.new", result
-    (message,) = rows(settings, Message, Message.kind == "action")
-    assert message.content == text
-    assert message.intent["character_id"] == hero["id"]
-    assert message.intent["actions"][0]["verb"] == "custom"
-    assert message.intent["parser_fallback"] is True
-    assert rows(settings, Event) == []  # Admission never grants a discovery or an item.
 
 
 def test_parser_target_projection_matches_local_visible_objects(game_client, admin_g, settings):

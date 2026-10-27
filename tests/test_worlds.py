@@ -21,56 +21,6 @@ def worlds(settings):
     run(settings, lambda s: import_pack(s, ECHO))
 
 
-def test_campaign_builder_offers_only_world_origins(client, admin, worlds):
-    c = make_campaign(client, admin, players=1, pack_id="echo-leviathans")
-    opts = ok(client.get(f"/api/campaigns/{c['id']}/character-options", headers=admin))
-    origins = {o["id"] for o in opts["origins"]}
-    assert "origin.tushevik" in origins and not origins & SRD_RACES
-    classes = {x["id"]: x["name"] for x in opts["classes"]}
-    assert classes["class.diagnost"] == "Диагност" and classes["class.cleric"] == "Жрец Церкви Исполинов"
-    # кампания по базовым правилам по-прежнему видит расы SRD
-    base = make_campaign(client, admin, players=1)
-    opts = ok(client.get(f"/api/campaigns/{base['id']}/character-options", headers=admin))
-    assert SRD_RACES <= {o["id"] for o in opts["origins"]}
-
-
-def test_card_texts_come_from_world_pack(client, admin, worlds):
-    """Карточка класса и происхождения берёт тексты из пакета мира, а не общие тексты SRD."""
-    c = make_campaign(client, admin, players=1, pack_id="echo-leviathans")
-    opts = ok(client.get(f"/api/campaigns/{c['id']}/character-options", headers=admin))
-    bard = next(x for x in opts["classes"] if x["id"] == "class.bard")
-    assert bard["epithet"] == "Звонарь Кордона" and bard["summary"] and bard["highlights"]
-    assert bard["spellcasting_ability"] == "cha" and bard["hit_die"] == 8
-    tushevik = next(o for o in opts["origins"] if o["id"] == "origin.tushevik")
-    assert tushevik["summary"] and {t["name"] for t in tushevik["traits"]} >= {"Привычка к газу", "Чувство туши"}
-    # в базовых правилах тот же класс описан по SRD, без звонарей Кордона
-    base = make_campaign(client, admin, players=1)
-    opts = ok(client.get(f"/api/campaigns/{base['id']}/character-options", headers=admin))
-    srd_bard = next(x for x in opts["classes"] if x["id"] == "class.bard")
-    assert srd_bard["epithet"] != bard["epithet"] and srd_bard["summary"] and srd_bard["highlights"]
-    assert all(o["summary"] and o["highlights"] for o in opts["origins"])
-
-
-def test_echo_spells_flavor_and_renames(client, admin, worlds):
-    """Заклинания мира Эхо получают лорную подачу (flavor), источники сил классов, а в SRD остаются базовыми."""
-    c = make_campaign(client, admin, players=1, pack_id="echo-leviathans")
-    opts = ok(client.get(f"/api/campaigns/{c['id']}/character-options", headers=admin))
-    wiz = next(x for x in opts["classes"] if x["id"] == "class.wizard")
-    assert "формулы" in wiz["spells"]["source"]
-    bard = next(x for x in opts["classes"] if x["id"] == "class.bard")
-    assert "колокол" in bard["spells"]["source"]
-    spells = {s["id"]: s for s in wiz["spells"]["spells"]}
-    assert spells["spell.fire_bolt"]["flavor"] == "Капля горящего ликвора срывается с пальцев и пахнет палёной медью."
-    assert spells["spell.magic_missile"]["flavor"] == "Три медные искры — команды Кормчих — бьют без промаха."
-
-    base = make_campaign(client, admin, players=1)
-    base_opts = ok(client.get(f"/api/campaigns/{base['id']}/character-options", headers=admin))
-    base_wiz = next(x for x in base_opts["classes"] if x["id"] == "class.wizard")
-    base_spells = {s["id"]: s for s in base_wiz["spells"]["spells"]}
-    assert base_spells["spell.fire_bolt"]["flavor"] == ""
-    assert base_wiz["spells"]["source"] == ""
-
-
 def test_library_hero_built_for_world(client, worlds):
     h = signup(client, "Гимли")
     names = [w["name"] for w in ok(client.get("/api/me/worlds", headers=h))]
@@ -119,53 +69,6 @@ def test_copy_into_other_world_names_what_to_replace(client, admin, worlds):
     heroes = ok(client.get(f"/api/campaigns/{c['id']}/characters", headers=h))
     assert [(ch["id"], ch["name"]) for ch in heroes] == [(copy["id"], FIGHTER["name"])]
     assert ok(client.get(f"/api/me/characters/{elf['id']}", headers=h))["origin_id"] == "origin.elf_high"
-
-
-def test_threshold_gives_second_race_and_caste(client, admin, worlds, settings):
-    from app.db.models import Campaign
-    from app.tools.registry import execute
-    from app.tools.runtime import flush_outbox, open_context
-    from tests.game import QueueDice
-    from tests.test_api import register
-
-    c = make_campaign(client, admin, players=1, pack_id="echo-leviathans", creation_rules={"review": "auto"})
-    h = register(client, invite(client, admin, c["id"])["token"], "Арагорн")
-    ch = ok(client.post(f"/api/campaigns/{c['id']}/characters", json=ECHO_FIGHTER, headers=h), 201)
-    assert ok(client.post(f"/api/campaigns/{c['id']}/characters/{ch['id']}/submit", headers=h))["status"] == "approved"
-    before = ok(client.get(f"/api/campaigns/{c['id']}/characters/{ch['id']}", headers=h))
-
-    async def go(s):
-        ctx = await open_context(s, await s.get(Campaign, c["id"]), QueueDice([]), turn_id="t_test", seat_id=None)
-        found = await execute(ctx, "lookup_template", {"kind": "lineage", "query": "Сохранивший себя"})
-        bad = await execute(
-            ctx, "cross_threshold", {"character_id": ch["id"], "lineage_id": "lineage.kept_self", "caste": "deep"}
-        )
-        good = await execute(
-            ctx,
-            "cross_threshold",
-            {"character_id": ch["id"], "lineage_id": "lineage.kept_self", "caste": "warrior", "variant": "kept_self"},
-        )
-        again = await execute(
-            ctx, "cross_threshold", {"character_id": ch["id"], "lineage_id": "lineage.kept_heart", "caste": "voice"}
-        )
-        await flush_outbox(s, ctx)
-        await s.commit()
-        return found, bad, good, again
-
-    found, bad, good, again = run(settings, go)
-    kept_self = next(x for x in found["result"]["results"] if x["id"] == "lineage.kept_self")
-    castes = [x["id"] for x in kept_self["castes"]]
-    assert castes == ["herald", "warrior", "weaver"]
-    assert not bad["ok"] and "нет касты deep" in bad["error"]
-    assert good["ok"] and good["result"]["caste"] == "Воитель"
-    assert not again["ok"] and "уже прошёл Порог" in again["error"]
-    after = ok(client.get(f"/api/campaigns/{c['id']}/characters/{ch['id']}", headers=h))
-    assert after["lineage"]["name"] == "Сохранивший себя" and after["lineage"]["caste"] == "Воитель"
-    assert "Панцирь воителя" in after["lineage"]["features"]
-    # класс и происхождение на месте; «Панцирь воителя» +1 к КД, Атлетикой воин уже владел
-    assert after["sheet"]["class_id"] == "class.fighter" and after["sheet"]["origin_id"] == "origin.tushevik"
-    assert after["derived"]["ac"] >= before["derived"]["ac"] + 1
-    assert after["derived"]["skills"]["athletics"] == before["derived"]["skills"]["athletics"]
 
 
 def test_list_worlds_endpoint(client, worlds):

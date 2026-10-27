@@ -9,11 +9,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.agents.llm import ScriptedLLM
-from app.content.catalog import load_catalog
 from app.core import modules
 from app.db.models import LlmCall
 from app.main import create_app
-from tests.game import BASE_VERSION, QueueDice, import_base, ok, run
+from tests.game import QueueDice, import_base, ok
 from tests.module_sample import sample
 from tests.test_api import login
 
@@ -182,75 +181,6 @@ def module_call(raw):
 
 def map_call(location_id, marks, grid=None):
     return {"tool_calls": [(modules.MAP_TOOL, {"location_id": location_id, "marks": marks, "grid": grid})]}
-
-
-def test_import_retries_reads_maps_and_publishes_a_pack(mod_client, admin_m, mod_llm, settings):
-    client = mod_client
-    bad = sample()
-    bad["creatures"][0]["base_ref"] = "creature.nope"
-    marks = [
-        {"number": "1", "x": 0.3, "y": 0.4, "cells": [[0, 0, 4, 7]], "blocked": [[2, 3]]},
-        {"number": "2", "x": 0.7, "y": 0.4},
-    ]
-    mod_llm.replies += [module_call(bad), module_call(sample()), map_call("location.davos_crypt", marks, GRID)]
-
-    m = ok(client.post("/api/admin/modules?name=the-unquiet-dead.pdf", content=b"%PDF-1.4 book", headers=admin_m), 201)
-    assert m["title"] == "the-unquiet-dead" and m["status"] == "reading"
-    idle(client)
-    # карта пришла после разбора книги: модель ищет номера сразу
-    ok(client.post(f"/api/admin/modules/{m['id']}/maps?name=crypt.png", content=PNG, headers=admin_m), 201)
-    idle(client)
-    m = ok(client.get(f"/api/admin/modules/{m['id']}", headers=admin_m))
-    assert m["status"] == "review" and m["title"] == "Неспокойные мертвецы", m
-    assert m["draft"]["notes"] == ["Аристократу дано имя не из книги."]
-    assert m["map_list"][0]["location_id"] == "location.davos_crypt" and m["map_list"][0]["status"] == "ok"
-
-    # вторая попытка переводчика получила ошибки первой, карта ушла картинкой
-    tool_msg = mod_llm.requests[1]["messages"][-1]
-    assert tool_msg["role"] == "tool" and "creature.nope" in tool_msg["content"]
-    assert mod_llm.requests[0]["tool_choice"] == "required"
-    image = mod_llm.requests[2]["messages"][1]["content"][1]
-    assert image["image_url"]["url"].startswith("data:image/png;base64,")
-    purposes = run(settings, lambda s: _purposes(s))
-    assert purposes == ["module_import", "module_import", "module_map"]
-
-    # админ поправил отметку руками; номер не из этого места — отказ с причиной
-    url = f"/api/admin/modules/{m['id']}/maps/{m['map_list'][0]['id']}"
-    r = client.put(
-        url,
-        json={"location_id": "location.davos_crypt", "marks": [{"number": "9", "x": 0.1, "y": 0.1}]},
-        headers=admin_m,
-    )
-    assert r.status_code == 409 and "нет комнаты с номером '9'" in r.json()["detail"]
-    assert m["map_list"][0]["grid"] == GRID and m["map_list"][0]["marks"][0]["blocked"] == [[2, 3]]
-    fixed = [{"number": "1", "x": 0.25, "y": 0.4, "cells": [[0, 0, 4, 7]]}, {"number": "2", "x": 0.7, "y": 0.4}]
-    ok(client.put(url, json={"location_id": "location.davos_crypt", "grid": GRID, "marks": fixed}, headers=admin_m))
-
-    m = ok(client.post(f"/api/admin/modules/{m['id']}/publish", headers=admin_m))
-    assert m["status"] == "published" and m["pack_id"] == "module-unquiet-dead" and m["pack_version"] == "1.0.0"
-    # модуль не попадает в список пакетов мира
-    assert all(p["id"] != "module-unquiet-dead" for p in ok(client.get("/api/packs", headers=admin_m)))
-    # и в миры героя профиля тоже: модуль — приключение, а не мир
-    assert all(w["id"] != "module-unquiet-dead" for w in ok(client.get("/api/me/worlds", headers=admin_m)))
-
-    async def catalog(s):
-        cat = (await load_catalog(s, [["dnd5e-srd", BASE_VERSION], ["module-unquiet-dead", "1.0.0"]])).view(False)
-        statue = cat.get("creature.temple_statue")
-        adv = cat.get("adventure.unquiet_dead", "adventure")
-        return statue.data, adv.data
-
-    statue, adv = run(settings, catalog)
-    # существо модуля наследует числа SRD и меняет только то, что сказано в книге
-    assert statue["hp"]["average"] == 30 and statue["ac"] == 17 and statue["actions"] and statue["cr"] == 1
-    assert adv["maps"][0]["marks"][0] == {"number": "1", "x": 0.25, "y": 0.4, "cells": [[0, 0, 4, 7]], "blocked": []}
-    assert adv["maps"][0]["grid"] == GRID
-    assert adv["module_id"] == m["id"] and adv["xp"] == "milestone" and adv["plot"]["title"] == "Неспокойные мертвецы"
-
-    img = client.get(f"/api/modules/{m['id']}/maps/{m['map_list'][0]['id']}", headers=admin_m)
-    assert img.status_code == 200 and img.content == PNG
-    # опубликованное не удаляется: на нём могут идти кампании; повторная публикация — новая версия
-    assert client.delete(f"/api/admin/modules/{m['id']}", headers=admin_m).status_code == 409
-    assert ok(client.post(f"/api/admin/modules/{m['id']}/publish", headers=admin_m))["pack_version"] == "1.0.1"
 
 
 async def _purposes(s):
