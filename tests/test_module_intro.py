@@ -15,7 +15,7 @@ from app.core import voice
 from app.db.models import Message
 from app.main import create_app
 from tests.conftest import login
-from tests.game import FIGHTER, QueueDice, import_base, ok
+from tests.game import QueueDice, add_hero, import_base, ok
 from tests.test_adventure import publish_sample
 from tests.test_api import invite, make_campaign, register
 from tests.test_master import rows
@@ -27,8 +27,7 @@ def party(client, admin, n: int, start: bool = True, **kw):
     """Кампания по модулю с одним одобренным героем и начатой сессией; игрок у каждой кампании свой."""
     c = make_campaign(client, admin, players=1, creation_rules={"review": "auto"}, collect_window_sec=0, **kw)
     head = register(client, invite(client, admin, c["id"])["token"], f"Игрок{n}")
-    ch = ok(client.post(f"/api/campaigns/{c['id']}/characters", json=FIGHTER, headers=head), 201)
-    ok(client.post(f"/api/campaigns/{c['id']}/characters/{ch['id']}/submit", headers=head))
+    ch = add_hero(client, c["id"], head)
     if start:
         ok(client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin))
     return c

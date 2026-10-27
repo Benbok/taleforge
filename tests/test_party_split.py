@@ -15,7 +15,7 @@ from app.tools.master.entities import encounter_budget
 from app.tools.registry import execute
 from app.tools.runtime import open_context, scene_views
 from tests.conftest import login
-from tests.game import FIGHTER, QueueDice, import_base, ok, party, quiet, run
+from tests.game import FIGHTER, QueueDice, add_hero, import_base, ok, party, quiet, run
 from tests.test_api import invite, register
 from tests.test_map import _ok, _play
 from tests.test_master import DONE
@@ -27,8 +27,7 @@ def _split_party(client, admin, settings, **kw):
     import_base(settings)
     c, (p1, p2), h1 = party(client, admin, players=2, start=False, **kw)
     cid = c["id"]
-    h2 = ok(client.post(f"/api/campaigns/{cid}/characters", json={**FIGHTER, "name": "Гимли"}, headers=p2), 201)
-    ok(client.post(f"/api/campaigns/{cid}/characters/{h2['id']}/submit", headers=p2))
+    h2 = add_hero(client, cid, p2, "Гимли")
     ok(client.post(f"/api/campaigns/{cid}/session/start", headers=admin))
     quiet(client)
 

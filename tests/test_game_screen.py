@@ -5,7 +5,7 @@ import pytest
 
 from app.core import rolls
 from app.db.models import Character, Entity, Event, Knowledge, Message
-from tests.game import FIGHTER, ok, party, quiet, run
+from tests.game import add_hero, ok, party, quiet, run
 from tests.test_master import DONE, act, admin_g, dice, game_client, llm, rows  # noqa: F401 — фикстуры
 from tests.test_ws import connect, next_of
 
@@ -295,8 +295,7 @@ def test_narrator_accepts_status_rule_references(game_client, admin_g, llm):
 def test_cards_show_only_what_this_hero_learned(game_client, admin_g, llm, settings):
     c, (p1, p2), hero = party(game_client, admin_g, players=2, start=False)
     cid = c["id"]
-    gimli = ok(game_client.post(f"/api/campaigns/{cid}/characters", json=FIGHTER | {"name": "Гимли"}, headers=p2), 201)
-    ok(game_client.post(f"/api/campaigns/{cid}/characters/{gimli['id']}/submit", headers=p2))
+    gimli = add_hero(game_client, cid, p2, "Гимли")
     ok(game_client.post(f"/api/campaigns/{cid}/session/start", headers=admin_g))
     goblin = _spawn(settings, cid, kind="creature", name="Гоблин-разведчик", template_id="creature.goblin",
                     description="Мелкий, в грязной коже", state={"attitude": "hostile"})  # fmt: skip

@@ -4,7 +4,7 @@
 from app.core.layout import store
 from app.core.world_generation import storage
 from app.db.models import Character, Event, Scene
-from tests.game import party, run
+from tests.game import add_hero, party, run
 from tests.layout_pilot import pilot_intent
 from tests.test_layout_preparation import _activate, _areas
 from tests.test_map import _ok, _play
@@ -200,12 +200,11 @@ def test_panel_transit_finishes_in_background(game_client, admin_g, settings):
 
 
 def test_split_party_narration_follows_transiting_crew(game_client, admin_g, llm, settings, monkeypatch):
-    from tests.game import FIGHTER, ok
+    from tests.game import ok
 
     c, (p1, p2), hero = party(game_client, admin_g, players=2, start=False)
     cid = c["id"]
-    second = ok(game_client.post(f"/api/campaigns/{cid}/characters", json=FIGHTER, headers=p2), 201)
-    ok(game_client.post(f"/api/campaigns/{cid}/characters/{second['id']}/submit", headers=p2))
+    second = add_hero(game_client, cid, p2)
     ok(game_client.post(f"/api/campaigns/{cid}/session/start", headers=admin_g))
     ids = _temple(settings, cid)
 
@@ -243,13 +242,12 @@ def test_split_party_narration_follows_transiting_crew(game_client, admin_g, llm
 
 
 def test_default_transit_uses_focused_group(client, admin, settings):
-    from tests.game import FIGHTER, import_base, ok, quiet
+    from tests.game import import_base, ok, quiet
 
     import_base(settings)
     c, (_p1, p2), hero = party(client, admin, players=2, start=False)
     cid = c["id"]
-    second = ok(client.post(f"/api/campaigns/{cid}/characters", json=FIGHTER, headers=p2), 201)
-    ok(client.post(f"/api/campaigns/{cid}/characters/{second['id']}/submit", headers=p2))
+    second = add_hero(client, cid, p2)
     ok(client.post(f"/api/campaigns/{cid}/session/start", headers=admin))
     quiet(client)
     ids = _temple(settings, cid)

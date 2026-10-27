@@ -7,7 +7,7 @@ from app.core import positions as grid
 from app.core import reach
 from app.db.models import Message
 from app.tools.registry import execute
-from tests.game import FIGHTER, import_base, ok, party, run
+from tests.game import add_hero, import_base, ok, party, run
 from tests.test_map import _map, _ok, _play
 from tests.test_ws import connect, next_of
 
@@ -151,8 +151,7 @@ def test_big_table_far_edge_cabinet_back_wall_and_exits(client, admin, settings)
 
 
 def _second_hero(client, cid, head):
-    gimli = ok(client.post(f"/api/campaigns/{cid}/characters", json=FIGHTER | {"name": "Гимли"}, headers=head), 201)
-    ok(client.post(f"/api/campaigns/{cid}/characters/{gimli['id']}/submit", headers=head))
+    gimli = add_hero(client, cid, head, "Гимли")
     return gimli
 
 

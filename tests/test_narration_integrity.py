@@ -3,7 +3,7 @@
 
 from app.db.models import MasterTurn
 from app.gateway.events import Stream
-from tests.game import FIGHTER, ok, party
+from tests.game import add_hero, ok, party
 from tests.test_master import DONE, act, admin_g, dice, game_client, llm, rows  # noqa: F401
 
 
@@ -42,10 +42,7 @@ def test_narrator_retries_invented_player_reply_before_streaming(
     monkeypatch,  # noqa: F811
 ):
     c, (p1, p2), _ = party(game_client, admin_g, players=2, start=False)
-    other = ok(
-        game_client.post(f"/api/campaigns/{c['id']}/characters", json=FIGHTER | {"name": "Emris"}, headers=p2), 201
-    )
-    ok(game_client.post(f"/api/campaigns/{c['id']}/characters/{other['id']}/submit", headers=p2))
+    other = add_hero(game_client, c["id"], p2, "Emris")
     ok(game_client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin_g))
     game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
     chunks = []

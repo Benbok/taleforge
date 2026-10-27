@@ -5,7 +5,7 @@
 import time
 
 from app.db.models import Campaign, Character, Event, LlmCall, Message, Seat
-from tests.game import ok, party, run
+from tests.game import add_hero, ok, party, run
 from tests.test_api import invite, make_campaign, register
 from tests.test_combat import _setup
 from tests.test_master import DONE, admin_g, dice, game_client, llm, rows  # noqa: F401 — фикстуры
@@ -46,10 +46,8 @@ def narration(ws):
 def two_players(client, admin, settings, **kw):
     """Две героя у двух игроков, мастер — ИИ, сессия идёт."""
     c, (p1, p2), hero = party(client, admin, players=2, start=False, **kw)
-    from tests.game import FIGHTER
 
-    ch = ok(client.post(f"/api/campaigns/{c['id']}/characters", json={**FIGHTER, "name": "Торин"}, headers=p2), 201)
-    ok(client.post(f"/api/campaigns/{c['id']}/characters/{ch['id']}/submit", headers=p2))
+    ch = add_hero(client, c["id"], p2, "Торин")
     ok(client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin))
     tune(settings, c["id"])
     return c, p1, p2, hero

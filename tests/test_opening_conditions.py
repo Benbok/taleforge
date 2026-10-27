@@ -5,7 +5,7 @@ from app.agents import prelude
 from app.core import plot
 from app.core.world_objects import read_world_object
 from app.db.models import CampaignSecret, Entity, InventoryItem, LlmCall
-from tests.game import party, quiet, run
+from tests.game import add_hero, party, quiet, run
 from tests.test_lead import FakeCatalog, checked, good_plan, set_plan
 from tests.test_master import admin_g, dice, game_client, llm, rows  # noqa: F401
 
@@ -145,7 +145,7 @@ def test_prelude_confiscates_gear(game_client, admin_g, llm, settings):
 
 
 def test_late_joiner_after_stash_opened(game_client, admin_g, llm, settings):
-    from tests.game import FIGHTER, ok
+    from tests.game import ok
 
     c, heads, ch1 = party(game_client, admin_g, players=2, location_layouts=False)
     assert ch1["id"]
@@ -182,8 +182,7 @@ def test_late_joiner_after_stash_opened(game_client, admin_g, llm, settings):
     ok(game_client.post(f"/api/campaigns/{c['id']}/session/pause", headers=admin_g))
 
     # Второй игрок создаёт и сдаёт персонажа
-    ch2 = ok(game_client.post(f"/api/campaigns/{c['id']}/characters", json=FIGHTER, headers=heads[1]), 201)
-    ok(game_client.post(f"/api/campaigns/{c['id']}/characters/{ch2['id']}/submit", headers=heads[1]))
+    ch2 = add_hero(game_client, c["id"], heads[1])
     ok(game_client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin_g))
     quiet(game_client)
     hid2 = ch2["id"]
