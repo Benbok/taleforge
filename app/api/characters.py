@@ -497,12 +497,7 @@ async def from_library(
         await catch_up_copy(session, campaign_id, ch.id)
         await session.commit()
         return game_card_of(ch)
-    source = await lib.Worlds(session).of(lc)
-    target = await campaign_catalog(session, v.campaign)
-    rules = await svc.creation_rules(session, v.campaign)
-    ch = await lib.copy_to_campaign(session, v, lc, rules, source.cat, target)
-    await session.commit()
-    return await _view(session, v, ch)
+    raise Conflict("Игровая кампания принимает только универсального героя из описания.")
 
 
 # --- связи героев (проект «Подготовка кампании», раздел 7.1) ---
