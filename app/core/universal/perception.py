@@ -190,8 +190,9 @@ async def assess_detection(ctx, observer_id, actor_id, source_key, *, at_seconds
     return change
 
 
-async def observe_known_scene(ctx, aspect):
-    """Successful observation records only accessible, already established details."""
+async def observe_known_scene(ctx, aspect, target_id=None):
+    """Successful observation records only accessible, already established details. A named target narrows it to
+    that one; listening with none narrows it to the living things that can be heard."""
     actor = await ctx.session.get(Character, ctx.actor_id)
     changes = []
     if actor.location_id is None:
@@ -201,6 +202,10 @@ async def observe_known_scene(ctx, aspect):
 
     for row in await ctx.session.scalars(select(Entity).where(Entity.campaign_id == ctx.campaign_id)):
         if row.id != actor.location_id and row.location_id != actor.location_id:
+            continue
+        if target_id and row.id != target_id:
+            continue
+        if aspect == "hearing" and not target_id and row.kind != "creature":
             continue
         if row.state.get("hidden") or row.state.get("visibility") in {"hidden", "private"}:
             continue

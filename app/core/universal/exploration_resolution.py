@@ -287,7 +287,9 @@ async def _execute(ctx, action, key):
                 from app.core.universal.travel import remember_place
 
                 await remember_place(ctx, state.actor)
-                result.changes.extend(await observe_known_scene(ctx, op.aspect))
+                result.changes.extend(await observe_known_scene(ctx, op.aspect, op.target_id or op.object_id))
+            elif op.kind == "speak":
+                result.changes.extend(await _addressee(ctx, state.actor, op))
     for observer in await s.scalars(
         select(Entity).where(
             Entity.campaign_id == ctx.campaign_id,
@@ -366,3 +368,20 @@ async def _journal_unusual(ctx, action):
                 source.content if source is not None else "",
                 {"label": op.label, "scale": op.scale, "abilities": op.abilities, "appearance": op.appearance},
             )
+
+
+async def _addressee(ctx, actor, op):
+    """Speech reaches only a living being standing in the same place; the narrator may voice its reaction."""
+    row = await ctx.session.get(Entity, op.recipient_id or op.target_id or "")
+    if row is None or row.campaign_id != ctx.campaign_id or row.kind != "creature":
+        return []
+    if row.location_id != actor.location_id or (row.state or {}).get("hidden"):
+        return []
+    return [
+        EffectChange(
+            kind="speech",
+            subject_id=row.id,
+            description=f"Герой обращается к существу «{row.name}»: {(row.description or '')[:300]}",
+            data=dict(addressee_id=row.id),
+        )
+    ]
