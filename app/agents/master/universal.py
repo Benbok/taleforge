@@ -456,14 +456,20 @@ async def run_universal_turn(service, cid, place=None):
                 await s.get(Message, saved_turn.narration_message_id) if saved_turn.narration_message_id else None
             )
             if "public_context" not in trace:
-                from app.agents.master.public_context import public_context
+                from app.agents.master.public_context import public_context, scene_audience
 
+                trace["narration_audience"] = await scene_audience(
+                    s, cid, trace.get("audience"), trace.get("scene", {})
+                )
                 trace["public_context"] = await public_context(
-                    s, c, saved_turn.upto_seq, trace.get("audience"), trace.get("scene", {}), story
+                    s, c, saved_turn.upto_seq, trace["narration_audience"], trace.get("scene", {}), story
                 )
                 saved_turn.trace = dict(trace)
                 await s.commit()
         public = trace["public_context"]
+        narration_audience = trace.get("narration_audience", trace.get("audience"))
+        if narration_audience is not None:
+            service._audience[cid] = narration_audience
         story, scene, history = public["outcomes"], public["scene"], public["recent_history"]
         await service._status(cid, "describing")
         tone = await mood_note(service, c, tid, trace) if story and not saved_narration else ""
@@ -513,11 +519,11 @@ async def run_universal_turn(service, cid, place=None):
                     kind="narration",
                     content=link_scene_text(text, scene),
                     seq=await next_seq(s, cid),
-                    visible_to=trace.get("audience"),
+                    visible_to=narration_audience,
                     data={
                         "universal": True,
                         "location_ref": location_reference(scene),
-                        "scope": "party" if trace.get("audience") is not None else "public",
+                        "scope": "party" if narration_audience is not None else "public",
                         "location_id": (scene.get("location") or {}).get("id"),
                     },
                 )

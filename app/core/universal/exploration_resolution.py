@@ -219,6 +219,15 @@ async def _execute(ctx, action, key):
 
                 result.changes.append(await move_hero(ctx, op.destination_id))
                 continue
+            if op.kind == "move" and not op.object_id:
+                result.changes.append(
+                    EffectChange(
+                        kind="moved_within_scene",
+                        subject_id=action.actor_id,
+                        description="Герой переместился в пределах текущего места; переход в другую локацию не выполнялся.",
+                    )
+                )
+                continue
             if op.kind == "create_object":
                 target = next(created).subject_id
             if op.kind in TIMED_KINDS or op.lifetime == "timed":

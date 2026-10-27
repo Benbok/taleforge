@@ -178,4 +178,7 @@ async def publish_scene(session, row, plan: WorldScenePlan):
         "universal_scene": dict(ready=True, generation_ref=row.id, title=plan.name),
     }
     await session.flush()
+    from app.core.universal.orientation_generation import ensure_map
+
+    await ensure_map(session, cid, location.id)
     return dict(entities=made, destinations=destinations, location_id=location.id)

@@ -2,6 +2,7 @@
 
 import hashlib
 import zlib
+from copy import deepcopy
 from dataclasses import replace
 
 from sqlalchemy import select
@@ -41,8 +42,19 @@ def build_sketch(campaign_id, location, entities):
     area = replace(blueprint.areas[0], details=(), object_slots=())
     sketch = build_area(blueprint, area)
     sketch.pop("blueprint", None)  # cosmetic sketch is not a persisted playable complex
+    refresh_object_markers(sketch, location, entities)
+    if errors := check(sketch, set(entities)):
+        raise ValueError("; ".join(errors))
+    return sketch
+
+
+def refresh_object_markers(sketch, location, entities):
+    """Refresh cosmetic object references while retaining the saved terrain and exits."""
     floor = floor_cells(sketch) or {(c, r) for c in range(sketch["cols"]) for r in range(sketch["rows"])}
     cells = sorted(floor - {tuple(sketch["party"])}, key=lambda c: (c[1], c[0]))
+    if not cells:
+        return
+    sketch["features"] = [f for f in sketch.get("features", []) if not str(f.get("id", "")).startswith("sf_")]
     markers = []
     for row in sorted(entities.values(), key=lambda e: e.id):
         if row.kind != "object" or row.location_id != location.id or concealed(row, entities):
@@ -68,9 +80,6 @@ def build_sketch(campaign_id, location, entities):
                 solid=False,
             )
         )
-    if errors := check(sketch, set(entities)):
-        raise ValueError("; ".join(errors))
-    return sketch
 
 
 async def ensure_map(session, campaign_id, location_id):
@@ -86,6 +95,13 @@ async def ensure_map(session, campaign_id, location_id):
         raise ValueError("Выберите локацию")
     state = location.state or {}
     if state.get("sketch") or state.get("complex") or state.get("blueprint") or state.get("room"):
+        if state.get("sketch") and state.get("orientation_map", {}).get("version") == 1:
+            entities = {e.id: e for e in await session.scalars(select(Entity).where(Entity.campaign_id == campaign_id))}
+            sketch = deepcopy(state["sketch"])
+            refresh_object_markers(sketch, location, entities)
+            if sketch != state["sketch"]:
+                location.state = {**state, "sketch": sketch}
+                await session.flush()
         return False
     entities = {e.id: e for e in await session.scalars(select(Entity).where(Entity.campaign_id == campaign_id))}
     location.state = {

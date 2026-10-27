@@ -10,6 +10,22 @@ from app.core.universal.visibility import shared_observations, visible_entity
 from app.db.models import Character, Entity, KnownFact
 
 
+async def scene_audience(session, campaign_id, original, scene):
+    """Travel narration can narrow the original recipients, never acquire new ones."""
+    place = (scene.get("location") or {}).get("id")
+    if not place:
+        return original
+    seats = await session.scalars(
+        select(Character.seat_id).where(
+            Character.campaign_id == campaign_id,
+            Character.status.in_(["active", "approved"]),
+            Character.seat_id.is_not(None),
+            Character.location_id == place,
+        )
+    )
+    return sorted({seat for seat in seats if original is None or seat in original})
+
+
 async def public_context(session, campaign, upto_seq, audience, scene, outcomes):
     heroes = list(
         await session.scalars(
