@@ -49,10 +49,16 @@ export default function UniversalRollProof({ card, proof }: { card: RollCard; pr
       {proof.legacy && <p className='mt-2 text-xs text-muted'>Ранее сохранённые броски: {proof.legacy_draws?.join(', ')}{proof.legacy_total ? ` · итог ${proof.legacy_total}` : ''}. Подробный разбор в старой квитанции отсутствует.</p>}
       <p className='mt-3 text-xs text-muted'>Энергия: {proof.cost === '0' ? 'не потрачена' : `−${proof.cost}`}{proof.damage !== '0' ? ` · Урон: ${proof.damage}` : ''}</p>
       {proof.source_kind === 'supernatural' && <p className='mt-1 text-xs text-patina'>Магия · {proof.automatic ? 'Без проверки кубиком' : 'С проверкой'}{proof.ability_ref ? ' · Способность изучена' : ''}</p>}
-      {proof.description && <div className='mt-3 rounded-lg border border-patina/30 bg-patina/5 p-3 text-sm leading-relaxed'>
-        <p className='mb-1 text-[10px] font-semibold uppercase tracking-wider text-patina'>Результат действия</p>
-        <RichText text={proof.description} />
-      </div>}
+      {proof.description && (
+        <details className='mt-2.5 rounded-lg border border-patina/30 bg-patina/5 text-sm leading-relaxed'>
+          <summary className='cursor-pointer select-none px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-patina hover:text-patina/80'>
+            Результат действия
+          </summary>
+          <div className='border-t border-patina/20 px-3 py-2.5'>
+            <RichText text={proof.description} />
+          </div>
+        </details>
+      )}
       <details className='mt-2 text-[11px] text-muted'>
         <summary className='cursor-pointer'>Сохранённый результат</summary>
         <p className='mt-1 break-all font-mono'>Квитанция {proof.receipt_id} · версия правил {proof.revision}</p>

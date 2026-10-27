@@ -195,7 +195,7 @@ function MasterThinkingCard({ stage }: { stage: string }) {
   return (
     <div
       ref={cardRef}
-      className="tf-pop tf-master-thinking my-2 flex max-w-[72ch] shrink-0 flex-col gap-2.5 rounded-xl border p-3.5 shadow-xs sm:p-4"
+      className="tf-pop tf-master-thinking my-2 flex w-full min-w-0 shrink-0 flex-col gap-2.5 rounded-xl border p-3.5 shadow-xs sm:p-4"
       role="status"
       aria-live="polite"
     >

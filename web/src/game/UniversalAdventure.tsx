@@ -5,12 +5,11 @@ import ConnectionBanner from '../components/ConnectionBanner';
 import Header from '../components/Header';
 import UniversalHeroCard from '../builder/UniversalHeroCard';
 import { formatCount } from '../lib/counts';
-import { abilityKeys, abilityNames, type AbilityKey, energyThemes, universalCard } from '../lib/universal';
+import { abilityKeys, abilityNames, energyThemes, universalCard } from '../lib/universal';
 import { useGame } from '../stores/game';
 import ChatFeed from './ChatFeed';
 import CabinetLink from './CabinetLink';
 import Composer from './Composer';
-import { useDraft } from './draft';
 import { loadChatFontSize, saveChatFontSize, type ChatFontSize } from './scenePreferences';
 import ExplorationPanel, { type ExplorationState } from './ExplorationPanel';
 import LevelAllocation from './LevelAllocation';
@@ -18,6 +17,7 @@ import UniversalCombatPanel, { type CombatView } from './UniversalCombatPanel';
 import type { HeroSheet } from '../lib/types';
 import SessionControls from './SessionControls';
 import SoundControl from './SoundControl';
+import LearnedAbilitiesModal from './LearnedAbilitiesModal';
 
 /** Exploration uses the same authenticated socket, draft, voice and chat as the main table. */
 export default function UniversalAdventure({
@@ -38,6 +38,7 @@ export default function UniversalAdventure({
   const combat = (sheet as unknown as { combat?: CombatView } | null)?.combat;
   const abilities = card?.learned_abilities ?? [];
   const [showCardModal, setShowCardModal] = useState(false);
+  const [showAbilitiesModal, setShowAbilitiesModal] = useState(false);
   const [isChatFullscreen, setIsChatFullscreen] = useState(false);
   const [isLocationExpanded, setIsLocationExpanded] = useState(false);
   const [chatFontSize, setChatFontSize] = useState<ChatFontSize>(loadChatFontSize);
@@ -50,10 +51,12 @@ export default function UniversalAdventure({
   };
 
   useEffect(() => {
-    if (!showCardModal && !isChatFullscreen) return;
+    if (!showCardModal && !isChatFullscreen && !showAbilitiesModal) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (showCardModal) {
+        if (showAbilitiesModal) {
+          setShowAbilitiesModal(false);
+        } else if (showCardModal) {
           setShowCardModal(false);
         } else if (isChatFullscreen) {
           setIsChatFullscreen(false);
@@ -62,7 +65,7 @@ export default function UniversalAdventure({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [showCardModal, isChatFullscreen]);
+  }, [showCardModal, isChatFullscreen, showAbilitiesModal]);
 
   return (
     <div className='flex h-dvh flex-col bg-bg'>
@@ -187,14 +190,25 @@ export default function UniversalAdventure({
               {card && combat && <UniversalCombatPanel campaignId={campaignId} heroId={card.id} state={combat}
                 onUpdated={updated => useGame.getState().setSheet(updated as HeroSheet)} />}
 
-              {/* Кнопка открытия полной карточки в модальном окне */}
-              <button
-                type='button'
-                className='btn btn-outline-copper flex w-full items-center justify-center gap-2 py-2 text-xs font-semibold'
-                onClick={() => setShowCardModal(true)}
-              >
-                <span>⤢ Карточка героя и снаряжение</span>
-              </button>
+              {/* Кнопки вызова модальных окон карточки и способностей */}
+              <div className='grid grid-cols-1 gap-2 sm:grid-cols-2'>
+                <button
+                  type='button'
+                  className='btn btn-outline-copper flex items-center justify-center gap-1.5 py-2 text-xs font-semibold'
+                  onClick={() => setShowCardModal(true)}
+                  title='Открыть полную карточку героя и снаряжение'
+                >
+                  <span>⤢ Карточка героя и снаряжение</span>
+                </button>
+                <button
+                  type='button'
+                  className='btn btn-outline-copper flex items-center justify-center gap-1.5 py-2 text-xs font-semibold'
+                  onClick={() => setShowAbilitiesModal(true)}
+                  title='Открыть изученные способности'
+                >
+                  <span>✦ Способности ({abilities.length})</span>
+                </button>
+              </div>
             </section>
           ) : (
             <Link className='btn btn-primary' to={`/c/${campaignId}/hero`}>
@@ -225,34 +239,31 @@ export default function UniversalAdventure({
 
           {/* 3. Изученные способности */}
           {card && (
-            <section className='card space-y-2 p-4' aria-label='Изученные способности'>
-              <h2 className='font-heading text-base text-ink'>Изученные способности</h2>
+            <section className='card space-y-2.5 p-4' aria-label='Изученные способности'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-1.5'>
+                  <span className='text-accent text-sm' aria-hidden='true'>✦</span>
+                  <h2 className='font-heading text-base font-bold text-ink'>Изученные способности</h2>
+                </div>
+                <span className='rounded-full border border-patina/40 bg-patina/10 px-2 py-0.5 font-mono text-xs font-bold text-patina'>
+                  {abilities.length}
+                </span>
+              </div>
               {abilities.length ? (
-                abilities.map(ability => {
-                  const limits = ability.limits as { targets?: string; duration?: string; conditions?: string[] } | undefined;
-                  return (
-                    <div key={String(ability.id)} className='space-y-1 rounded-lg border border-line p-2'>
-                      <button
-                        type='button'
-                        className='btn btn-outline-copper w-full text-left'
-                        title='Подставить намерение в сообщение. Мастер проверит применение в текущей сцене.'
-                        onClick={() => useDraft.getState().setText(`Применяю способность «${String(ability.name)}».`)}
-                      >
-                        {String(ability.name)}
-                      </button>
-                      {ability.cost !== undefined && (
-                        <p className='text-xs text-patina'>
-                          Цена: {formatCount(String(ability.cost))} · {abilityNames[String(ability.resource_key) as AbilityKey] ?? 'Ресурс'}
-                        </p>
-                      )}
-                      {limits && (
-                        <p className='text-xs text-muted'>
-                          Целей: {limits.targets} · Длительность: {limits.duration} сек · {limits.conditions?.join('; ') || 'Без особых условий'}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })
+                <div className='space-y-2.5'>
+                  <p className='text-xs text-muted leading-relaxed'>
+                    {abilities.length === 1
+                      ? 'Освоена 1 способность.'
+                      : `Освоено способностей: ${abilities.length}.`}
+                  </p>
+                  <button
+                    type='button'
+                    className='btn btn-outline-copper flex w-full items-center justify-center gap-2 py-2 text-xs font-semibold'
+                    onClick={() => setShowAbilitiesModal(true)}
+                  >
+                    <span>✦ Открыть способности ({abilities.length})</span>
+                  </button>
+                </div>
               ) : (
                 <p className='text-sm text-muted'>Способность появится здесь после успешного применения в игре.</p>
               )}
@@ -451,6 +462,16 @@ export default function UniversalAdventure({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Модальное окно изученных способностей */}
+      {card && (
+        <LearnedAbilitiesModal
+          isOpen={showAbilitiesModal}
+          onClose={() => setShowAbilitiesModal(false)}
+          abilities={abilities as never}
+          heroName={card.name}
+        />
       )}
     </div>
   );
