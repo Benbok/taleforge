@@ -53,6 +53,59 @@ def scene_plan(**overrides):
     }
 
 
+def test_format_error_does_not_consume_the_only_semantic_repair_attempt(tmp_path):
+    async def run():
+        from app.agents.master.world import prepare_scene
+        from app.db.models import LlmCall
+
+        engine, maker = await world_setup(tmp_path)
+        provider = Provider(
+            [
+                {},
+                scene_plan(),
+                {"verdict": "revise", "message": "Сохранить установленный завал."},
+                scene_plan(),
+                {"verdict": "pass"},
+            ]
+        )
+        async with maker() as s:
+            campaign = await s.get(Campaign, "c")
+        await prepare_scene(MasterService(maker, Bus(), provider), campaign, None, "gorge")
+        assert len(provider.prompts) == 5
+        async with maker() as s:
+            phase = await s.scalar(select(WorldGenerationState))
+            assert phase.status == "ready" and phase.llm_attempt_count == 5
+            calls = list(await s.scalars(select(LlmCall).where(LlmCall.generation_id == phase.id)))
+            assert len(calls) == 5
+            diagnostics = [c.diagnostics for c in calls if c.diagnostics]
+            assert any(d.get("stage") == "validation" for d in diagnostics)
+            assert any(d.get("stage") == "review" and "завал" in d.get("detail", "") for d in diagnostics)
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_exhausted_world_validation_keeps_diagnostic_reason_without_publishing_it(tmp_path):
+    async def run():
+        from app.agents.master.world import prepare_scene
+        from app.core.preparation import brief_status
+
+        engine, maker = await world_setup(tmp_path)
+        async with maker() as s:
+            campaign = await s.get(Campaign, "c")
+        with pytest.raises(ScenePreparationError):
+            await prepare_scene(MasterService(maker, Bus(), Provider([{}, {}, {}])), campaign, None, "gorge")
+        async with maker() as s:
+            phase = await s.scalar(select(WorldGenerationState))
+            assert phase.status == "blocked"
+            assert "Field required" in phase.result_manifest["detail"]
+            assert "Field required" not in str(await brief_status(s, "c", phase.id))
+            assert (await s.get(Entity, "gorge")).description == "Сырое ущелье."
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
 async def world_setup(tmp_path):
     engine, maker = await setup(tmp_path)
     await prepare(maker)
@@ -163,7 +216,7 @@ def test_player_retry_rearms_blocked_phase_with_fresh_context_and_bounded_cumula
         from app.db.models import MasterTurn
 
         engine, maker = await world_setup(tmp_path)
-        service = MasterService(maker, Bus(), Provider([{}, {}]))
+        service = MasterService(maker, Bus(), Provider([{}, {}, {}]))
         tid = await service.run_turn("c")
         async with maker() as s:
             turn = await s.get(MasterTurn, tid)

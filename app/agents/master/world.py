@@ -1,15 +1,34 @@
 """Bounded, restartable world preparation before a Universal action is executed."""
 
 import json
+import logging
 from types import SimpleNamespace
+
+from pydantic import ValidationError
+from sqlalchemy import select
 
 from app.core.universal.world_generation import VERSION, publish_scene, reserve_scene
 from app.core.world_generation import storage
 from app.core.world_generation.contracts import Blocked
 from app.core.world_tx import WorldConflict
-from app.db.models import Campaign, WorldGenerationState
+from app.db.models import Campaign, LlmCall, WorldGenerationState
 from app.rules.universal.failures import ActionFailure
 from app.rules.universal.world import WorldScenePlan, WorldSceneReview
+
+log = logging.getLogger(__name__)
+
+
+async def record_rejection(maker, ref, stage, detail):
+    """Keep private review/validation evidence in the model journal, never public status."""
+    async with maker() as session:
+        call = await session.scalar(
+            select(LlmCall).where(LlmCall.generation_id == ref).order_by(LlmCall.created_at.desc()).limit(1)
+        )
+        if call is not None:
+            call.diagnostics = {**(call.diagnostics or {}), "stage": stage, "detail": detail}
+            await session.commit()
+    log.warning("world preparation %s rejected at %s; private detail saved in model journal", ref, stage)
+
 
 PLAN_SYSTEM = (
     "Ты подготавливаешь сохранённую сцену ролевой игры по авторскому миру. Верни WorldScenePlan по-русски. "
@@ -96,12 +115,14 @@ async def run_phase(maker, claim, llm):
         if reserved is None:
             raise Blocked("model_budget_exhausted", "Исчерпан бюджет подготовки")
         claim = reserved
-        return await _call(wrapper, campaign, turn_id, purpose, payload)
+        return await _call(wrapper, campaign, turn_id, purpose, payload, generation_id=claim.ref)
 
     if saved is not None:
         plan = WorldScenePlan.model_validate(saved)
     else:
-        for _ in range(2):
+        # A malformed draft must leave room to repair a later semantic rejection.
+        # The persisted call window still caps all draft/review/provider attempts.
+        for _ in range(3):
             try:
                 raw = await ask(
                     "world_prepare",
@@ -129,7 +150,12 @@ async def run_phase(maker, claim, llm):
                     )
                 )
             except (ValueError, json.JSONDecodeError) as exc:
-                feedback = str(exc)[:1500]
+                feedback = (
+                    json.dumps(exc.errors(include_input=False, include_url=False), ensure_ascii=False, default=str)
+                    if isinstance(exc, ValidationError)
+                    else str(exc)
+                )[:1500]
+                await record_rejection(maker, claim.ref, "validation", feedback)
                 continue
             except Blocked as exc:
                 await storage.block(maker, claim, exc.reason, exc.detail)
@@ -143,8 +169,11 @@ async def run_phase(maker, claim, llm):
                 claim = await storage.save_phase_draft(maker, claim, {"reviewed_plan": plan.model_dump(mode="json")})
                 break
             feedback = review.message
+            await record_rejection(maker, claim.ref, "review", feedback)
         else:
-            await storage.block(maker, claim, "invalid_world_plan", "Модель не подготовила согласованное место")
+            await storage.block(
+                maker, claim, "invalid_world_plan", feedback or "Модель не подготовила согласованное место"
+            )
             return "blocked"
 
     async def apply(session, row):

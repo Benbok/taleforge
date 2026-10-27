@@ -65,7 +65,7 @@ def world_rules(secret):
     return {key: str(studio.get(key) or "") for key in ("laws", "powers", "world")}
 
 
-async def _call(service, campaign, turn, purpose, payload):
+async def _call(service, campaign, turn, purpose, payload, *, generation_id=None):
     async with service.maker() as s:
         spent = await s.scalar(select(func.sum(LlmCall.cost)).where(LlmCall.campaign_id == campaign.id)) or 0
         limit = (campaign.settings or {}).get("spend_limit_usd")
@@ -141,6 +141,7 @@ async def _call(service, campaign, turn, purpose, payload):
                 LlmCall(
                     campaign_id=campaign.id,
                     turn_id=turn,
+                    generation_id=generation_id,
                     purpose=purpose,
                     model=model,
                     latency_ms=int((monotonic() - started) * 1000),
@@ -154,6 +155,7 @@ async def _call(service, campaign, turn, purpose, payload):
             LlmCall(
                 campaign_id=campaign.id,
                 turn_id=turn,
+                generation_id=generation_id,
                 purpose=purpose,
                 model=reply.model or model,
                 tokens_in=reply.tokens_in,
