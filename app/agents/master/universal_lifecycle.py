@@ -20,6 +20,17 @@ async def open_universal_session(service, cid, session_id):
             if (c.settings or {}).get("universal_intro_message_id"):
                 return True
             entry = await s.get(Entity, (c.settings or {}).get("studio_entry_location_id", ""))
+            entry_id = entry.id if entry else None
+        from app.agents.master.world import prepare_scene
+        from app.core.universal.world_generation import enabled
+
+        if enabled(c) and entry_id:
+            await prepare_scene(service, c, None, entry_id)
+        async with service.maker() as s:
+            c = await s.get(Campaign, cid)
+            if (c.settings or {}).get("universal_intro_message_id"):
+                return True
+            entry = await s.get(Entity, entry_id) if entry_id else None
             text = "\n\n".join(x for x in (c.public_intro, entry.description if entry else "") if x)
             if not text:
                 return True

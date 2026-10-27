@@ -221,13 +221,17 @@ async def validate_exploration(ctx, action):
     refs = {f"intro:{i.ref}" for i in a.introductions}
     if len(refs) != len(a.introductions):
         raise ValueError("Повтор ссылки на предмет")
+    if sum(bool(op.destination_id) for op in a.operations) > 1:
+        raise ValueError("За одно действие можно перейти только в одно соседнее место")
     for index, op in enumerate(a.operations):
+        if op.travel_scope == "between_locations" and not op.destination_id and not op.object_id:
+            raise ValueError("Для перехода нужно известное место назначения")
         if op.destination_id:
             if op.kind != "move":
                 raise ValueError("Место назначения допустимо только для перехода")
             from app.core.universal.travel import destination_view
 
-            await destination_view(ctx, op.destination_id)
+            await destination_view(ctx, op.destination_id, allow_unprepared=True)
         if op.target_id and op.kind != "pour" and op.target_id not in a.targets:
             raise ValueError("Недоступная цель компонента")
         if op.kind == "create_object" and (op.template not in {"vessel", "structure", "creature"} or op.quantity != 1):

@@ -145,6 +145,7 @@ class EffectIntentV2(ClosedModel):
     source_id: str | None = Field(default=None, max_length=64)
     object_id: str | None = Field(default=None, max_length=64)
     destination_id: str | None = Field(default=None, max_length=32)
+    travel_scope: Literal["within_scene", "between_locations"] | None = None
     recipient_id: str | None = Field(default=None, max_length=64)
     effect_id: str | None = Field(default=None, max_length=64)
     label: str = Field(default="", max_length=128)
@@ -166,6 +167,10 @@ class EffectIntentV2(ClosedModel):
 
     @model_validator(mode="after")
     def lifetime_supported(self):
+        if self.travel_scope and self.kind != "move":
+            raise ValueError("Travel scope is only valid for movement")
+        if self.travel_scope == "within_scene" and self.destination_id:
+            raise ValueError("Within-scene movement cannot change the location")
         if self.leads_to and self.scale not in LEADS_SCALES:
             raise ValueError("Only a large or huge creation can lead to another place")
         return self
@@ -352,7 +357,7 @@ _BINDINGS = frozenset(
     {"kind", "required_by", "target_id", "source_id", "object_id", "recipient_id", "effect_id", "label", "appearance"}
 )
 _RELEVANT = {
-    "move": {"destination_id"},
+    "move": {"destination_id", "travel_scope"},
     "cannot_move": {"lifetime", "quantity", "resistance_attribute"},
     "cannot_act": {"lifetime", "quantity", "resistance_attribute"},
     "cannot_target": {"lifetime", "quantity", "resistance_attribute"},
@@ -451,12 +456,8 @@ def clean_model_intent(raw):
     if cleaned.get("source") == "mundane" and claim in {"pretend", "ordinary"}:
         # Pretending or an ordinary act is not magic; a claimed spell keeps its magic for the review to weigh.
         effects = [
-            e
-            for e in effects
-            if not (isinstance(e, dict) and e.get("kind") in MAGIC_KINDS - FREE_FOR_ORDINARY)
-        ] or (
-            [{"kind": "wait"}] if effects else []
-        )
+            e for e in effects if not (isinstance(e, dict) and e.get("kind") in MAGIC_KINDS - FREE_FOR_ORDINARY)
+        ] or ([{"kind": "wait"}] if effects else [])
     if not effects and cleaned.get("source") == "mundane":
         effects = [{"kind": "wait"}]
     if (

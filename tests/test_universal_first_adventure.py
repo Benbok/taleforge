@@ -94,6 +94,8 @@ def first_adventure_scenario(client, root, settings, monkeypatch, voice_capture=
         assert wait_message_result(ws, client_id="investigate")["type"] == "message.new"
     free = Provider(
         [
+            dict(name="Гавань", description="У ворот гавани видна свежая тропа.", objects=[], passages=[]),
+            dict(verdict="pass"),
             dict(
                 schema_version=2,
                 source="mundane",

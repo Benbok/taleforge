@@ -27,10 +27,12 @@ from app.db.models import (
     Campaign,
     CampaignSecret,
     Character,
+    Event,
     HeroAbility,
     LlmCall,
     MasterTurn,
     Message,
+    Scene,
     User,
     now,
 )
@@ -267,6 +269,23 @@ async def run_universal_turn(service, cid, place=None):
                 seat = next(x for x in c.seats if x.id == msg.seat_id)
                 if msg.author_user_id and msg.author_user_id not in {seat.user_id, seat.stand_in_user_id}:
                     raise ValueError("Source author does not control hero")
+                hero_id = hero.id
+                world_scene = await s.get(Scene, cid)
+                origin = hero.location_id or (world_scene.location_id if world_scene else None)
+                already_applied = await s.scalar(
+                    select(Event.id).where(
+                        Event.campaign_id == cid,
+                        Event.idempotency_key == mid,
+                    )
+                )
+            from app.agents.master.world import prepare_scene
+            from app.core.universal.world_generation import enabled as world_enabled
+
+            if world_enabled(c) and not already_applied and origin:
+                await prepare_scene(service, c, tid, origin, source_id=mid)
+            async with service.maker() as s:
+                msg = await s.get(Message, mid)
+                hero = await s.get(Character, hero_id)
                 sh, resources = await load_actor(s, cid, hero.id)
                 secret = await s.get(CampaignSecret, cid)
                 from app.core.universal.inventory import ensure_inventory, item_view, owned_items
@@ -284,7 +303,6 @@ async def run_universal_turn(service, cid, place=None):
                 history = await recent_history(s, c, msg.seq - 1, trace.get("audience"), public_scene)
                 from app.core.universal.objects import visible_objects
                 from app.core.universal.perception import actor_constraints, established_evidence
-                from app.db.models import Event
 
                 evidence = await established_evidence(s, cid, hero.id)
                 objects = await visible_objects(s, cid, hero.id)
@@ -315,6 +333,7 @@ async def run_universal_turn(service, cid, place=None):
                 )
                 allowed_targets.update(h.id for h in visible_heroes)
                 context = dict(
+                    world_development=bool(world_enabled(c)),
                     world=(secret.setting or {}).get("studio", {}) if secret else {},
                     # The text of the world decides what is allowed; the private notes stay with the master.
                     world_rules=world_rules(secret),
@@ -362,6 +381,17 @@ async def run_universal_turn(service, cid, place=None):
                     return await _call(service, c, tid, purpose, payload)
 
                 compiled = await obtain_exploration_action(service, c, tid, mid, trace, context, scope, ask_v2)
+            if (
+                world_enabled(c)
+                and not already_applied
+                and compiled.proposal is not None
+                and getattr(compiled, "schema_version", None) == 2
+            ):
+                destinations = {
+                    op.destination_id for op in compiled.proposal.operations if op.kind == "move" and op.destination_id
+                }
+                for destination in sorted(destinations):
+                    await prepare_scene(service, c, tid, destination, source_id=mid)
             trace["scene"] = public_scene
             outcome = prepared_outcome(compiled)
             if compiled.proposal is not None:

@@ -12,13 +12,15 @@ from app.db.models import Campaign, Character, Entity, KnownFact, Seat, User
 from app.rules.universal.exploration import EffectChange
 
 
-async def destination_view(ctx, destination_id):
+async def destination_view(ctx, destination_id, *, allow_unprepared=False):
     actor = await actor_row(ctx.session, ctx.campaign_id, ctx.actor_id)
     if not isinstance(actor, Character):
         raise ValueError("Только герой выбирает переход")
     place = await ctx.session.get(Entity, destination_id)
     if place is None or place.campaign_id != ctx.campaign_id or place.kind != "location":
         raise ValueError("Такого доступного места нет в этом прохождении")
+    if not allow_unprepared and (place.state.get("universal_scene") or {}).get("ready") is False:
+        raise ValueError("Место ещё не подготовлено. Переход не выполнен.")
     viewer = Viewer(
         await ctx.session.get(User, ctx.user_id),
         await ctx.session.get(Campaign, ctx.campaign_id),
@@ -26,7 +28,7 @@ async def destination_view(ctx, destination_id):
     )
     view = await party_map(ctx.session, viewer)
     candidates = [exit for exit in view["exits"] if exit.get("id") == destination_id]
-    if not candidates or not any(exit.get("state") not in {"closed", "locked"} for exit in candidates):
+    if not candidates or not any(exit.get("state") not in {"closed", "locked", "blocked"} for exit in candidates):
         raise ValueError("Нет известного открытого пути к выбранному месту")
     source = await ctx.session.get(Entity, (view.get("here") or {}).get("id"))
     sketch = (source.state.get("sketch") or {}) if source else {}
@@ -38,7 +40,7 @@ async def destination_view(ctx, destination_id):
         if exit.get("to") == destination_id
     ]
     if passages and not any(
-        not exit.get("hidden") and exit.get("state") not in {"closed", "locked"} for exit in passages
+        not exit.get("hidden") and exit.get("state") not in {"closed", "locked", "blocked"} for exit in passages
     ):
         raise ValueError("Нет известного открытого прохода к выбранному месту")
     return actor, place, view
