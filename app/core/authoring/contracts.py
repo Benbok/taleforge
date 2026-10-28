@@ -415,6 +415,18 @@ class VersionOut(Contract):
     published_at: str
 
 
+class CatalogEntryOut(Contract):
+    """A published world in the shared catalog: the public summary only, never the bundle."""
+
+    version_id: str
+    project_id: str
+    title: str
+    author_name: str
+    version: int
+    public_summary: dict
+    published_at: str
+
+
 class AuthorMapArea(Contract):
     area_ref: str
     name: str

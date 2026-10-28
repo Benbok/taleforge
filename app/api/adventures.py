@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from app.api.authoring import version_out
 from app.api.deps import SessionDep, UserDep
-from app.core.authoring.contracts import LaunchReceipt, LaunchRequest, VersionOut
+from app.core.authoring.contracts import CatalogEntryOut, LaunchReceipt, LaunchRequest, VersionOut
 from app.core.authoring.instances import instantiate_adventure
 from app.core.campaigns import AccessDenied, NotFound, is_admin
-from app.db.models import AdventureVersion, AuthorProject
+from app.db.models import AdventureVersion, AuthorProject, User
 
 router = APIRouter(prefix="/api/adventures", tags=["adventures"])
 
@@ -28,6 +28,38 @@ async def library(session: SessionDep, user: UserDep) -> list[VersionOut]:
         .order_by(AdventureVersion.published_at.desc())
     )
     return [version_out(v, title) for v, title in rows]
+
+
+@router.get("/catalog", response_model=list[CatalogEntryOut])
+async def catalog(session: SessionDep, user: UserDep) -> list[CatalogEntryOut]:
+    """The latest published version of every author's world, newest first. Public summary only."""
+    latest = (
+        select(AdventureVersion.project_id, func.max(AdventureVersion.version).label("version"))
+        .group_by(AdventureVersion.project_id)
+        .subquery()
+    )
+    rows = await session.execute(
+        select(AdventureVersion, AuthorProject.title, User.name)
+        .join(
+            latest,
+            (latest.c.project_id == AdventureVersion.project_id) & (latest.c.version == AdventureVersion.version),
+        )
+        .join(AuthorProject, AuthorProject.id == AdventureVersion.project_id)
+        .join(User, User.id == AuthorProject.owner_id)
+        .order_by(AdventureVersion.published_at.desc())
+    )
+    return [
+        CatalogEntryOut(
+            version_id=v.id,
+            project_id=v.project_id,
+            title=title,
+            author_name=author,
+            version=v.version,
+            public_summary=v.public_summary,
+            published_at=v.published_at.isoformat(),
+        )
+        for v, title, author in rows
+    ]
 
 
 @router.post("/{version_id}/games", response_model=LaunchReceipt, status_code=201)
