@@ -55,13 +55,19 @@ def plot_of(body):
 def test_author_reads_own_launch_secrets(client, root, world):
     r = client.get(f"/api/campaigns/{world['mine']}/secrets", headers=root)
     assert r.status_code == 200, r.text
-    assert "SECRET-PLOT" in r.text or plot_of(r.json()) or r.json()["setting"]
+    assert r.json()["setting"] or plot_of(r.json())
 
 
 def test_other_admin_cannot_read_or_write_author_secrets(client, admin, world):
     cid = world["theirs"]
     assert client.get(f"/api/campaigns/{cid}/secrets", headers=admin).status_code == 404
     assert client.put(f"/api/campaigns/{cid}/secrets", headers=admin, json={"plot": {}}).status_code == 404
+
+
+def test_other_admin_cannot_read_master_log_or_canon_journal(client, admin, root, world):
+    for path in ("master-log", "canon-journal"):
+        assert client.get(f"/api/campaigns/{world['theirs']}/{path}", headers=admin).status_code in (403, 404), path
+        assert client.get(f"/api/campaigns/{world['mine']}/{path}", headers=root).status_code == 200, path
 
 
 def test_other_admin_plan_has_no_plot(client, admin, world):

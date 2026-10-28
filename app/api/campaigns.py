@@ -701,9 +701,11 @@ async def get_master_log(
     campaign_id: str, user: UserDep, session: SessionDep, settings: SettingsDep, limit: int = 30
 ) -> dict:
     """Что делал мастер по ходам: вызовы, броски, результаты, обращения к модели. Только Admin и Super Admin."""
-    await _viewer(session, user, campaign_id)
+    v = await _viewer(session, user, campaign_id)
     if not svc.is_admin(user):
         raise AccessDenied("журнал мастера доступен только администраторам")
+    if not await author_secrets_visible(session, v.campaign, user):
+        raise NotFound("нет доступа")  # the log carries the author's plot and hidden tool results
     return await master_log.build(session, campaign_id, settings, max(1, min(limit, 100)))
 
 
@@ -715,6 +717,8 @@ async def get_canon_journal(campaign_id: str, user: UserDep, session: SessionDep
     v = await _viewer(session, user, campaign_id)
     if not (v.is_owner or v.is_master):
         raise AccessDenied("журнал канона доступен владельцу и ведущему")
+    if not await author_secrets_visible(session, v.campaign, user):
+        raise NotFound("нет доступа")  # hidden finds and containers come from the author's world
     entries = await canon_journal(session, campaign_id, max(1, min(limit, 200)))
     return CanonJournalOut(entries=[CanonEntryOut(**e) for e in entries])
 
