@@ -5,13 +5,13 @@ import ActionButton from "../components/ActionButton";
 import CampaignCardView from "../components/CampaignCardView";
 import Recap from "../components/Recap";
 import Header from "../components/Header";
+import WorldsCatalog from "./WorldsCatalog";
 import LeviathanEchoArt from "../components/LeviathanEchoArt";
 import DndHeroArt from "../components/DndHeroArt";
 import Avatar, { hue, initials } from "../components/Avatar";
 import PortraitImage from '../components/PortraitImage';
 import { api } from "../lib/api";
 import type { LibraryHero } from "../lib/builder";
-import type { WorldSummary } from "../lib/worlds";
 import { actionOf, when, STATUS_TEXT, statusOf } from "../lib/cards";
 import type { CampaignCard } from "../lib/types";
 import { useSession } from "../stores/session";
@@ -90,14 +90,6 @@ export default function Home() {
         onTabChange={setActiveTab}
         onlineCount={onlineHeroes}
       >
-        {isAdmin && (
-          <Link
-            className="btn btn-primary px-3 py-1.5 text-xs font-semibold shadow-sm"
-            to="/new"
-          >
-            + Новая кампания
-          </Link>
-        )}
       </Header>
 
       <div key={activeTab} className="tf-tab-content flex flex-1 flex-col pb-20 md:pb-0">
@@ -175,20 +167,20 @@ export default function Home() {
                   <div className="card border-dashed border-line bg-surface p-6 sm:col-span-2">
                     <h3 className="font-heading text-2xl font-semibold text-ink">{list.length ? "В этом разделе пока нет столов" : "Ваше первое приключение впереди"}</h3>
                     <p className="mt-2 text-sm leading-relaxed text-muted">
-                      {list.length ? "Попробуйте показать все кампании или выберите другую роль." : isAdmin ? "Создайте кампанию и пригласите отряд. Героя можно собрать заранее в библиотеке." : "Чтобы присоединиться к кампании, попросите ссылку-приглашение у ведущего. Пока можно собрать своего героя."}
+                      {list.length ? "Попробуйте показать все кампании или выберите другую роль." : isAdmin ? "Выберите мир во вкладке «Миры» и пригласите отряд. Героя можно собрать заранее в библиотеке." : "Чтобы присоединиться к кампании, попросите ссылку-приглашение у ведущего. Пока можно собрать своего героя."}
                     </p>
                     {list.length ? <button type="button" className="btn btn-outline-copper mt-4 min-h-11" onClick={() => setFilter("all")}>Показать все кампании</button>
-                      : <Link className="btn btn-primary mt-4 min-h-11" to={isAdmin ? "/new" : "/heroes/new"}>{isAdmin ? "Создать кампанию" : "Создать героя"}</Link>}
+                      : <Link className="btn btn-primary mt-4 min-h-11" to={isAdmin ? "/?tab=worlds" : "/heroes/new"}>{isAdmin ? "Выбрать мир" : "Создать героя"}</Link>}
                   </div>
                 )}
                 {filteredList.map((c) => (
                   <CampaignCardView key={c.id} c={c} />
                 ))}
 
-                {/* Карточка «Заложить новую кампанию» */}
+                {/* Карточка «Выбрать мир для новой кампании» */}
                 {isAdmin && (
                   <Link
-                    to="/new"
+                    to="/?tab=worlds"
                     className="card group flex min-h-[240px] flex-col items-center justify-center gap-3 border-dashed border-line bg-surface p-6 text-center text-ink no-underline transition hover:border-accent hover:bg-surface-2"
                   >
                     <div className="flex h-14 w-14 items-center justify-center rounded-full border border-dashed border-accent text-accent transition-transform group-hover:scale-110">
@@ -204,7 +196,7 @@ export default function Home() {
                       </svg>
                     </div>
                     <span className="font-heading text-2xl font-semibold">
-                      Заложить новую кампанию
+                      Выбрать мир для новой кампании
                     </span>
                     <span className="font-ui text-xs text-muted">
                       Выберите мир, правила и характер мастера
@@ -347,7 +339,7 @@ export default function Home() {
       {/* ВКЛАДКА: МИРЫ */}
       {activeTab === "worlds" && (
         <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-8 px-4 py-10 md:px-12">
-          <WorldsSection isAdmin={isAdmin} />
+          <WorldsCatalog isAdmin={isAdmin} />
         </main>
       )}
       </div>
@@ -549,8 +541,8 @@ function EmptyHeroSection({ isAdmin }: { isAdmin: boolean }) {
           «Каждая туша хранит память, а каждый кокон ждёт своего пробуждения».
         </p>
         {isAdmin ? (
-          <Link to="/new" className="btn btn-primary mt-2 h-12 px-6 text-sm font-semibold">
-            Заложить первую кампанию
+          <Link to="/?tab=worlds" className="btn btn-primary mt-2 h-12 px-6 text-sm font-semibold">
+            Выбрать мир для первой кампании
           </Link>
         ) : (
           <p className="text-sm text-muted">
@@ -654,106 +646,3 @@ function HeroesLibrarySection({ heroes }: { heroes: LibraryHero[] }) {
     </div>
   );
 }
-
-const FALLBACK_WORLDS: WorldSummary[] = [];
-
-/** Полноценный экран каталога миров */
-function WorldsSection({ isAdmin }: { isAdmin: boolean }) {
-  const worldsQuery = useQuery({
-    queryKey: ["worlds-list"],
-    queryFn: () => api<WorldSummary[]>("/api/worlds"),
-  });
-  const worlds =
-    worldsQuery.data && worldsQuery.data.length > 0
-      ? worldsQuery.data
-      : worldsQuery.isLoading
-      ? []
-      : FALLBACK_WORLDS;
-
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="border-b border-line pb-4">
-        <h2 className="font-heading text-3xl font-semibold text-ink">
-          Доступные миры и правила
-        </h2>
-        <p className="mt-1 text-sm text-muted font-ui">
-          Пакеты сеттингов со своими шкалами, происхождениеми, бестиарием и таблицами цен.
-        </p>
-      </div>
-
-      {worldsQuery.isLoading ? (
-        <div className="card p-8 text-center text-muted font-mono text-sm">
-          Загрузка каталога миров…
-        </div>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2">
-          {worlds.map((w) => {
-            const isPrimary = w.id === "echo-leviathans";
-            return (
-              <article
-                key={w.id}
-                className={`card flex flex-col justify-between overflow-hidden p-6 ${
-                  isPrimary ? "border-accent bg-surface" : "border-line bg-surface"
-                }`}
-              >
-                <div className="flex flex-col gap-3">
-                  <div
-                    className={`font-mono text-xs tracking-widest ${
-                      isPrimary ? "text-copper-hi" : "text-muted"
-                    }`}
-                  >
-                    {w.category}
-                  </div>
-                  <h3 className="font-heading text-3xl font-semibold text-ink">
-                    {w.name}
-                  </h3>
-                  <p
-                    className={`font-narration text-base leading-relaxed ${
-                      isPrimary ? "text-ink-2" : "text-muted"
-                    }`}
-                  >
-                    {w.summary}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2 font-mono text-[11px] text-muted">
-                    {w.badges.map((b, idx) => (
-                      <span key={idx} className="rounded-md border border-line bg-raised px-2.5 py-1">
-                        {b}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-6 flex items-center justify-between border-t border-line-soft pt-4 gap-2">
-                  <span
-                    className={`text-xs font-mono ${
-                      isPrimary ? "text-patina-hi" : "text-muted"
-                    }`}
-                  >
-                    {w.status_badge}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Link
-                      to={`/worlds/${w.id}`}
-                      className="btn btn-outline-copper text-xs font-semibold"
-                    >
-                      Подробнее о мире
-                    </Link>
-                    {isAdmin && (
-                      <Link
-                        to={`/new?pack=${w.id}`}
-                        className={`btn text-xs font-semibold ${isPrimary ? "btn-primary" : ""}`}
-                      >
-                        Запустить стол
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-

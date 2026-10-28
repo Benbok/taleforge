@@ -136,7 +136,7 @@ export default function AuthorProjectsPage() {
 
                   <div className="flex items-center justify-between pt-2">
                     <p className="text-xs text-muted">
-                      Обычное создание кампании для игры — на странице <Link className="text-accent underline hover:opacity-80" to="/new">«Новая кампания»</Link>.
+                      Игра начинается из вкладки <Link className="text-accent underline hover:opacity-80" to="/?tab=worlds">«Миры»</Link>: опубликованный мир запускается оттуда.
                     </p>
                     <button
                       className="btn btn-primary min-h-11 px-6 text-sm font-medium"

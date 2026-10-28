@@ -14,7 +14,7 @@ function mixer() {
 describe("поверхность звука приложения", () => {
   beforeEach(() => vi.mocked(api).mockReset());
   it.each([
-    "/", "/admin", "/new", "/profile", "/worlds/w1", "/heroes/h1", "/c/c1/manage", "/c/c1/hero",
+    "/", "/admin", "/profile", "/worlds/w1", "/heroes/h1", "/c/c1/manage", "/c/c1/hero",
   ])("пускает тему в кабинете, админке и детализации миров: %s", (path) => {
     expect(audioSurfaceFor(path, true)).toBe("menu");
   });
