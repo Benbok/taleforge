@@ -15,6 +15,7 @@ from app.api.schemas import NarrativePreparationStatusOut
 from app.content.catalog import campaign_catalog
 from app.core import adventure, plot
 from app.core import campaigns as svc
+from app.core.authoring.access import author_secrets_visible
 from app.core.campaigns import AccessDenied, Conflict, NotFound
 from app.core.narrative.contracts import to_narrative_preparation_status
 from app.db.models import CampaignPlan, CampaignSecret, User
@@ -45,7 +46,7 @@ async def can_generate(session, c) -> bool:
     return not plot.has_plan(secret.plot if secret else None)
 
 
-async def plan_out(session, v) -> dict:
+async def plan_out(session, v, user) -> dict:
     c = v.campaign
     st = c.settings or {}
     versions = await session.scalar(
@@ -63,7 +64,7 @@ async def plan_out(session, v) -> dict:
         "public_intro": c.public_intro,
         "can_generate": await can_generate(session, c),
     }
-    if v.is_master:
+    if v.is_master and await author_secrets_visible(session, c, user):
         secret = await session.get(CampaignSecret, c.id)
         out["plan"] = secret.plot if secret else {}
         out["revision"] = (st.get("plan") or {}).get("revision")
@@ -76,7 +77,7 @@ async def plan_out(session, v) -> dict:
 
 @router.get("/campaigns/{campaign_id}/plan")
 async def get_plan(campaign_id: str, user: UserDep, session: SessionDep) -> dict:
-    return await plan_out(session, await _manager(session, user, campaign_id))
+    return await plan_out(session, await _manager(session, user, campaign_id), user)
 
 
 @router.get("/campaigns/{campaign_id}/narrative/status", response_model=NarrativePreparationStatusOut)
@@ -139,4 +140,4 @@ async def request_plan(
     master = request.app.state.master
     await architect.publish(master, c.id, c)
     master._spawn(architect.generate(master, c.id, body.note, body.structure_id))
-    return await plan_out(session, v)
+    return await plan_out(session, v, user)

@@ -35,6 +35,7 @@ from app.content.catalog import CatalogError, load_catalog, resolve_chain
 from app.content.importer import latest_version
 from app.core import adventure, audio, chat, master_log, plot, plot_anchors
 from app.core import campaigns as svc
+from app.core.authoring.access import author_secrets_visible
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer
 from app.core.world import get_scene, party_groups
 from app.db.models import (
@@ -655,7 +656,7 @@ async def delete_campaign(campaign_id: str, user: UserDep, session: SessionDep, 
 async def get_secrets(campaign_id: str, user: UserDep, session: SessionDep) -> dict:
     """Только место мастера. Владелец без места мастера их не видит (раздел 2)."""
     v = await _viewer(session, user, campaign_id)
-    if not v.is_master:
+    if not v.is_master or not await author_secrets_visible(session, v.campaign, user):
         raise NotFound("нет доступа")
     s = await session.get(CampaignSecret, campaign_id)
     return {"setting": s.setting, "plot": s.plot}
@@ -664,7 +665,7 @@ async def get_secrets(campaign_id: str, user: UserDep, session: SessionDep) -> d
 @router.put("/campaigns/{campaign_id}/secrets")
 async def put_secrets(campaign_id: str, body: SecretsIn, user: UserDep, session: SessionDep) -> dict:
     v = await _viewer(session, user, campaign_id)
-    if not v.is_master:
+    if not v.is_master or not await author_secrets_visible(session, v.campaign, user):
         raise NotFound("нет доступа")
     s = await session.get(CampaignSecret, campaign_id)
     if body.setting is not None:
@@ -687,6 +688,8 @@ async def get_master_panel(campaign_id: str, user: UserDep, session: SessionDep)
     if not v.is_master:
         raise NotFound("нет доступа")
     world = await load_world(session, v.campaign, await campaign_catalog(session, v.campaign))
+    if not await author_secrets_visible(session, v.campaign, user):
+        world.plot = {}
     return panel(world)
 
 
