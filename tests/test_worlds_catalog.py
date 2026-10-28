@@ -1,7 +1,7 @@
 import asyncio
 
 from app.db.models import AdventureVersion
-from tests.test_author_secret_access import publish
+from tests.test_author_secret_access import make_player, publish
 from tests.test_universal_studio import BASE, create
 
 KEYS = {"version_id", "project_id", "title", "author_name", "version", "public_summary", "published_at"}
@@ -69,9 +69,5 @@ def test_catalog_requires_login(client):
 
 def test_catalog_visible_to_a_player(client, root):
     publish(client, root)
-    r = client.post("/api/admin/users", json={"name": "Gimli", "password": "secret2"}, headers=root)
-    assert r.status_code == 201, r.text
-    from tests.conftest import login
-
-    player = login(client, "Gimli", "secret2")
+    player = make_player(client, root)
     assert catalog(client, player).status_code == 200 and len(catalog(client, player).json()) == 1

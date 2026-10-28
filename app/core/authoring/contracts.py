@@ -514,7 +514,8 @@ class IntroTextRequest(Contract):
 
 
 class LaunchRequest(Contract):
-    options: InstanceOptions
+    # Omitted: the session is created with the server defaults and the cabinet is where they are changed.
+    options: InstanceOptions | None = None
     request_key: str = Field(min_length=1, max_length=128)
 
 

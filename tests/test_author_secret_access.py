@@ -75,3 +75,19 @@ def test_other_admin_master_panel_has_no_plot(client, admin, world):
     assert theirs.status_code == 200, theirs.text
     assert theirs.json()["has_plot"] is False
     assert "plot" not in theirs.json()["tools"]
+
+
+def make_player(client, root, name="Gimli"):
+    """A signed-in user who is not an administrator."""
+    from tests.conftest import login
+
+    assert client.post("/api/admin/users", json={"name": name, "password": "secret2"}, headers=root).status_code == 201
+
+    async def demote():
+        async with client.app.state.sessionmaker() as session:
+            user = await session.scalar(select(User).where(User.name == name))
+            user.platform_role = "player"
+            await session.commit()
+
+    asyncio.run(demote())
+    return login(client, name, "secret2")
