@@ -5,9 +5,11 @@
 from app.agents import architect
 from app.content.catalog import campaign_catalog
 from app.db.models import Campaign
-from tests.game import run
+from tests.game import (
+    run,
+    worlds,  # noqa: F401 — фикстура
+)
 from tests.test_api import make_campaign
-from tests.test_worlds import worlds  # noqa: F401 — фикстура
 
 
 def test_architect_sees_world_figures_and_places(client, admin, settings, worlds):  # noqa: F811

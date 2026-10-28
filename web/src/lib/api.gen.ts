@@ -528,6 +528,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/adventures/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Catalog
+         * @description The latest published version of every author's world, newest first. Public summary only.
+         */
+        get: operations["catalog_api_adventures_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/adventures/{version_id}/games": {
         parameters: {
             query?: never;
@@ -2618,46 +2638,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/worlds": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Worlds
-         * @description Список всех доступных миров и правил.
-         */
-        get: operations["list_worlds_api_worlds_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/worlds/{world_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get World
-         * @description Подробная информация о мире: лор, фракции, локации, классы, происхождения, шкалы, бестиарий.
-         */
-        get: operations["get_world_api_worlds__world_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3250,6 +3230,28 @@ export interface components {
             /** Status */
             status: string;
         };
+        /**
+         * CatalogEntryOut
+         * @description A published world in the shared catalog: the public summary only, never the bundle.
+         */
+        CatalogEntryOut: {
+            /** Author Name */
+            author_name: string;
+            /** Project Id */
+            project_id: string;
+            /** Public Summary */
+            public_summary: {
+                [key: string]: unknown;
+            };
+            /** Published At */
+            published_at: string;
+            /** Title */
+            title: string;
+            /** Version */
+            version: number;
+            /** Version Id */
+            version_id: string;
+        };
         /** CharacterBonds */
         CharacterBonds: {
             /** Bonds */
@@ -3379,62 +3381,6 @@ export interface components {
             /** Whisper */
             whisper: boolean;
         };
-        /** ClassItem */
-        ClassItem: {
-            /** Badge */
-            badge?: string | null;
-            /** Description */
-            description: string;
-            /** Epithet */
-            epithet?: string | null;
-            /** Highlights */
-            highlights?: string[];
-            /** Hit Die */
-            hit_die?: string | null;
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Spell Source */
-            spell_source?: string | null;
-            /** Subclasses */
-            subclasses?: {
-                [key: string]: string;
-            }[];
-            /** Summary */
-            summary?: string | null;
-            /** World Role */
-            world_role?: string | null;
-        };
-        /** ClockItem */
-        ClockItem: {
-            /** Description */
-            description: string;
-            /** Id */
-            id: string;
-            /**
-             * Max
-             * @default 6
-             */
-            max?: number;
-            /**
-             * Min
-             * @default 0
-             */
-            min?: number;
-            /** Moves Down */
-            moves_down?: string[];
-            /** Moves Up */
-            moves_up?: string[];
-            /** Name */
-            name: string;
-            /** Scope */
-            scope?: string | null;
-            /** Thresholds */
-            thresholds?: {
-                [key: string]: unknown;
-            }[];
-        };
         /** CompanionPublic */
         CompanionPublic: {
             /** Dead */
@@ -3499,21 +3445,6 @@ export interface components {
              * @default 1
              */
             start_level?: number;
-        };
-        /** CreatureItem */
-        CreatureItem: {
-            /** Cr */
-            cr?: string | number | null;
-            /** Description */
-            description?: string | null;
-            /** Id */
-            id: string;
-            /** Kind */
-            kind?: string | null;
-            /** Name */
-            name: string;
-            /** Tags */
-            tags?: string[];
         };
         /** DraftPatch */
         DraftPatch: {
@@ -4213,27 +4144,6 @@ export interface components {
              */
             type: "vote.updated";
         };
-        /** FactionItem */
-        FactionItem: {
-            /** Description */
-            description: string;
-            /** Goal */
-            goal?: string | null;
-            /** Id */
-            id: string;
-            /** Leader Ref */
-            leader_ref?: string | null;
-            /** Name */
-            name: string;
-            /** Relations */
-            relations?: {
-                [key: string]: unknown;
-            }[];
-            /** Resources */
-            resources?: string[];
-            /** Seat Ref */
-            seat_ref?: string | null;
-        };
         /** GameItemAction */
         GameItemAction: {
             /** Item Id */
@@ -4653,37 +4563,9 @@ export interface components {
         };
         /** LaunchRequest */
         LaunchRequest: {
-            options: components["schemas"]["InstanceOptions"];
+            options?: components["schemas"]["InstanceOptions"] | null;
             /** Request Key */
             request_key: string;
-        };
-        /** LocationDistrict */
-        LocationDistrict: {
-            /** Name */
-            name: string;
-            /** Text */
-            text?: string | null;
-        };
-        /** LocationItem */
-        LocationItem: {
-            /** Belt */
-            belt?: string | null;
-            /** Description */
-            description: string;
-            /** Districts */
-            districts?: components["schemas"]["LocationDistrict"][];
-            /** Id */
-            id: string;
-            /** Location Type */
-            location_type?: string | null;
-            /** Name */
-            name: string;
-            /** Population */
-            population?: number | null;
-            /** Ruler */
-            ruler?: string | null;
-            /** Tags */
-            tags?: string[];
         };
         /** LocationPresentation */
         LocationPresentation: {
@@ -4715,28 +4597,6 @@ export interface components {
             name: string;
             /** Password */
             password: string;
-        };
-        /** LoreFactItem */
-        LoreFactItem: {
-            /** Doc */
-            doc?: string | null;
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Tags */
-            tags?: string[];
-            /** Text */
-            text: string;
-        };
-        /** LoreTopicGroup */
-        LoreTopicGroup: {
-            /** Facts */
-            facts: components["schemas"]["LoreFactItem"][];
-            /** Title */
-            title: string;
-            /** Topic */
-            topic: string;
         };
         /** MapArea */
         MapArea: {
@@ -5830,41 +5690,6 @@ export interface components {
             /** Location Id */
             location_id: string;
         };
-        /** OriginItem */
-        OriginItem: {
-            /** Ability Bonuses */
-            ability_bonuses?: {
-                [key: string]: unknown;
-            }[];
-            /** Badge */
-            badge?: string | null;
-            /** Description */
-            description: string;
-            /** Epithet */
-            epithet?: string | null;
-            /** Features */
-            features?: {
-                [key: string]: unknown;
-            }[];
-            /** Formatted Bonuses */
-            formatted_bonuses?: string | null;
-            /** Highlights */
-            highlights?: string[];
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Size */
-            size?: string | null;
-            /** Size Display */
-            size_display?: string | null;
-            /** Speed */
-            speed?: number | null;
-            /** Speed Display */
-            speed_display?: string | null;
-            /** Summary */
-            summary?: string | null;
-        };
         /** OverviewArea */
         OverviewArea: {
             /** Area Ref */
@@ -6393,23 +6218,6 @@ export interface components {
         RevisionIn: {
             /** Expected Revision */
             expected_revision: number;
-        };
-        /** ScaleItem */
-        ScaleItem: {
-            /** Description */
-            description: string;
-            /** Id */
-            id: string;
-            /** Max */
-            max?: number | null;
-            /** Min */
-            min?: number | null;
-            /** Name */
-            name: string;
-            /** Tags */
-            tags?: string[];
-            /** Widget Type */
-            widget_type?: string | null;
         };
         /** Scene */
         Scene: {
@@ -7353,61 +7161,6 @@ export interface components {
             /** Who */
             who: string;
         };
-        /** WorldDetail */
-        WorldDetail: {
-            /** Badges */
-            badges?: string[];
-            /** Bestiary */
-            bestiary?: components["schemas"]["CreatureItem"][];
-            /** Category */
-            category: string;
-            /** Classes */
-            classes?: components["schemas"]["ClassItem"][];
-            /** Clocks */
-            clocks?: components["schemas"]["ClockItem"][];
-            /** Counts */
-            counts?: {
-                [key: string]: number;
-            };
-            /** Description */
-            description: string;
-            /** Factions */
-            factions?: components["schemas"]["FactionItem"][];
-            /** Id */
-            id: string;
-            /**
-             * Is Base
-             * @default false
-             */
-            is_base?: boolean;
-            /**
-             * Level Cap
-             * @default 20
-             */
-            level_cap?: number;
-            /** License */
-            license?: string | null;
-            /** Locations */
-            locations?: components["schemas"]["LocationItem"][];
-            /** Lore Topics */
-            lore_topics?: components["schemas"]["LoreTopicGroup"][];
-            /** Name */
-            name: string;
-            /** Origins */
-            origins?: components["schemas"]["OriginItem"][];
-            /** Ruleset */
-            ruleset: string;
-            /** Ruleset Base */
-            ruleset_base?: string | null;
-            /** Scales */
-            scales?: components["schemas"]["ScaleItem"][];
-            /** Status Badge */
-            status_badge: string;
-            /** Summary */
-            summary: string;
-            /** Version */
-            version: string;
-        };
         /** WorldOverview */
         WorldOverview: {
             /** Locations */
@@ -7418,45 +7171,6 @@ export interface components {
             };
             /** Routes */
             routes?: components["schemas"]["OverviewRoute"][];
-        };
-        /** WorldSummary */
-        WorldSummary: {
-            /** Badges */
-            badges?: string[];
-            /** Category */
-            category: string;
-            /** Counts */
-            counts?: {
-                [key: string]: number;
-            };
-            /** Description */
-            description: string;
-            /** Id */
-            id: string;
-            /**
-             * Is Base
-             * @default false
-             */
-            is_base?: boolean;
-            /**
-             * Level Cap
-             * @default 20
-             */
-            level_cap?: number;
-            /** License */
-            license?: string | null;
-            /** Name */
-            name: string;
-            /** Ruleset */
-            ruleset: string;
-            /** Ruleset Base */
-            ruleset_base?: string | null;
-            /** Status Badge */
-            status_badge: string;
-            /** Summary */
-            summary: string;
-            /** Version */
-            version: string;
         };
     };
     responses: never;
@@ -7492,6 +7206,7 @@ export type CampaignStatusChanged = components['schemas']['CampaignStatusChanged
 export type CanonEntryOut = components['schemas']['CanonEntryOut'];
 export type CanonJournalOut = components['schemas']['CanonJournalOut'];
 export type CardHero = components['schemas']['CardHero'];
+export type CatalogEntryOut = components['schemas']['CatalogEntryOut'];
 export type CharacterBonds = components['schemas']['CharacterBonds'];
 export type CharacterReviewFailed = components['schemas']['CharacterReviewFailed'];
 export type CharacterReviewStarted = components['schemas']['CharacterReviewStarted'];
@@ -7501,13 +7216,10 @@ export type CharacterUpdated = components['schemas']['CharacterUpdated'];
 export type CharacterView = components['schemas']['CharacterView'];
 export type ChatEditIn = components['schemas']['ChatEditIn'];
 export type ChatMessage = components['schemas']['ChatMessage'];
-export type ClassItem = components['schemas']['ClassItem'];
-export type ClockItem = components['schemas']['ClockItem'];
 export type CompanionPublic = components['schemas']['CompanionPublic'];
 export type CreationDialogue = components['schemas']['CreationDialogue'];
 export type CreationIn = components['schemas']['CreationIn'];
 export type CreationRulesIn = components['schemas']['CreationRulesIn'];
-export type CreatureItem = components['schemas']['CreatureItem'];
 export type DraftPatch = components['schemas']['DraftPatch'];
 export type EditIn = components['schemas']['EditIn'];
 export type EditMap = components['schemas']['EditMap'];
@@ -7565,7 +7277,6 @@ export type Event_turn_changed = components['schemas']['Event_turn_changed'];
 export type Event_vote_ended = components['schemas']['Event_vote_ended'];
 export type Event_vote_started = components['schemas']['Event_vote_started'];
 export type Event_vote_updated = components['schemas']['Event_vote_updated'];
-export type FactionItem = components['schemas']['FactionItem'];
 export type GameItemAction = components['schemas']['GameItemAction'];
 export type GeneratedObject = components['schemas']['GeneratedObject'];
 export type GenerationStatusOut = components['schemas']['GenerationStatusOut'];
@@ -7592,12 +7303,8 @@ export type JobOut = components['schemas']['JobOut'];
 export type KnowledgeRevealed = components['schemas']['KnowledgeRevealed'];
 export type LaunchReceipt = components['schemas']['LaunchReceipt'];
 export type LaunchRequest = components['schemas']['LaunchRequest'];
-export type LocationDistrict = components['schemas']['LocationDistrict'];
-export type LocationItem = components['schemas']['LocationItem'];
 export type LocationPresentation = components['schemas']['LocationPresentation'];
 export type LoginIn = components['schemas']['LoginIn'];
-export type LoreFactItem = components['schemas']['LoreFactItem'];
-export type LoreTopicGroup = components['schemas']['LoreTopicGroup'];
 export type MapArea = components['schemas']['MapArea'];
 export type MapBook = components['schemas']['MapBook'];
 export type MapBookGrid = components['schemas']['MapBookGrid'];
@@ -7658,7 +7365,6 @@ export type Option = components['schemas']['Option'];
 export type OrderEntry = components['schemas']['OrderEntry'];
 export type OrientationMapIn = components['schemas']['OrientationMapIn'];
 export type OrientationMapOut = components['schemas']['OrientationMapOut'];
-export type OriginItem = components['schemas']['OriginItem'];
 export type OverviewArea = components['schemas']['OverviewArea'];
 export type OverviewLocation = components['schemas']['OverviewLocation'];
 export type OverviewPassage = components['schemas']['OverviewPassage'];
@@ -7695,7 +7401,6 @@ export type RemoveObject = components['schemas']['RemoveObject'];
 export type RequestKey = components['schemas']['RequestKey'];
 export type ResultRef = components['schemas']['ResultRef'];
 export type RevisionIn = components['schemas']['RevisionIn'];
-export type ScaleItem = components['schemas']['ScaleItem'];
 export type Scene = components['schemas']['Scene'];
 export type SceneContext = components['schemas']['SceneContext'];
 export type SceneEntity = components['schemas']['SceneEntity'];
@@ -7749,9 +7454,7 @@ export type ValidationSummary = components['schemas']['ValidationSummary'];
 export type VersionOut = components['schemas']['VersionOut'];
 export type Vote = components['schemas']['Vote'];
 export type VoteEnded = components['schemas']['VoteEnded'];
-export type WorldDetail = components['schemas']['WorldDetail'];
 export type WorldOverview = components['schemas']['WorldOverview'];
-export type WorldSummary = components['schemas']['WorldSummary'];
 export type $defs = Record<string, never>;
 export interface operations {
     admin_audio_api_admin_audio_get: {
@@ -8820,6 +8523,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VersionOut"][];
+                };
+            };
+        };
+    };
+    catalog_api_adventures_catalog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogEntryOut"][];
                 };
             };
         };
@@ -13297,57 +13020,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
-                };
-            };
-        };
-    };
-    list_worlds_api_worlds_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WorldSummary"][];
-                };
-            };
-        };
-    };
-    get_world_api_worlds__world_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                world_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WorldDetail"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

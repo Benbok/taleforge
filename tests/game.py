@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
+import pytest
+
 from app.content.catalog import clear_cache
 from app.content.importer import import_pack
 from app.content.yaml_io import load_file
@@ -148,3 +150,13 @@ def quiet(client) -> None:
             await asyncio.sleep(0.05)
 
     client.portal.call(wait)
+
+
+ECHO = Path(__file__).resolve().parents[1] / "content" / "echo-leviathans"
+
+
+@pytest.fixture
+def worlds(settings):
+    """Base pack plus the Echo pack imported into the test database."""
+    import_base(settings)
+    run(settings, lambda s: import_pack(s, ECHO))
