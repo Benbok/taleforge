@@ -10,11 +10,14 @@ const entries = [
   { version_id: 'av2', project_id: 'p2', title: 'Туманный остров', author_name: 'root', version: 1, published_at: '2026-10-26T10:00:00Z', public_summary: { title: 'Туманный остров', intro: '' } },
 ];
 let release: (() => void) | null = null;
+let failFor: string | null = null;
 vi.mock('../lib/api', () => ({
+  ApiError: class ApiError extends Error {},
   api: async (path: string, init?: { body?: unknown }) => {
     calls.push({ path, body: init?.body });
     if (path === '/api/adventures/catalog') return entries;
     if (path.endsWith('/games')) {
+      if (failFor && path.includes(failFor)) throw new Error('не удалось запустить мир');
       await new Promise<void>((resolve) => { release = resolve; });
       return { campaign_id: 'c1', adventure_version_id: 'av1', url: '/c/c1' };
     }
@@ -23,7 +26,7 @@ vi.mock('../lib/api', () => ({
 }));
 
 let client: QueryClient;
-beforeEach(() => { calls.length = 0; release = null; });
+beforeEach(() => { calls.length = 0; release = null; failFor = null; });
 afterEach(() => { cleanup(); client?.clear(); });
 
 function show(isAdmin: boolean) {
@@ -60,6 +63,17 @@ it('запуск без опций открывает кабинет сесси�
   const launches = calls.filter((c) => c.path === '/api/adventures/av1/games');
   expect(launches).toHaveLength(1);
   expect(Object.keys(launches[0].body as object)).toEqual(['request_key']);
+});
+
+it('ошибка прошлого запуска исчезает, когда запускают другой мир', async () => {
+  failFor = 'av1';
+  show(true);
+  await screen.findByText('Стеклянные острова');
+  const [first, second] = screen.getAllByRole('button', { name: 'Запустить' });
+  fireEvent.click(first);
+  expect(await screen.findByRole('alert')).toBeDefined();
+  fireEvent.click(second);
+  await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
 });
 
 it('пустой каталог объясняет, что миров ещё нет', async () => {

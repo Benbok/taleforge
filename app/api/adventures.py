@@ -11,7 +11,7 @@ from app.api.deps import SessionDep, UserDep
 from app.core.authoring.contracts import CatalogEntryOut, InstanceOptions, LaunchReceipt, LaunchRequest, VersionOut
 from app.core.authoring.instances import instantiate_adventure
 from app.core.campaigns import AccessDenied, Conflict, NotFound, is_admin
-from app.db.models import AdventureVersion, AuthorProject, User
+from app.db.models import AdventureVersion, AuthorProject, Campaign, User
 
 router = APIRouter(prefix="/api/adventures", tags=["adventures"])
 
@@ -76,6 +76,19 @@ async def launch(
     if row is None or not is_admin(user):
         raise NotFound("приключение не найдено")  # no hint whether the version exists
     version, author_id, title = row
+    if author_id != user.id:
+        newest = await session.scalar(
+            select(func.max(AdventureVersion.version)).where(AdventureVersion.project_id == version.project_id)
+        )
+        if version.version != newest:  # the catalog offers only the latest version of a foreign world
+            raise NotFound("приключение не найдено")
+    if body.options is None:
+        # a retry with the same key must find its game even if the author renamed the world meanwhile
+        same = await session.scalar(
+            select(Campaign).where(Campaign.owner_id == user.id, Campaign.launch_request_key == body.request_key)
+        )
+        if same is not None and same.adventure_version_id == version.id:
+            return LaunchReceipt(campaign_id=same.id, adventure_version_id=version.id, url=f"/c/{same.id}")
     options = body.options or InstanceOptions(name=title)
     if author_id != user.id and options.master.type == "owner":
         # the human master reads the whole world; only the author may do that with their own secrets

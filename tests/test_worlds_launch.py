@@ -65,3 +65,43 @@ def test_cabinet_edits_what_launch_no_longer_asks(client, admin, published):
     assert row.settings["leveling"] == "milestone"
     assert row.settings["excluded_themes"] == ["cruelty"]
     assert row.settings["tts_enabled"] is False
+
+
+def _db(client, fn):
+    import asyncio
+
+    async def go():
+        async with client.app.state.sessionmaker() as session:
+            out = await fn(session)
+            await session.commit()
+            return out
+
+    return asyncio.run(go())
+
+
+def test_other_admin_cannot_launch_a_superseded_version(client, admin, published):
+    from app.db.models import AdventureVersion, new_id
+
+    async def add_newer(session):
+        old = await session.get(AdventureVersion, published)
+        cols = {c.name: getattr(old, c.name) for c in AdventureVersion.__table__.columns}
+        cols.update(id=new_id("av"), version=old.version + 1, publish_request_key="accept2")
+        session.add(AdventureVersion(**cols))
+
+    _db(client, add_newer)
+    assert launch(client, admin, published).status_code == 404
+
+
+def test_retry_after_the_author_renames_the_world_returns_the_same_game(client, admin, published):
+    from app.db.models import AdventureVersion, AuthorProject
+
+    first = launch(client, admin, published, key="retry").json()["campaign_id"]
+
+    async def rename(session):
+        v = await session.get(AdventureVersion, published)
+        (await session.get(AuthorProject, v.project_id)).title = "Renamed world"
+
+    _db(client, rename)
+    again = launch(client, admin, published, key="retry")
+    assert again.status_code == 201, again.text
+    assert again.json()["campaign_id"] == first
