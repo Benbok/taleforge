@@ -301,26 +301,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/packs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Upload Pack
-         * @description Пакет сеттинга zip-архивом в теле запроса. dry_run — только проверка, без записи в БД.
-         */
-        post: operations["upload_pack_api_admin_packs_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/admin/providers": {
         parameters: {
             query?: never;
@@ -2496,26 +2476,6 @@ export interface paths {
          * @description Картинка карты. Тайн на ней нет — номера комнат и планировка, поэтому её видит любой вошедший.
          */
         get: operations["map_image_api_modules__module_id__maps__map_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/packs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Packs
-         * @description Пакеты для мастера создания кампании. Импорт — командой `python -m app.content import`.
-         */
-        get: operations["list_packs_api_packs_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5772,33 +5732,6 @@ export interface components {
             /** To Ref */
             to_ref: string;
         };
-        /** PackOut */
-        PackOut: {
-            /** Counts */
-            counts: {
-                [key: string]: unknown;
-            };
-            /** Id */
-            id: string;
-            /**
-             * Imported At
-             * Format: date-time
-             */
-            imported_at: string;
-            /**
-             * Is Base
-             * @default false
-             */
-            is_base: boolean;
-            /** Name */
-            name: string;
-            /** Party Size */
-            party_size: {
-                [key: string]: unknown;
-            };
-            /** Version */
-            version: string;
-        };
         /** PartyMember */
         PartyMember: {
             /** Hero Name */
@@ -7369,7 +7302,6 @@ export type OverviewArea = components['schemas']['OverviewArea'];
 export type OverviewLocation = components['schemas']['OverviewLocation'];
 export type OverviewPassage = components['schemas']['OverviewPassage'];
 export type OverviewRoute = components['schemas']['OverviewRoute'];
-export type PackOut = components['schemas']['PackOut'];
 export type PartyMember = components['schemas']['PartyMember'];
 export type PartyPart = components['schemas']['PartyPart'];
 export type PassageMark = components['schemas']['PassageMark'];
@@ -8113,39 +8045,6 @@ export interface operations {
             path: {
                 module_id: string;
             };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    upload_pack_api_admin_packs_post: {
-        parameters: {
-            query?: {
-                dry_run?: boolean;
-            };
-            header?: never;
-            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -12839,26 +12738,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_packs_api_packs_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PackOut"][];
                 };
             };
         };

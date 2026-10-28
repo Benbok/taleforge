@@ -23,41 +23,6 @@ def _zip(root: Path, prefix: str = "") -> bytes:
     return buf.getvalue()
 
 
-def test_pack_upload_checks_then_imports(client, admin):
-    data = _zip(CONTENT / "dnd5e-srd", "dnd5e-srd/")
-    dry = ok(client.post("/api/admin/packs?dry_run=true", content=data, headers={**admin, **ZIP}))
-    assert dry["ok"] and dry["pack_id"] == "dnd5e-srd" and dry["imported"] == [] and not dry["errors"]
-    assert ok(client.get("/api/packs", headers=admin)) == []
-    done = ok(client.post("/api/admin/packs", content=data, headers={**admin, **ZIP}))
-    assert done["imported"][0]["state"] == "imported"
-    listed = ok(client.get("/api/packs", headers=admin))
-    assert [p["id"] for p in listed] == ["dnd5e-srd"]
-    # база правил — не мир: мастер кампании показывает её как «без пакета», а не отдельным пунктом
-    assert listed[0]["is_base"] is True
-    again = ok(client.post("/api/admin/packs", content=data, headers={**admin, **ZIP}))
-    assert again["imported"][0]["state"] == "unchanged"
-
-
-def test_pack_upload_rejects_bad_archives(client, admin, root):
-    r = client.post("/api/admin/packs", content=b"not a zip", headers={**admin, **ZIP})
-    assert r.status_code == 400 and r.json()["detail"] == "это не zip-архив"
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w") as z:
-        z.writestr("../evil.yaml", "x: 1")
-    r = client.post("/api/admin/packs", content=buf.getvalue(), headers={**admin, **ZIP})
-    assert r.status_code == 400 and "недопустимый путь" in r.json()["detail"]
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w") as z:
-        z.writestr("readme.txt", "hi")
-    r = client.post("/api/admin/packs", content=buf.getvalue(), headers={**admin, **ZIP})
-    assert r.status_code == 400 and "нет pack.yaml" in r.json()["detail"]
-    # игрок пакеты не грузит
-    body = {"name": "Pl", "password": "secret1", "platform_role": "player"}
-    ok(client.post("/api/admin/users", json=body, headers=root), 201)
-    pl = login(client, "Pl", "secret1")
-    assert client.post("/api/admin/packs", content=b"x", headers={**pl, **ZIP}).status_code == 403
-
-
 def test_spend_by_scope(client, admin, root, settings):
     mine = make_campaign(client, admin, spend_limit_usd=1.0)
     ok(client.post("/api/admin/users", json={"name": "Other", "password": "secret1"}, headers=root), 201)

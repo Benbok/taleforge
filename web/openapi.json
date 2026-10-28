@@ -9445,53 +9445,6 @@
     "title": "OverviewRoute",
     "type": "object"
    },
-   "PackOut": {
-    "properties": {
-     "counts": {
-      "additionalProperties": true,
-      "title": "Counts",
-      "type": "object"
-     },
-     "id": {
-      "title": "Id",
-      "type": "string"
-     },
-     "imported_at": {
-      "format": "date-time",
-      "title": "Imported At",
-      "type": "string"
-     },
-     "is_base": {
-      "default": false,
-      "title": "Is Base",
-      "type": "boolean"
-     },
-     "name": {
-      "title": "Name",
-      "type": "string"
-     },
-     "party_size": {
-      "additionalProperties": true,
-      "title": "Party Size",
-      "type": "object"
-     },
-     "version": {
-      "title": "Version",
-      "type": "string"
-     }
-    },
-    "required": [
-     "id",
-     "version",
-     "name",
-     "party_size",
-     "counts",
-     "imported_at",
-     "is_base"
-    ],
-    "title": "PackOut",
-    "type": "object"
-   },
    "PartyMember": {
     "properties": {
      "hero_name": {
@@ -14283,57 +14236,6 @@
     "summary": "Publish",
     "tags": [
      "modules"
-    ]
-   }
-  },
-  "/api/admin/packs": {
-   "post": {
-    "description": "Пакет сеттинга zip-архивом в теле запроса. dry_run — только проверка, без записи в БД.",
-    "operationId": "upload_pack_api_admin_packs_post",
-    "parameters": [
-     {
-      "in": "query",
-      "name": "dry_run",
-      "required": false,
-      "schema": {
-       "default": false,
-       "title": "Dry Run",
-       "type": "boolean"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Upload Pack Api Admin Packs Post",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "summary": "Upload Pack",
-    "tags": [
-     "admin"
     ]
    }
   },
@@ -21943,37 +21845,6 @@
     "summary": "Map Image",
     "tags": [
      "modules"
-    ]
-   }
-  },
-  "/api/packs": {
-   "get": {
-    "description": "Пакеты для мастера создания кампании. Импорт — командой `python -m app.content import`.",
-    "operationId": "list_packs_api_packs_get",
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "items": {
-          "$ref": "#/components/schemas/PackOut"
-         },
-         "title": "Response List Packs Api Packs Get",
-         "type": "array"
-        }
-       }
-      },
-      "description": "Successful Response"
-     }
-    },
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "summary": "List Packs",
-    "tags": [
-     "admin"
     ]
    }
   },

@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter
 from sqlalchemy import select
 
 from app.api.auth import user_out
 from app.api.deps import SessionDep, UserDep
-from app.api.schemas import PackOut, UserCreateIn, UserOut
-from app.content.catalog import BASE_PACK_ID, BASE_RULES
-from app.content.upload import UploadError, upload
+from app.api.schemas import UserCreateIn, UserOut
 from app.core import spend
-from app.core.campaigns import DEFAULT_PARTY, AccessDenied, Conflict, is_admin
+from app.core.campaigns import AccessDenied, Conflict, is_admin
 from app.core.security import hash_password
-from app.db.models import ContentPack, User
+from app.db.models import User
 
 router = APIRouter(prefix="/api", tags=["admin"])
 
@@ -34,39 +32,6 @@ async def list_users(user: UserDep, session: SessionDep) -> list[UserOut]:
     if user.platform_role != "super_admin":
         raise AccessDenied("только Super Admin")
     return [user_out(u) for u in (await session.scalars(select(User).order_by(User.created_at))).all()]
-
-
-@router.get("/packs")
-async def list_packs(user: UserDep, session: SessionDep) -> list[PackOut]:
-    """Пакеты для мастера создания кампании. Импорт — командой `python -m app.content import`."""
-    if not is_admin(user):
-        raise AccessDenied("только Admin")
-    rows = (await session.scalars(select(ContentPack).order_by(ContentPack.id, ContentPack.imported_at))).all()
-    # готовые приключения тоже пакеты, но выбираются в своём разделе, а не как мир
-    rows = [p for p in rows if (p.manifest or {}).get("kind") != "module"]
-    return [
-        PackOut(
-            id=p.id,
-            version=p.version,
-            name=p.name,
-            party_size={**DEFAULT_PARTY, **(p.manifest.get("party_size") or {})},
-            counts=(p.import_report or {}).get("counts", {}),
-            imported_at=p.imported_at,
-            is_base=p.id == BASE_PACK_ID or (p.manifest or {}).get("provides") == BASE_RULES,
-        )
-        for p in rows
-    ]
-
-
-@router.post("/admin/packs")
-async def upload_pack(request: Request, user: UserDep, session: SessionDep, dry_run: bool = False) -> dict:
-    """Пакет сеттинга zip-архивом в теле запроса. dry_run — только проверка, без записи в БД."""
-    if not is_admin(user):
-        raise AccessDenied("только Admin")
-    try:
-        return await upload(session, await request.body(), dry_run=dry_run)
-    except UploadError as e:
-        raise HTTPException(400, str(e)) from e
 
 
 @router.get("/admin/spend")

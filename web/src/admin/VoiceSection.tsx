@@ -18,7 +18,7 @@ interface VoiceStatus {
   last_check: VoiceCheck;
 }
 
-/** Голосовые реплики: сервер расшифровки на машине с игрой. Адрес и модель — в окружении сервера. */
+/** Голосовой ввод: сервер расшифровки на машине с игрой. Адрес и модель — в окружении сервера. */
 export default function VoiceSection() {
   const qc = useQueryClient();
   const status = useQuery({ queryKey: ["admin-voice"], queryFn: () => api<VoiceStatus>("/api/admin/voice") });
@@ -26,9 +26,9 @@ export default function VoiceSection() {
   const c = s?.last_check;
 
   return (
-    <section className="card flex flex-col gap-4 border border-line bg-surface p-5 sm:p-6" aria-label="Голосовые реплики">
+    <section className="card flex flex-col gap-4 border border-line bg-surface p-5 sm:p-6" aria-label="Голосовой ввод">
       <div>
-        <h2 className="font-heading text-xl font-bold tracking-wide text-ink sm:text-2xl">Голосовые реплики</h2>
+        <h2 className="font-heading text-xl font-bold tracking-wide text-ink sm:text-2xl">Голосовой ввод</h2>
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
           Игроки записывают голосовое прямо в чат. Запись хранится на сервере, текст из неё делает локальная модель
           Whisper на этой же машине — звук в облако не уходит. Мастер работает с расшифровкой, игроки слышат голос.

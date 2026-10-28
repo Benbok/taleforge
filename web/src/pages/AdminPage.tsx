@@ -1,6 +1,5 @@
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import AudioSection from "../admin/AudioSection";
-import PacksSection from "../admin/PacksSection";
 import SpendSection from "../admin/SpendSection";
 import VoiceSection from "../admin/VoiceSection";
 import Header from "../components/Header";
@@ -8,7 +7,7 @@ import ModelsSection from "../profile/ModelsSection";
 import UsersSection from "../profile/UsersSection";
 import { useSession } from "../stores/session";
 
-type Tab = "packs" | "models" | "voice" | "audio" | "spend" | "users";
+type Tab = "models" | "voice" | "audio" | "spend" | "users";
 
 interface TabItem {
   id: Tab;
@@ -17,7 +16,7 @@ interface TabItem {
   icon: (active: boolean) => React.ReactNode;
 }
 
-/** Админка: пакеты сеттинга, модели ИИ, расходы; пользователи и роли — у Super Admin. */
+/** Админка: модели ИИ, расходы; пользователи и роли — у Super Admin. */
 export default function AdminPage() {
   const user = useSession((s) => s.user)!;
   const [params, setParams] = useSearchParams();
@@ -27,27 +26,6 @@ export default function AdminPage() {
   }
 
   const allTabs: TabItem[] = [
-    {
-      id: "packs",
-      label: "Пакеты сеттинга",
-      icon: (active) => (
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke={active ? "var(--tf-accent)" : "currentColor"}
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-          <path d="m3.3 7 8.7 5 8.7-5" />
-          <path d="M12 22V12" />
-        </svg>
-      ),
-    },
     {
       id: "models",
       label: "Модели ИИ",
@@ -72,7 +50,7 @@ export default function AdminPage() {
     },
     {
       id: "voice",
-      label: "Голос",
+      label: "Голосовой ввод",
       icon: (active) => (
         <svg
           width="16"
@@ -162,7 +140,7 @@ export default function AdminPage() {
   ];
 
   const asked = params.get("tab") as Tab | null;
-  const tab: Tab = allTabs.some((t) => t.id === asked) ? asked! : "packs";
+  const tab: Tab = allTabs.some((t) => t.id === asked) ? asked! : "models";
 
   return (
     <>
@@ -259,7 +237,6 @@ export default function AdminPage() {
 
             {/* Tab Contents */}
             <div key={tab} className="tf-tab-content flex flex-col gap-6">
-              {tab === "packs" && <PacksSection />}
               {tab === "models" && <ModelsSection superAdmin={superAdmin} />}
               {tab === "voice" && <VoiceSection />}
               {tab === "audio" && <AudioSection />}
