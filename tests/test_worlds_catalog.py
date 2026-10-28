@@ -1,6 +1,5 @@
 import asyncio
 
-
 from app.db.models import AdventureVersion
 from tests.test_author_secret_access import publish
 from tests.test_universal_studio import BASE, create
