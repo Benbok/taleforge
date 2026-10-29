@@ -91,6 +91,7 @@ class MasterService(WhisperMixin, TurnMixin, FinishMixin, NarrationMixin, Recall
         self._seen: dict[str, tuple[frozenset, str]] = {}  # павшие герои и режим сцены: для сильных событий
         self._audience: dict[str, list[str]] = {}  # кто видит идущий ход, если отряд разделён
         self._stages: dict[str, tuple[str, list[str] | None]] = {}
+        self.investments: dict[tuple[str, str], asyncio.Future] = {}  # открытые предложения вложить энергию
 
     def current_stage(self, campaign_id: str, seat_id: str | None) -> str | None:
         current = self._stages.get(campaign_id)
