@@ -186,7 +186,7 @@ export interface UniversalRollEvidence {
     target_id: string; target_name?: string; effect_id?: string; attribute: string;
     natural: number; modifier: string; total: string; difficulty: string | null;
     success: boolean; kind: 'check' | 'attack' | 'resistance'; mode: string;
-    critical?: boolean; critical_failure?: boolean;
+    critical?: boolean; critical_failure?: boolean; invested?: number;
   }[];
   legacy?: boolean;
   legacy_draws?: number[];

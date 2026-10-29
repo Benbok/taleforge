@@ -25,8 +25,9 @@ export default function UniversalRollProof({ card, proof }: { card: RollCard; pr
         ))}
       </div>
       {proof.checks.map((check, index) => {
-        const modifier = BigInt(check.modifier);
-        const equation = `${check.natural} ${modifier < 0n ? '−' : '+'} ${modifier < 0n ? -modifier : modifier} = ${check.total}`;
+        const invested = check.invested ?? 0;
+        const modifier = BigInt(check.modifier) - BigInt(invested); // the stored modifier already holds the bought points
+        const equation = `${check.natural} ${modifier < 0n ? '−' : '+'} ${modifier < 0n ? -modifier : modifier}${invested ? ` + ${invested}` : ''} = ${check.total}`;
         return (
           <div key={index} className='mt-3 rounded-lg border border-line bg-bg/50 px-3 py-2 text-sm'>
             <div className='flex flex-wrap items-center justify-between gap-2'>
@@ -39,6 +40,7 @@ export default function UniversalRollProof({ card, proof }: { card: RollCard; pr
               {proof.checks.length > 1 && check.target_name ? ` · ${check.target_name}` : ''}
               {check.difficulty != null ? ` · Сложность ${check.difficulty}` : ''}
               {check.mode === 'advantage' ? ' · преимущество' : check.mode === 'disadvantage' ? ' · помеха' : ''}
+              {invested ? ` · Вложено: +${invested}` : ''}
             </p>
             {(check.critical || check.critical_failure) && <p className='mt-1 text-xs text-muted'>
               Натуральная {check.critical ? '20' : '1'} — {check.critical ? 'критический успех' : 'критический провал'} независимо от суммы и сложности.

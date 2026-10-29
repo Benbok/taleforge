@@ -47,6 +47,14 @@ describe("хранилище игры", () => {
     expect(many[0].seq).toBe(5);
   });
 
+  it("повторная публикация карточки с тем же seq заменяет её, а не дублирует", () => {
+    const g = useGame.getState;
+    g().apply(env("message.new", { ...msg(4), kind: "investment", data: { status: "offered" } }, 4));
+    g().apply(env("message.new", { ...msg(4), kind: "investment", data: { status: "invested" } }, 4));
+    expect(g().messages).toHaveLength(1);
+    expect((g().messages[0].data as unknown as { status: string }).status).toBe("invested");
+  });
+
   it("применяет снимок, досылку, присутствие и статус мастера", () => {
     const g = useGame.getState;
     const seats = [{ id: "s1", role: "player", position: 1, occupant_type: "human", user_name: "Лина", presence: "offline" }];

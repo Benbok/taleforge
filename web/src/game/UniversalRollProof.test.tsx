@@ -69,3 +69,19 @@ it('shows what the hero actually learned from the successful check', () => {
   expect(screen.getByText('Результат действия')).toBeTruthy();
   expect(screen.getByText('Из тоннеля впереди слышны приближающиеся костяные шаги.')).toBeTruthy();
 });
+
+it('shows what was invested and keeps the equation honest', () => {
+  const card = {
+    tool: 'universal_action', title: 'Расспрос', outcome: 'success',
+    universal_proof: {
+      receipt_id: 'inv', source_id: 'm', revision: '2', cost: '9', damage: '0',
+      draws: [{ sides: 20, value: 10 }], checks: [{
+        natural: 10, modifier: '2', total: '12', difficulty: '12', success: true, invested: 3,
+        target_id: 'hero', attribute: 'cha', kind: 'check', mode: 'normal',
+      }],
+    },
+  } as RollCard;
+  render(<RollCardView card={card} />);
+  expect(screen.getByText(/10 − 1 \+ 3 = 12/)).toBeTruthy();
+  expect(screen.getByText(/Вложено: \+3/)).toBeTruthy();
+});

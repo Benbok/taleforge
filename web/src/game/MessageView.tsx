@@ -2,6 +2,7 @@ import type { ChatMessage, HeroPublic, SeatState } from "../lib/types";
 import Avatar from "../components/Avatar";
 import RichText from "./RichText";
 import RollCardView from "./RollCardView";
+import InvestmentOffer from "./InvestmentOffer";
 import VoiceClip from "./VoiceClip";
 import { useState } from "react";
 import { useGame } from "../stores/game";
@@ -104,6 +105,10 @@ function NarrationVoice({ m }: { m: ChatMessage }) {
 /** Каждый тип сообщения выглядит по-своему: повествование, действие, речь, шёпот, вне игры, бросок, система. */
 export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
   if (m.kind === "roll" && m.data) return <RollCardView card={m.data} />;
+  if (m.kind === "investment" && m.data) {
+    const seatId = String((m.data as unknown as { seat_id?: string }).seat_id ?? "");
+    return <InvestmentOffer m={m} mySeat={who.mySeat} heroName={who.heroBySeat[seatId]?.name ?? "Герой"} />;
+  }
   if (m.kind === "narration" && (!m.whisper || m.scope === 'party')) {
     return (
       <div
