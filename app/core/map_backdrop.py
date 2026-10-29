@@ -26,6 +26,8 @@ def source(viewer, location) -> dict:
         "appearance": location.description or "",
         "personality": "",
         "sketch": public_sketch(stored) if stored else None,
+        # Passages of a complex are opened/hidden on the root entity, which the stored sketch does not reflect.
+        "complex": bool(stored and stored.get("blueprint")),
     }
 
 
@@ -34,6 +36,8 @@ def blocker(src) -> str | None:
         return "сначала дождитесь описания локации"
     if not src["sketch"]:
         return "сначала создайте схему"
+    if src["complex"]:
+        return "подложка пока недоступна для комплексных локаций"
     return None
 
 
@@ -45,7 +49,7 @@ RECIPE = ArtworkRecipe(
     source=source,
     permitted=lambda viewer: is_admin(viewer.user),
     blocker=blocker,
-    init_image=lambda src: render_skeleton(src["sketch"]) if src["sketch"] else None,
+    init_image=lambda src: render_skeleton(src["sketch"]) if src["sketch"] and not src["complex"] else None,
     prompt_source=lambda src: {key: src[key] for key in ("identity", "appearance", "personality")},
     url=lambda campaign_id, location_id, image_id: f"/api/campaigns/{campaign_id}/locations/{location_id}/map-backdrop/{image_id}",
     denied="подложку создаёт администратор",

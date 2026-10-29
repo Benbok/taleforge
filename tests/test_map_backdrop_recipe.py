@@ -87,3 +87,10 @@ def test_config_flag_defaults_off(monkeypatch):
     assert Settings.from_env().map_backdrop_enabled is False
     monkeypatch.setenv("MAP_BACKDROP_ENABLED", "1")
     assert Settings.from_env().map_backdrop_enabled is True
+
+
+def test_blueprint_backed_area_is_blocked_because_passage_state_lives_on_the_root():
+    complex_area = area(sketch=sketch(blueprint={"root_id": "root"}))
+    source = backdrop.RECIPE.source(viewer(), complex_area)
+    assert "комплекс" in backdrop.RECIPE.blocker(source)
+    assert backdrop.RECIPE.init_image(source) is None
