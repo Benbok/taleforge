@@ -84,14 +84,24 @@ export default function VoiceClip({
     release(me.current);
   }
 
-  async function audioFor(clip: VoiceData): Promise<HTMLAudioElement> {
-    let a = audios.current.get(clip.id);
-    if (a) return a;
-    const url = await voiceUrl(campaignId!, clip.id);
-    a = new Audio(url);
-    a.ontimeupdate = () => setPos(a!.currentTime);
-    audios.current.set(clip.id, a);
-    return a;
+  // Загрузка записи одна на всех: два запроса подряд (автозапуск и клик) получают один и тот же Audio,
+  // иначе второй вытеснил бы первый из реестра, и «Пауза» не остановила бы звучащий.
+  const loading = useRef(new Map<string, Promise<HTMLAudioElement>>());
+  function audioFor(clip: VoiceData): Promise<HTMLAudioElement> {
+    const ready = audios.current.get(clip.id);
+    if (ready) return Promise.resolve(ready);
+    let load = loading.current.get(clip.id);
+    if (!load) {
+      load = voiceUrl(campaignId!, clip.id).then((url) => {
+        const a = new Audio(url);
+        a.ontimeupdate = () => setPos(a.currentTime);
+        audios.current.set(clip.id, a);
+        loading.current.delete(clip.id);
+        return a;
+      });
+      loading.current.set(clip.id, load);
+    }
+    return load;
   }
 
   /** Играет часть i; конец части запускает следующую или ждёт, пока она озвучится. */
@@ -157,6 +167,7 @@ export default function VoiceClip({
   }, [autoPlay, campaignId, first]);
 
   async function toggle() {
+    if (state === "loading") return; // запись уже грузится и сама начнёт звучать
     if (state === "playing" || state === "waiting") {
       stop();
       return;

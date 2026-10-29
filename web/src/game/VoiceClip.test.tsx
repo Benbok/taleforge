@@ -10,7 +10,11 @@ vi.mock("./voice", () => ({
     return (id: string) => (seen.has(id) ? false : (seen.add(id), true));
   })(),
   clock: (s: number) => String(Math.round(s)),
-  voiceUrl: (_c: string, id: string) => new Promise<string>((ok) => pending.set(id, ok)),
+  voiceUrl: (_c: string, id: string) =>
+    new Promise<string>((ok) => {
+      const before = pending.get(id); // повторный запрос той же записи не вытесняет первый
+      pending.set(id, (url) => (before?.(url), ok(url)));
+    }),
 }));
 vi.mock("./sound", () => ({ sound: { duck: () => {} } }));
 
@@ -69,4 +73,15 @@ it("автозапуски нескольких сообщений идут по
   await act(async () => audios.find((a) => a.src === "url:intro-1")?.onended?.());
   await act(async () => pending.get("story-1")?.("url:story-1"));
   expect(played).toEqual(["url:intro-1", "url:story-1"]);
+});
+
+it("клик по play, пока запись грузится после автозапуска, не создаёт второй параллельный звук", async () => {
+  const { default: VoiceClip } = await import("./VoiceClip");
+  const { screen, fireEvent } = await import("@testing-library/react");
+  render(<VoiceClip clips={[clip("dup-1")]} autoPlay />);
+  // автозапуск уже ждёт запись; игрок нажимает play, не дождавшись
+  fireEvent.click(screen.getByRole("button", { name: /Прослушать голосовое|Озвучка готовится/ }));
+  await act(async () => pending.get("dup-1")?.("url:dup-1"));
+  expect(audios.filter((a) => a.src === "url:dup-1")).toHaveLength(1);
+  expect(played.filter((p) => p === "url:dup-1")).toHaveLength(1);
 });
