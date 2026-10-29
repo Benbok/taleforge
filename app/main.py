@@ -96,6 +96,9 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
         app.state.bus = RedisBus(hub, settings.redis_url) if settings.redis_url else MemoryBus(hub)
         await app.state.bus.start()
         await bootstrap_superadmin(app.state.sessionmaker, settings)
+        from app.core.artwork_recovery import fail_interrupted_artwork
+
+        await fail_interrupted_artwork(app.state.sessionmaker)  # задачи умершего процесса не ждут конца аренды
         from app.sfx.playback import Delivery
         from app.sfx.worker import Worker
 
