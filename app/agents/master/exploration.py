@@ -35,6 +35,8 @@ class PreparedExploration(ClosedModel):
     category: str = "exploration"
     proposal: ExplorationAction | None = None
     public_reason: str = ""
+    # Why the model's idea was not realised: told to the writer only, never printed on the player's roll card.
+    scene_note: str = ""
     failure: ActionFailure | None = None
 
 
@@ -70,23 +72,6 @@ PLAIN_OUTCOMES = CheckNarration(
     critical_success="Попытка удалась блестяще.",
     critical_failure="Попытка провалилась неловко.",
 )
-
-
-def plain_outcomes(reason: str | None = None) -> CheckNarration:
-    """Neutral outcomes; when the model's idea could not be realised, the reason travels with them so the writer
-    plays the scene around what is missing (no such item, no such target) instead of reporting a bare success."""
-    if not reason:
-        return PLAIN_OUTCOMES
-    note = (
-        f" Замысел заявки воплотить не удалось: {reason.strip()[:300]} Расскажи это как обстоятельство сцены "
-        "и не выдумывай недостающее."
-    )
-    return CheckNarration(
-        success=PLAIN_OUTCOMES.success + note,
-        failure=PLAIN_OUTCOMES.failure + note,
-        critical_success=PLAIN_OUTCOMES.critical_success + note,
-        critical_failure=PLAIN_OUTCOMES.critical_failure + note,
-    )
 
 
 SYSTEM = (
@@ -262,7 +247,7 @@ async def journal(service, campaign, kind, mid, context, detail):
         log.exception("journal entry failed")
 
 
-async def fallback_action(service, campaign, mid, context, scope, leaning, name="", sized=None, reason=None):
+async def fallback_action(service, campaign, mid, context, scope, leaning, name="", sized=None, talk_only=False):
     """The floor under every request the world allows: when the model could not shape it, the player's own words
     become a free effect (magic) or a plain turn (ordinary), never a refusal the engine invented.
     Returns the action, a shortfall fact when the spell is unaffordable, or None when even this does not compile."""
@@ -282,7 +267,7 @@ async def fallback_action(service, campaign, mid, context, scope, leaning, name=
                 )
             ],
         )
-    elif leaning == "mundane":
+    elif leaning == "mundane" and not talk_only:
         # Keep the deed as a note, free of energy, even if the model could not shape it. It is still a deed with a
         # roll, on the ability and difficulty the model named, so a slip of the model is not a free success.
         intent = IntentV2(
@@ -291,7 +276,7 @@ async def fallback_action(service, campaign, mid, context, scope, leaning, name=
             resolution="check",
             attribute=(sized or {}).get("attribute", "wis"),
             difficulty=(sized or {}).get("difficulty", 10),
-            check_outcomes=plain_outcomes(reason),
+            check_outcomes=PLAIN_OUTCOMES,
             requirements=[RequirementV2(id="req_1", quote=text[:1000], effect="free_effect")],
             effects=[
                 EffectIntentV2(
@@ -300,6 +285,8 @@ async def fallback_action(service, campaign, mid, context, scope, leaning, name=
             ],
         )
     else:
+        # Words said to someone, or nothing the model could shape: a plain turn without a die, so a conversation
+        # never ends in a critical failure that costs health.
         intent = IntentV2(
             source="mundane", player_request="ordinary", resolution="automatic", effects=[EffectIntentV2(kind="wait")]
         )
@@ -349,6 +336,7 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
     named = ""  # the last general name the model gave the ability
     sized = {}  # the ability and difficulty the model gave the deed: the floor still rolls on them
     unresolved_travel = False
+    talk_only = False  # the model's last reading was only talking or looking: nothing at stake to roll for
     # A budget slot is persisted before every external call. A crashed call cannot earn a free retry.
     while raw is not None or attempts.get(mid, 0) < 2:
         if raw is None:
@@ -388,6 +376,9 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
         if isinstance(raw, dict) and isinstance(raw.get("name"), str) and raw["name"].strip():
             named = raw["name"].strip()[:128]
         if isinstance(raw, dict):
+            kinds = {e.get("kind") for e in raw.get("effects") or [] if isinstance(e, dict)} - {"wait"}
+            if kinds:  # a bare wait says nothing about the deed; a reply that is not a reading is skipped
+                talk_only = kinds <= {"speak", "observe"}
             if raw.get("attribute") in ABILITY_KEYS:
                 sized["attribute"] = raw["attribute"]
             if type(raw.get("difficulty")) is int and 1 <= raw["difficulty"] <= 40:
@@ -519,9 +510,10 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
         )
     if last_failure.code == "not_realised":
         await journal(service, campaign, "exhausted", mid, context, {"hint": hint or "", "floor": leaning or "mundane"})
-        floor = await fallback_action(service, campaign, mid, context, scope, leaning, named, sized, hint)
+        floor = await fallback_action(service, campaign, mid, context, scope, leaning, named, sized, talk_only)
         if isinstance(floor, ExplorationAction):
-            result = PreparedExploration(proposal=floor)
+            note = (hint or "").strip()[:300]
+            result = PreparedExploration(proposal=floor, scene_note=note)
             prepared[mid] = result.model_dump(mode="json")
             await store(service, tid, trace)
             return result

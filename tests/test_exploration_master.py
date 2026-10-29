@@ -759,6 +759,42 @@ def test_an_ordinary_deed_the_model_cannot_shape_is_still_rolled_on_the_ability_
     asyncio.run(run())
 
 
+def test_a_plain_conversation_the_model_cannot_shape_is_never_a_risky_roll(tmp_path):
+    """Words spoken to someone are not a deed with a stake: no die, so no critical failure that costs health."""
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        talk = {**unrealisable("mundane"), "resolution": "check", "attribute": "cha", "difficulty": 13}
+        talk["effects"] = [{"kind": "speak"}]
+        provider = Provider([talk, talk, "Хоббит мнётся.", {"verdict": "pass"}])
+        await MasterService(maker, Bus(), provider).run_turn("c")
+        async with maker() as s:
+            proposal = (await s.scalars(select(Event))).one().payload["proposal"]
+            assert proposal["resolution"] == "automatic"
+            assert [op["kind"] for op in proposal["operations"]] == ["wait"]
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_the_reason_an_idea_was_not_realised_reaches_the_writer_but_never_the_roll_card(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        broken = {**unrealisable("mundane"), "attribute": "str", "difficulty": 15}
+        review = {"verdict": "pass", "covered_requirements": ["r"]}
+        provider = Provider([broken, review, broken, "Камень не уступил.", {"verdict": "pass"}])
+        await MasterService(maker, Bus(), provider).run_turn("c")
+        async with maker() as s:
+            payload = json.dumps((await s.scalars(select(Event))).one().payload, ensure_ascii=False)
+        assert "Расскажи это" not in payload and "не удалось воплотить" not in payload  # the card is the player's
+        assert "scene_note" in json.dumps(provider.prompts, ensure_ascii=False)  # the writer is told
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
 def test_the_not_realised_fact_does_not_blame_magic_for_an_ordinary_deed():
     from app.agents.master.exploration import not_realised_fact
 

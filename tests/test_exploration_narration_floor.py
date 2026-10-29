@@ -3,7 +3,7 @@
 import asyncio
 import json
 
-from app.agents.master.exploration import plain_outcomes, reviewed_narration
+from app.agents.master.exploration import reviewed_narration
 
 
 def run_narration(replies):
@@ -47,10 +47,3 @@ def test_two_failed_reviews_still_give_a_story_not_the_plain_outcome():
     )
     assert text == "Лошадь косится на морковку и тянется к ладони."
     assert calls == ["narrate", "narration_review", "narrate", "narration_review", "narrate"]
-
-
-def test_plain_outcomes_carry_the_reason_the_idea_was_not_realised():
-    plain = plain_outcomes("Предмет недоступен")
-    assert plain.success.startswith("Попытка удалась.") and "Предмет недоступен" in plain.success
-    assert "Предмет недоступен" in plain.failure
-    assert plain_outcomes(None).success == "Попытка удалась."

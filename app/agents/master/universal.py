@@ -422,6 +422,8 @@ async def run_universal_turn(service, cid, place=None):
                             ResolutionContext(s, cid, **scope, dice=service.dice_factory()), compiled.proposal, mid
                         )
                     outcome = public_outcome(result, compiled.public_reason)
+                    if getattr(compiled, "scene_note", ""):
+                        outcome["scene_note"] = compiled.scene_note  # for the writer; the roll card never shows it
                     trace["scene"] = await universal_scene(s, c, Viewer(user, c, seat))
                     from app.agents.master.public_context import scene_audience
 
