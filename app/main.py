@@ -36,6 +36,7 @@ from app.api import generation as generation_api
 from app.api import hero_creation as hero_creation_api
 from app.api import library_equipment_artwork as library_equipment_artwork_api
 from app.api import location_artwork as location_artwork_api
+from app.api import map_backdrop as map_backdrop_api
 from app.api import modules as modules_api
 from app.api import npc_portraits as npc_portraits_api
 from app.api import portraits as portraits_api
@@ -140,6 +141,15 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
             create_location_translator(effective_llm, settings) if settings.location_artwork_enabled else None
         )
         app.state.location_artwork_media_dir = settings.media_dir
+        from app.agents.map_backdrop_images import create_map_backdrop_generator, create_map_backdrop_translator
+
+        app.state.map_backdrop_generator = (
+            create_map_backdrop_generator(settings) if settings.map_backdrop_enabled else None
+        )
+        app.state.map_backdrop_translator = (
+            create_map_backdrop_translator(effective_llm, settings) if settings.map_backdrop_enabled else None
+        )
+        app.state.map_backdrop_media_dir = settings.media_dir
         from app.agents.equipment_images import create_equipment_generator, create_equipment_translator
 
         app.state.equipment_artwork_generator = (
@@ -245,6 +255,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     app.include_router(portraits_api.router)
     app.include_router(npc_portraits_api.router)
     app.include_router(location_artwork_api.router)
+    app.include_router(map_backdrop_api.router)
     app.include_router(equipment_artwork_api.router)
     app.include_router(library_equipment_artwork_api.router)
     app.include_router(models.router)

@@ -6243,6 +6243,84 @@
     "title": "MapArea",
     "type": "object"
    },
+   "MapBackdropIn": {
+    "properties": {
+     "regenerate": {
+      "default": false,
+      "title": "Regenerate",
+      "type": "boolean"
+     },
+     "request_key": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Key",
+      "type": "string"
+     }
+    },
+    "required": [
+     "request_key"
+    ],
+    "title": "MapBackdropIn",
+    "type": "object"
+   },
+   "MapBackdropOut": {
+    "properties": {
+     "can_generate": {
+      "title": "Can Generate",
+      "type": "boolean"
+     },
+     "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "image_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Image Url"
+     },
+     "stale": {
+      "title": "Stale",
+      "type": "boolean"
+     },
+     "status": {
+      "enum": [
+       "idle",
+       "pending",
+       "ready",
+       "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "status",
+     "image_url",
+     "stale",
+     "enabled",
+     "can_generate",
+     "error"
+    ],
+    "title": "MapBackdropOut",
+    "type": "object"
+   },
    "MapBook": {
     "additionalProperties": false,
     "properties": {
@@ -19340,6 +19418,189 @@
     "summary": "Image",
     "tags": [
      "location-artwork"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/locations/{location_id}/map-backdrop": {
+   "get": {
+    "operationId": "backdrop_status_api_campaigns__campaign_id__locations__location_id__map_backdrop_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "location_id",
+      "required": true,
+      "schema": {
+       "title": "Location Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MapBackdropOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Backdrop Status",
+    "tags": [
+     "map-backdrop"
+    ]
+   },
+   "post": {
+    "operationId": "create_backdrop_api_campaigns__campaign_id__locations__location_id__map_backdrop_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "location_id",
+      "required": true,
+      "schema": {
+       "title": "Location Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MapBackdropIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MapBackdropOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Create Backdrop",
+    "tags": [
+     "map-backdrop"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/locations/{location_id}/map-backdrop/{image_id}": {
+   "get": {
+    "operationId": "image_api_campaigns__campaign_id__locations__location_id__map_backdrop__image_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "location_id",
+      "required": true,
+      "schema": {
+       "title": "Location Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "image_id",
+      "required": true,
+      "schema": {
+       "title": "Image Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Image",
+    "tags": [
+     "map-backdrop"
     ]
    }
   },

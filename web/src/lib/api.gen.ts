@@ -1601,6 +1601,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaign_id}/locations/{location_id}/map-backdrop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Backdrop Status */
+        get: operations["backdrop_status_api_campaigns__campaign_id__locations__location_id__map_backdrop_get"];
+        put?: never;
+        /** Create Backdrop */
+        post: operations["create_backdrop_api_campaigns__campaign_id__locations__location_id__map_backdrop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/locations/{location_id}/map-backdrop/{image_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Image */
+        get: operations["image_api_campaigns__campaign_id__locations__location_id__map_backdrop__image_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaign_id}/master-character": {
         parameters: {
             query?: never;
@@ -4944,6 +4979,34 @@ export interface components {
             /** Zone */
             zone: string | null;
         };
+        /** MapBackdropIn */
+        MapBackdropIn: {
+            /**
+             * Regenerate
+             * @default false
+             */
+            regenerate?: boolean;
+            /** Request Key */
+            request_key: string;
+        };
+        /** MapBackdropOut */
+        MapBackdropOut: {
+            /** Can Generate */
+            can_generate: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Error */
+            error: string | null;
+            /** Image Url */
+            image_url: string | null;
+            /** Stale */
+            stale: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "idle" | "pending" | "ready" | "failed";
+        };
         /** MapBook */
         MapBook: {
             grid: components["schemas"]["MapBookGrid"] | null;
@@ -7719,6 +7782,8 @@ export type LocationArtworkOut = components['schemas']['LocationArtworkOut'];
 export type LocationPresentation = components['schemas']['LocationPresentation'];
 export type LoginIn = components['schemas']['LoginIn'];
 export type MapArea = components['schemas']['MapArea'];
+export type MapBackdropIn = components['schemas']['MapBackdropIn'];
+export type MapBackdropOut = components['schemas']['MapBackdropOut'];
 export type MapBook = components['schemas']['MapBook'];
 export type MapBookGrid = components['schemas']['MapBookGrid'];
 export type MapBookRoom = components['schemas']['MapBookRoom'];
@@ -11235,6 +11300,107 @@ export interface operations {
         };
     };
     image_api_campaigns__campaign_id__locations__location_id__artwork__image_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                location_id: string;
+                image_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    backdrop_status_api_campaigns__campaign_id__locations__location_id__map_backdrop_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                location_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapBackdropOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_backdrop_api_campaigns__campaign_id__locations__location_id__map_backdrop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                location_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MapBackdropIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MapBackdropOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    image_api_campaigns__campaign_id__locations__location_id__map_backdrop__image_id__get: {
         parameters: {
             query?: never;
             header?: never;
