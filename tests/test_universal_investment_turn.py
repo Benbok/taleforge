@@ -41,11 +41,13 @@ async def world(tmp_path, wis="20", rolls=(8,), **extra):
     return engine, maker, service, bus, SimpleNamespace(proposal=compiled, schema_version=2)
 
 
-async def decide(service, maker, compiled, trace):
+async def decide(service, maker, compiled, trace, **extra):
     async with maker() as s:
         sheet, resources = await load_actor(s, "c", "hero")
     campaign = SimpleNamespace(id="c")
-    return await decide_investment(service, campaign, "game", "turn", trace, compiled, "m", sheet, resources, "seat")
+    return await decide_investment(
+        service, campaign, "game", "turn", trace, compiled, "m", sheet, resources, "seat", **extra
+    )
 
 
 async def open_offer(bus):
@@ -157,3 +159,15 @@ def test_the_narrator_is_told_when_the_success_was_paid_for():
         return public_outcome(ExplorationOutcome(success=True, checks=[proof], description="Он слушает."), "r")
 
     assert outcome(2)["invested"] is True and outcome(0)["invested"] is False
+
+
+def test_an_ai_player_is_never_asked_so_the_table_does_not_wait(tmp_path):
+    async def run():
+        engine, maker, service, bus, compiled = await world(tmp_path)
+        assert await decide(service, maker, compiled, {}, ask_player=False) == ((8,), False)
+        assert bus.sent == []
+        async with maker() as s:
+            assert await s.get(Message, "invest_m") is None
+        await engine.dispose()
+
+    asyncio.run(run())

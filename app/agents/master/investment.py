@@ -17,7 +17,9 @@ async def _persist(service, turn_id, trace):
         await s.commit()
 
 
-async def decide_investment(service, campaign, game_id, turn_id, trace, compiled, mid, sheet, resources, seat_id):
+async def decide_investment(
+    service, campaign, game_id, turn_id, trace, compiled, mid, sheet, resources, seat_id, ask_player=True
+):
     """(rolls, invest) for the resolver. rolls is None when the action is not a check and nothing is pre-rolled.
 
     The die is rolled once and kept in the trace, so a restart replays the same roll; a decision already
@@ -34,6 +36,10 @@ async def decide_investment(service, campaign, game_id, turn_id, trace, compiled
     stored = tuple(rolls[mid])
     if decisions.get(mid) in SETTLED:
         return stored, decisions[mid] == "invested"
+    if not ask_player:  # an AI player never answers: the table must not wait out the timeout for nobody
+        decisions[mid] = "none"
+        await _persist(service, turn_id, trace)
+        return stored, False
     async with service.maker() as s:
         message = await make_offer(
             s, campaign.id, game_id, turn_id, proposal, sheet, resources, stored, trace.get("audience"), seat_id

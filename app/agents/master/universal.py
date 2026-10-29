@@ -411,7 +411,8 @@ async def run_universal_turn(service, cid, place=None):
                 preroll, invest = None, False
                 if not already_applied:
                     preroll, invest = await decide_investment(
-                        service, c, game.id, tid, trace, compiled, mid, sh, resources, seat.id
+                        service, c, game.id, tid, trace, compiled, mid, sh, resources, seat.id,
+                        ask_player=seat.occupant_type == "human",
                     )
                 async with service.maker() as s:
                     await service._status(cid, "rolling")
