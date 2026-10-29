@@ -174,6 +174,19 @@ export default function UniversalWorldStudio({ projectId }: { projectId: string 
     onSuccess: refresh,
   });
 
+  const catalog = useMutation({
+    mutationFn: (listed: boolean) => authoring.setCatalog(projectId, listed),
+    onSuccess: refresh,
+  });
+
+  const archive = useMutation({
+    mutationFn: () => authoring.archiveProject(projectId),
+    onSuccess: () => {
+      refresh();
+      navigate("/author");
+    },
+  });
+
   const launch = useMutation({
     mutationFn: (versionId: string) => {
       launchKeys.current[versionId] ??= newRequestKey();
@@ -191,8 +204,8 @@ export default function UniversalWorldStudio({ projectId }: { projectId: string 
   });
 
   const dirty = !!fields && JSON.stringify(fields) !== JSON.stringify(studio.data?.fields);
-  const busy = save.isPending || review.isPending || accept.isPending || launch.isPending || draft.isPending;
-  const error = save.error || review.error || accept.error || launch.error || draft.error || studio.error;
+  const busy = save.isPending || review.isPending || accept.isPending || launch.isPending || draft.isPending || catalog.isPending || archive.isPending;
+  const error = save.error || review.error || accept.error || launch.error || draft.error || catalog.error || archive.error || studio.error;
 
   if (!fields) {
     return (
@@ -643,6 +656,42 @@ export default function UniversalWorldStudio({ projectId }: { projectId: string 
                 После принятия здесь появится неизменная версия мира.
               </p>
             )}
+
+            {publishedVersions.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+                <p className="max-w-md text-xs leading-relaxed text-muted">
+                  {project.data?.project.listed === false
+                    ? "Мир скрыт из каталога «Миры»: другие администраторы его не видят. Запущенные игры не затронуты."
+                    : "Мир виден в каталоге «Миры» всем администраторам. Версии неизменяемы: чтобы изменить мир, примите новую версию."}
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-outline-copper font-mono text-xs"
+                  disabled={busy}
+                  onClick={() => catalog.mutate(project.data?.project.listed === false)}
+                >
+                  {project.data?.project.listed === false ? "Вернуть в каталог" : "Скрыть из каталога"}
+                </button>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+              <p className="max-w-md text-xs leading-relaxed text-muted">
+                Архивация убирает проект из списка и каталога. Версии и запущенные игры сохраняются.
+              </p>
+              <button
+                type="button"
+                className="btn bg-surface text-xs text-bad"
+                disabled={busy}
+                onClick={() => {
+                  if (window.confirm("Архивировать проект? Он исчезнет из списка и каталога, запущенные игры продолжатся.")) {
+                    archive.mutate();
+                  }
+                }}
+              >
+                Архивировать проект
+              </button>
+            </div>
           </section>
         </div>
 

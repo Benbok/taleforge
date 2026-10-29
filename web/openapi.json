@@ -1909,6 +1909,20 @@
     "title": "CatalogEntryOut",
     "type": "object"
    },
+   "CatalogVisibility": {
+    "additionalProperties": false,
+    "properties": {
+     "listed": {
+      "title": "Listed",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "listed"
+    ],
+    "title": "CatalogVisibility",
+    "type": "object"
+   },
    "CharacterBonds": {
     "additionalProperties": false,
     "properties": {
@@ -10179,6 +10193,11 @@
       ],
       "title": "Latest Version"
      },
+     "listed": {
+      "default": true,
+      "title": "Listed",
+      "type": "boolean"
+     },
      "ruleset_id": {
       "default": "universal",
       "title": "Ruleset Id",
@@ -10239,6 +10258,11 @@
        }
       ],
       "title": "Latest Version"
+     },
+     "listed": {
+      "default": true,
+      "title": "Listed",
+      "type": "boolean"
      },
      "status": {
       "default": "draft",
@@ -15358,6 +15382,105 @@
      }
     ],
     "summary": "Rename",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/archive": {
+   "post": {
+    "description": "Hide the project everywhere. Nothing is deleted: published versions and games stay as they are.",
+    "operationId": "archive_project_api_author_projects__project_id__archive_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Archive Project",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/catalog": {
+   "put": {
+    "description": "Take the world out of the catalog or put it back. Versions and running games are not touched.",
+    "operationId": "set_catalog_visibility_api_author_projects__project_id__catalog_put",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CatalogVisibility"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProjectDetail"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Set Catalog Visibility",
     "tags": [
      "author"
     ]

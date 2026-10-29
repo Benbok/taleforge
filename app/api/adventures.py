@@ -10,6 +10,7 @@ from app.api.authoring import version_out
 from app.api.deps import SessionDep, UserDep
 from app.core.authoring.contracts import CatalogEntryOut, InstanceOptions, LaunchReceipt, LaunchRequest, VersionOut
 from app.core.authoring.instances import instantiate_adventure
+from app.core.authoring.projects import is_listed
 from app.core.campaigns import AccessDenied, Conflict, NotFound, is_admin
 from app.db.models import AdventureVersion, AuthorProject, Campaign, User
 
@@ -39,26 +40,28 @@ async def catalog(session: SessionDep, user: UserDep) -> list[CatalogEntryOut]:
         .subquery()
     )
     rows = await session.execute(
-        select(AdventureVersion, AuthorProject.title, User.name)
+        select(AdventureVersion, AuthorProject, User.name)
         .join(
             latest,
             (latest.c.project_id == AdventureVersion.project_id) & (latest.c.version == AdventureVersion.version),
         )
         .join(AuthorProject, AuthorProject.id == AdventureVersion.project_id)
         .join(User, User.id == AuthorProject.owner_id)
+        .where(AuthorProject.archived_at.is_(None))
         .order_by(AdventureVersion.published_at.desc())
     )
     return [
         CatalogEntryOut(
             version_id=v.id,
             project_id=v.project_id,
-            title=title,
+            title=project.title,
             author_name=author,
             version=v.version,
             public_summary=v.public_summary,
             published_at=v.published_at.isoformat(),
         )
-        for v, title, author in rows
+        for v, project, author in rows
+        if is_listed(project)
     ]
 
 
@@ -68,14 +71,17 @@ async def launch(
 ) -> LaunchReceipt:
     row = (
         await session.execute(
-            select(AdventureVersion, AuthorProject.owner_id, AuthorProject.title)
+            select(AdventureVersion, AuthorProject)
             .join(AuthorProject, AuthorProject.id == AdventureVersion.project_id)
             .where(AdventureVersion.id == version_id)
         )
     ).first()
     if row is None or not is_admin(user):
         raise NotFound("приключение не найдено")  # no hint whether the version exists
-    version, author_id, title = row
+    version, project = row
+    author_id, title = project.owner_id, project.title
+    if project.archived_at is not None or (author_id != user.id and not is_listed(project)):
+        raise NotFound("приключение не найдено")  # archived for everyone, hidden from everyone but the author
     if author_id != user.id:
         newest = await session.scalar(
             select(func.max(AdventureVersion.version)).where(AdventureVersion.project_id == version.project_id)

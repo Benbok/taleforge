@@ -107,3 +107,16 @@ it("still opens the new project when the draft fails", async () => {
   await screen.findByText("Мир открыт");
   expect(mock.calls.some(c => c.method === "PUT")).toBe(false);
 });
+
+it("marks a published world that is hidden from the catalog", async () => {
+  mockApi(({ url }) => {
+    if (url === "/api/author/projects") return { body: [
+      { id: "ap_a", title: "Виден", draft_revision: 2, status: "published", latest_version: 1, listed: true },
+      { id: "ap_b", title: "Скрыт", draft_revision: 2, status: "published", latest_version: 1, listed: false },
+    ] };
+    return undefined;
+  });
+  renderWithClient(<AuthorProjectsPage />, undefined, "/author");
+  expect(await screen.findByText("Скрыт из каталога")).toBeTruthy();
+  expect(screen.getAllByText("Скрыт из каталога")).toHaveLength(1);
+});

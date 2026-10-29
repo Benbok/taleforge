@@ -127,3 +127,39 @@ it('does not regenerate when the author declines the confirmation', async () => 
  expect(mock.calls.some(c=>c.url.endsWith('/studio/draft'))).toBe(false);
  expect((screen.getByLabelText('Замысел') as HTMLTextAreaElement).value).toBe(fields.premise);
 });
+
+function publishedStudio(listed: boolean) {
+ let isListed = listed;
+ const mock = mockApi(c => {
+  if (c.url.endsWith('/studio') && c.method !== 'POST') return {body:{project_id:'ap_1',draft_revision:3,fields,review:null}};
+  if (c.url.endsWith('?view=summary')) return {body:{project:{id:'ap_1',title:fields.title,draft_revision:3,listed:isListed},preparation:{stages:[]},published:[{id:'av_1',version:1,source_revision:3,published_at:'2026-10-29'}]}};
+  if (c.url.endsWith('/catalog')) { isListed = (c.body as {listed:boolean}).listed; return {body:{id:'ap_1',title:fields.title,draft_revision:3,listed:isListed}}; }
+  if (c.url.endsWith('/archive')) return {status:204,body:null};
+  return undefined;
+ });
+ return mock;
+}
+
+it('hides an accepted world from the catalog and brings it back', async () => {
+ const mock = publishedStudio(true);
+ renderWithClient(<UniversalWorldStudio projectId='ap_1' />);
+ fireEvent.click(await screen.findByRole('button',{name:'Скрыть из каталога'}));
+ await screen.findByRole('button',{name:'Вернуть в каталог'});
+ expect(mock.calls.find(c=>c.url.endsWith('/catalog'))!.method).toBe('PUT');
+ expect(mock.calls.find(c=>c.url.endsWith('/catalog'))!.body).toEqual({listed:false});
+ fireEvent.click(screen.getByRole('button',{name:'Вернуть в каталог'}));
+ await screen.findByRole('button',{name:'Скрыть из каталога'});
+ expect(mock.calls.filter(c=>c.url.endsWith('/catalog')).pop()!.body).toEqual({listed:true});
+});
+
+it('archives the project only after the author confirms', async () => {
+ const mock = publishedStudio(true);
+ const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+ renderWithClient(<UniversalWorldStudio projectId='ap_1' />);
+ const button = await screen.findByRole('button',{name:'Архивировать проект'});
+ fireEvent.click(button);
+ expect(mock.calls.some(c=>c.url.endsWith('/archive'))).toBe(false);
+ confirm.mockReturnValue(true);
+ fireEvent.click(button);
+ await waitFor(()=>expect(mock.calls.some(c=>c.url.endsWith('/archive')&&c.method==='POST')).toBe(true));
+});

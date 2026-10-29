@@ -95,6 +95,9 @@ export default function AuthorProjectsPage() {
                           >
                             {p.status === "published" ? `Опубликовано · v${p.latest_version}` : p.status === "changed" ? `Изменено после v${p.latest_version}` : "Черновик"}
                           </span>
+                          {p.latest_version != null && p.listed === false && (
+                            <span className="rounded border border-line px-2 py-0.5 text-xs text-muted">Скрыт из каталога</span>
+                          )}
                         </div>
                         <div className="mt-4 flex items-center justify-between text-xs text-muted">
                           <span>Открыть мастерскую</span>

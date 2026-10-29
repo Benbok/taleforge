@@ -90,3 +90,8 @@ async def create_project(session: AsyncSession, owner: User, request: AuthorProj
 
         await save_studio(session, project, project.draft_revision, request.studio)
     return project
+
+
+def is_listed(project: AuthorProject) -> bool:
+    """Hidden worlds stay with their author but are neither shown in the catalog nor launchable by others."""
+    return not (project.dependencies or {}).get("catalog_hidden")

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Query, Request, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 
@@ -17,6 +17,7 @@ from app.core.authoring.contracts import (
     AuthorMapOut,
     AuthorProjectCreate,
     AuthorProjectRename,
+    CatalogVisibility,
     CreationDialogue,
     EditProposal,
     EditRequest,
@@ -46,11 +47,11 @@ from app.core.authoring.contracts import (
     WorldOverview,
 )
 from app.core.authoring.edits import accept_stale, apply_edits
-from app.core.authoring.projects import create_project, require_project
+from app.core.authoring.projects import create_project, is_listed, require_project
 from app.core.authoring.publication import PublishBlocked, publish_project
 from app.core.authoring.validation import store_report, validate_project
 from app.core.campaigns import AccessDenied, is_admin
-from app.db.models import AuthorJob, AuthorProject, Campaign, Entity
+from app.db.models import AuthorJob, AuthorProject, Campaign, Entity, now
 
 router = APIRouter(prefix="/api/author", tags=["author"])
 View = Literal["summary", "full"]
@@ -64,6 +65,7 @@ def _detail(project: AuthorProject, world: Campaign) -> ProjectDetail:
         budget_usd=project.budget_usd,
         brief=world.brief or {},
         ruleset_id=world.ruleset_id,
+        listed=is_listed(project),
     )
 
 
@@ -105,6 +107,7 @@ async def list_projects(session: SessionDep, user: UserDep) -> list[ProjectSumma
                 budget_usd=p.budget_usd,
                 status=status,
                 latest_version=v.version if v else None,
+                listed=is_listed(p),
             )
         )
     return out
@@ -115,6 +118,27 @@ async def create(body: AuthorProjectCreate, session: SessionDep, user: UserDep) 
     project = await create_project(session, user, body)
     await session.commit()
     return _detail(project, await session.get(Campaign, project.workspace_campaign_id))
+
+
+@router.put("/projects/{project_id}/catalog", response_model=ProjectDetail)
+async def set_catalog_visibility(
+    project_id: str, body: CatalogVisibility, session: SessionDep, user: UserDep
+) -> ProjectDetail:
+    """Take the world out of the catalog or put it back. Versions and running games are not touched."""
+    project = await require_project(session, user, project_id)
+    rest = {k: v for k, v in (project.dependencies or {}).items() if k != "catalog_hidden"}
+    project.dependencies = rest if body.listed else {**rest, "catalog_hidden": True}
+    await session.commit()
+    return _detail(project, await session.get(Campaign, project.workspace_campaign_id))
+
+
+@router.post("/projects/{project_id}/archive", status_code=204)
+async def archive_project(project_id: str, session: SessionDep, user: UserDep) -> Response:
+    """Hide the project everywhere. Nothing is deleted: published versions and games stay as they are."""
+    project = await require_project(session, user, project_id)
+    project.archived_at = now()
+    await session.commit()
+    return Response(status_code=204)
 
 
 @router.patch("/projects/{project_id}", response_model=ProjectDetail)

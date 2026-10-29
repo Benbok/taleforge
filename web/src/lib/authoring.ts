@@ -75,6 +75,8 @@ export const authoring = {
   saveStudio: (id: string, expected_revision: number, fields: StudioFields) => api<StudioView>(`${base(id)}/studio`, { method: "PUT", body: { expected_revision, fields } }),
   reviewStudio: (id: string, expected_revision: number, answer = "") => api<CreationDialogue>(`${base(id)}/studio/review`, { body: { expected_revision, answer } }),
   draftStudio: (id: string, idea: string) => api<StudioDraft>(`${base(id)}/studio/draft`, { body: { idea } }),
+  setCatalog: (id: string, listed: boolean) => api<ProjectDetail>(`${base(id)}/catalog`, { method: "PUT", body: { listed } }),
+  archiveProject: (id: string) => api<void>(`${base(id)}/archive`, { method: "POST" }),
   acceptStudio: (id: string, expected_revision: number, request_key: string) => api<VersionOut>(`${base(id)}/studio/accept`, { body: { expected_revision, request_key } }),
   listProjects: () => api<ProjectSummary[]>("/api/author/projects"),
   createProject: (body: AuthorProjectCreate & { studio?: StudioFields }) => api<ProjectDetail>("/api/author/projects", { body }),

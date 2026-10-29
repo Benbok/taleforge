@@ -96,6 +96,10 @@ class AuthorProjectCreate(Contract):
     budget_usd: float | None = Field(default=None, ge=0, allow_inf_nan=False)
 
 
+class CatalogVisibility(Contract):
+    listed: bool
+
+
 class AuthorProjectRename(Contract):
     title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
 
@@ -115,6 +119,7 @@ class ProjectSummary(Contract):
     # publication: draft (never published) | published (the current draft is a version) | changed (edited after)
     status: Literal["draft", "published", "changed"] = "draft"
     latest_version: int | None = None
+    listed: bool = True  # shown in the worlds catalog (when published); the author can hide it again
 
 
 class ProjectDetail(ProjectSummary):

@@ -678,6 +678,46 @@ export interface paths {
         patch: operations["rename_api_author_projects__project_id__patch"];
         trace?: never;
     };
+    "/api/author/projects/{project_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive Project
+         * @description Hide the project everywhere. Nothing is deleted: published versions and games stay as they are.
+         */
+        post: operations["archive_project_api_author_projects__project_id__archive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/author/projects/{project_id}/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Catalog Visibility
+         * @description Take the world out of the catalog or put it back. Versions and running games are not touched.
+         */
+        put: operations["set_catalog_visibility_api_author_projects__project_id__catalog_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/author/projects/{project_id}/edits": {
         parameters: {
             query?: never;
@@ -3230,6 +3270,11 @@ export interface components {
             version: number;
             /** Version Id */
             version_id: string;
+        };
+        /** CatalogVisibility */
+        CatalogVisibility: {
+            /** Listed */
+            listed: boolean;
         };
         /** CharacterBonds */
         CharacterBonds: {
@@ -6047,6 +6092,11 @@ export interface components {
             /** Latest Version */
             latest_version?: number | null;
             /**
+             * Listed
+             * @default true
+             */
+            listed?: boolean;
+            /**
              * Ruleset Id
              * @default universal
              */
@@ -6070,6 +6120,11 @@ export interface components {
             id: string;
             /** Latest Version */
             latest_version?: number | null;
+            /**
+             * Listed
+             * @default true
+             */
+            listed?: boolean;
             /**
              * Status
              * @default draft
@@ -7230,6 +7285,7 @@ export type CanonEntryOut = components['schemas']['CanonEntryOut'];
 export type CanonJournalOut = components['schemas']['CanonJournalOut'];
 export type CardHero = components['schemas']['CardHero'];
 export type CatalogEntryOut = components['schemas']['CatalogEntryOut'];
+export type CatalogVisibility = components['schemas']['CatalogVisibility'];
 export type CharacterBonds = components['schemas']['CharacterBonds'];
 export type CharacterReviewFailed = components['schemas']['CharacterReviewFailed'];
 export type CharacterReviewStarted = components['schemas']['CharacterReviewStarted'];
@@ -8824,6 +8880,70 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AuthorProjectRename"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    archive_project_api_author_projects__project_id__archive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_catalog_visibility_api_author_projects__project_id__catalog_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CatalogVisibility"];
             };
         };
         responses: {
