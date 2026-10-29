@@ -41,3 +41,5 @@ class ResolutionContext:
     npc_reply: bool = False
     parent_source_id: str | None = None
     pending_event_id: str | None = None
+    preroll: tuple[int, ...] | None = None  # the d20 of a check already rolled before the player's decision
+    invest: bool = False  # the player bought the shortfall of that stored roll with the attribute's energy

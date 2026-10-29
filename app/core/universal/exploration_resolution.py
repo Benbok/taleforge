@@ -15,8 +15,10 @@ from app.core.universal.objects import apply_object_operation, introduce_object
 from app.core.universal.profiles import load_actor, save_actor
 from app.core.universal.validation import authorize_actor
 from app.db.models import Entity, Event, HeroAbility, Message
+from app.rules.dice import FixedDice
 from app.rules.universal.exploration import TIMED_KINDS, EffectChange, ExplorationAction, ExplorationOutcome
 from app.rules.universal.failures import action_failure
+from app.rules.universal.investment import INVEST_MAX_SHORTFALL, invest_price, shortfall
 from app.rules.universal.profiles import CheckProof, DieProof, resolve_check
 
 OBJECT_KINDS = {"create_object", "take", "place", "give", "fill", "pour", "empty", "consume", "move", "command"}
@@ -184,13 +186,23 @@ async def _execute(ctx, action, key):
     state = await validate_exploration(ctx, action)
     now = int((await clock_view(s, ctx.campaign_id))["game_seconds"])
     result = ExplorationOutcome(success=True, cost=action.cost, elapsed_game_seconds=action.elapsed_game_seconds)
-    if action.cost:
-        state.resources.energies[action.attribute] -= action.cost
+    score = getattr(state.sheet.abilities, action.attribute)
+    bought, price = 0, 0
+    if ctx.invest:
+        if action.resolution != "check" or not ctx.preroll or action.attribute not in state.resources.energies:
+            raise ValueError("Вложить энергию нельзя")
+        rolled = resolve_check(FixedDice(list(ctx.preroll)), score, False, action.difficulty, action.edge)
+        bought = shortfall(rolled.natural, rolled.total, action.difficulty)
+        price = invest_price(bought, state.sheet.level)
+        if not 1 <= bought <= INVEST_MAX_SHORTFALL or state.resources.energies[action.attribute] < action.cost + price:
+            raise ValueError("Вложение недоступно")
+    if action.cost or price:
+        state.resources.energies[action.attribute] -= action.cost + price
         await save_actor(s, ctx.campaign_id, action.actor_id, state.sheet, state.resources)
+        result.cost = action.cost + price
     if action.resolution == "check":
-        check = resolve_check(
-            ctx.dice, getattr(state.sheet.abilities, action.attribute), False, action.difficulty, action.edge
-        )
+        dice = FixedDice(list(ctx.preroll)) if ctx.preroll else ctx.dice
+        check = resolve_check(dice, score, False, action.difficulty, action.edge, bought)
         for field in ("success", "natural", "total", "rolls", "critical", "critical_failure"):
             setattr(result, field, getattr(check, field))
         result.draws = [DieProof(sides=20, value=v) for v in result.rolls]
@@ -206,6 +218,7 @@ async def _execute(ctx, action, key):
                 mode=action.edge,
                 critical=check.critical,
                 critical_failure=check.critical_failure,
+                invested=bought,
             )
         ]
     event = Event(
