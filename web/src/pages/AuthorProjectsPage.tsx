@@ -4,7 +4,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import ImportedAdventures from "../author/ImportedAdventures";
 import Header from "../components/Header";
 import { ApiError } from "../lib/api";
-import { authoring, authorKeys, emptyStudio } from "../lib/authoring";
+import { authoring, authorKeys, emptyStudio, mergeDraft } from "../lib/authoring";
 
 export default function AuthorProjectsPage() {
   const navigate = useNavigate();
@@ -13,13 +13,27 @@ export default function AuthorProjectsPage() {
   const client = useQueryClient();
   const [title, setTitle] = useState("");
   const [premise, setPremise] = useState("");
+  const [idea, setIdea] = useState("");
   const projects = useQuery({ queryKey: authorKeys.projects, queryFn: authoring.listProjects, enabled: tab === "projects" });
 
   const create = useMutation({
-    mutationFn: () => authoring.createProject({ title: title.trim(), studio: { ...emptyStudio(title.trim()), premise } }),
-    onSuccess: (p) => {
+    mutationFn: async () => {
+      const fields = { ...emptyStudio(title.trim()), premise };
+      const project = await authoring.createProject({ title: title.trim(), studio: fields });
+      const text = idea.trim();
+      if (!text) return { project, idea: "" };
+      try {
+        // The idea becomes a first draft of the empty fields; the author's own text is never replaced.
+        const proposal = await authoring.draftStudio(project.id, text);
+        await authoring.saveStudio(project.id, project.draft_revision, mergeDraft(fields, proposal));
+        return { project, idea: "" };
+      } catch {
+        return { project, idea: text }; // the project exists: the studio offers the same idea again
+      }
+    },
+    onSuccess: ({ project, idea: retry }) => {
       void client.invalidateQueries({ queryKey: authorKeys.projects });
-      navigate(`/author/${p.id}`);
+      navigate(`/author/${project.id}`, { state: retry ? { idea: retry } : undefined });
     },
   });
 
@@ -103,7 +117,7 @@ export default function AuthorProjectsPage() {
                   <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-accent/15 text-accent">✦</span>
                   <div>
                     <h2 className="font-heading text-lg font-semibold text-ink">Создать новое приключение</h2>
-                    <p className="text-xs text-muted">Задайте название и замысел. Остальные поля мира вы заполните в студии.</p>
+                    <p className="text-xs text-muted">Задайте название и идею или замысел. Остальное можно доработать в студии.</p>
                   </div>
                 </div>
 
@@ -122,6 +136,12 @@ export default function AuthorProjectsPage() {
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                     />
+                  </label>
+
+                  <label className="flex flex-col gap-1.5 text-sm"><span className="font-medium text-ink">Идея мира</span>
+                    <span className="text-xs text-muted">Назовите вселенную или опишите мир в нескольких фразах: мастер составит черновик, который вы сможете править.</span>
+                    <textarea aria-label="Идея мира" className="rounded-xl border border-line bg-raised p-3 text-ink" value={idea} onChange={e => setIdea(e.target.value)} rows={3}
+                      placeholder="Например: «Властелин колец», 3018 год, Братство выходит из Раздола…" />
                   </label>
 
                   <label className="flex flex-col gap-1.5 text-sm"><span className="font-medium text-ink">Замысел мира</span>
@@ -143,7 +163,7 @@ export default function AuthorProjectsPage() {
                       type="submit"
                       disabled={!title.trim() || create.isPending}
                     >
-                      {create.isPending ? "Создание проекта…" : "Создать проект"}
+                      {create.isPending ? (idea.trim() ? "Мастер пишет черновик…" : "Создание проекта…") : "Создать проект"}
                     </button>
                   </div>
                 </form>

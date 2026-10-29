@@ -1,85 +1,73 @@
-import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
-import ActionButton from "../components/ActionButton";
 import CampaignCardView from "../components/CampaignCardView";
-import Recap from "../components/Recap";
 import Header from "../components/Header";
-import WorldsCatalog from "./WorldsCatalog";
-import LeviathanEchoArt from "../components/LeviathanEchoArt";
-import DndHeroArt from "../components/DndHeroArt";
-import Avatar, { hue, initials } from "../components/Avatar";
-import PortraitImage from '../components/PortraitImage';
+import PortraitImage from "../components/PortraitImage";
+import { hue, initials } from "../components/Avatar";
 import { api } from "../lib/api";
 import type { LibraryHero } from "../lib/builder";
-import { actionOf, when, STATUS_TEXT, statusOf } from "../lib/cards";
 import type { CampaignCard } from "../lib/types";
 import { useSession } from "../stores/session";
+import { HeroesLibrarySection, WorldsSection } from "./HomeSections";
+
+type Tab = "tables" | "heroes" | "worlds";
+type Filter = "all" | "master" | "player";
+const TABS: [Tab, string, string][] = [
+  ["tables", "Столы", "◇"],
+  ["heroes", "Мои герои", "♙"],
+  ["worlds", "Миры", "◎"],
+];
+const isMaster = (c: CampaignCard) =>
+  c.my_role === "master" || (c.is_owner && !c.my_role);
 
 export default function Home() {
   const user = useSession((s) => s.user)!;
   const isAdmin = user.platform_role !== "player";
-
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
-  const initialTab = tabParam === "heroes" || tabParam === "worlds" ? tabParam : "tables";
-  const [activeTab, setActiveTabState] = useState<"tables" | "heroes" | "worlds">(initialTab);
-
-  useEffect(() => {
-    if (tabParam === "heroes" || tabParam === "worlds") {
-      setActiveTabState(tabParam);
-    } else if (!tabParam) {
-      setActiveTabState("tables");
-    }
-  }, [tabParam]);
-
-  const setActiveTab = (tab: "tables" | "heroes" | "worlds") => {
-    setActiveTabState(tab);
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      if (tab === "tables") {
-        next.delete("tab");
-      } else {
-        next.set("tab", tab);
-      }
-      return next;
-    }, { replace: true });
-  };
-  const [filter, setFilter] = useState<"all" | "master" | "player">("all");
-
+  const activeTab: Tab = tabParam === "heroes" || tabParam === "worlds" ? tabParam : "tables";
+  const setActiveTab = (tab: Tab) => setSearchParams((previous) => {
+    const next = new URLSearchParams(previous);
+    if (tab === "tables") next.delete("tab");
+    else next.set("tab", tab);
+    return next;
+  }, { replace: true });
+  const [filter, setFilter] = useState<Filter>("all");
   const cardsQuery = useQuery({
     queryKey: ["my-campaigns"],
     queryFn: () => api<CampaignCard[]>("/api/me/campaigns"),
     refetchInterval: 30000,
   });
-
   const heroesQuery = useQuery({
     queryKey: ["library"],
     queryFn: () => api<LibraryHero[]>("/api/me/characters"),
   });
-
   const list = cardsQuery.data ?? [];
   const heroes = heroesQuery.data ?? [];
-
-  // Active / featured campaign for "Вахта продолжается"
-  const featured =
-    list.find((c) => c.session_live) ||
-    list.find((c) => c.status === "active") ||
-    list[0];
-
-  // Role filtering
-  const masterCount = list.filter(
-    (c) => c.my_role === "master" || (c.is_owner && !c.my_role)
-  ).length;
-  const playerCount = list.filter((c) => c.my_role === "player").length;
-
-  const filteredList = list.filter((c) => {
-    if (filter === "master") return c.my_role === "master" || (c.is_owner && !c.my_role);
-    if (filter === "player") return c.my_role === "player";
-    return true;
-  });
-
-  const onlineHeroes = list
+  const filtered = list.filter(
+    (c) =>
+      filter === "all" ||
+      (filter === "master" ? isMaster(c) : c.my_role === "player"),
+  );
+  const recent = [...filtered]
+    .filter((c) => c.status !== "ended")
+    .sort(
+      (a, b) =>
+        Number(b.session_live) - Number(a.session_live) ||
+        Date.parse(b.last_session_at ?? b.created_at) -
+          Date.parse(a.last_session_at ?? a.created_at),
+    );
+  const featured = recent.find(
+    (c) => c.session_live || c.status === "active" || c.status === "paused",
+  );
+  const remaining = filtered.filter((c) => c.id !== featured?.id);
+  const filters: [Filter, string, number][] = [
+    ["all", "Все", list.length],
+    ["master", "Я мастер", list.filter(isMaster).length],
+    ["player", "Я игрок", list.filter((c) => c.my_role === "player").length],
+  ];
+  const online = list
     .flatMap((c) => c.party)
     .filter((p) => p.occupant_type === "human" && p.online).length;
 
@@ -88,561 +76,293 @@ export default function Home() {
       <Header
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        onlineCount={onlineHeroes}
-      >
-      </Header>
-
-      <div key={activeTab} className="tf-tab-content flex flex-1 flex-col pb-20 md:pb-0">
+        onlineCount={online}
+      />
+      <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col px-4 pb-10 pt-8 sm:px-8 lg:px-12 lg:pt-12">
         {activeTab === "tables" && (
           <>
-            {/* СЕКЦИЯ HERO: «ВАХТА ПРОДОЛЖАЕТСЯ» */}
-            {featured ? (
-              <HeroSection campaign={featured} />
-            ) : (
-              <EmptyHeroSection isAdmin={isAdmin} />
-            )}
-
-            {/* ОСНОВНОЙ ДАШБОРД: СТОЛЫ СЛЕВА + ГЕРОИ И ТЕЛЕГРАФ СПРАВА */}
-            <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-10 px-4 py-10 md:px-12 lg:flex-row">
-              {/* Левая колонка: Ваши столы */}
-              <div className="flex flex-1 flex-col gap-6 min-w-0">
-                <div className="flex flex-wrap items-baseline justify-between gap-4">
-                  <h2 className="font-heading text-3xl font-semibold text-ink">
-                    Ваши столы
+            <div className="mb-8 flex flex-wrap items-end justify-between gap-5">
+              <div>
+                <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.24em] text-copper">
+                  Место, где рождаются истории
+                </p>
+                <h1 className="font-narration text-3xl font-semibold tracking-tight sm:text-4xl">
+                  Ваши приключения
+                </h1>
+                <p className="mt-3 text-sm leading-relaxed text-muted">
+                  Знакомые герои, неизведанные миры и истории, которые ждут
+                  продолжения.
+                </p>
+              </div>
+              {isAdmin && (
+                <Link
+                  to="/?tab=worlds"
+                  className="btn btn-primary min-h-11 gap-2 px-5 text-sm font-semibold"
+                >
+                  <span aria-hidden="true">＋</span> Новое приключение
+                </Link>
+              )}
+            </div>
+            <div className="grid flex-1 items-start gap-8 xl:grid-cols-[minmax(0,1fr)_280px]">
+              <div className="min-w-0">
+                <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-line-soft pb-4">
+                  <h2 className="text-sm font-semibold">
+                    Ваши столы{" "}
+                    <span className="ml-1 font-normal text-muted">
+                      / {list.length}
+                    </span>
                   </h2>
-                  <div className="flex items-center gap-2 text-sm font-ui">
-                    <button
-                      type="button"
-                      aria-pressed={filter === "all"}
-                      onClick={() => setFilter("all")}
-                      className={`h-9 rounded-full px-3.5 transition-colors duration-150 ease-out text-xs font-medium ${
-                        filter === "all"
-                          ? "border border-accent bg-accent/15 text-copper-hi font-semibold"
-                          : "border border-line bg-transparent text-muted hover:text-ink hover:border-line"
-                      }`}
-                    >
-                      Все · {list.length}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFilter("master")}
-                      aria-pressed={filter === "master"}
-                      className={`h-9 rounded-full px-3.5 transition-colors duration-150 ease-out text-xs font-medium ${
-                        filter === "master"
-                          ? "border border-accent bg-accent/15 text-copper-hi font-semibold"
-                          : "border border-line bg-transparent text-muted hover:text-ink hover:border-line"
-                      }`}
-                    >
-                      Я мастер · {masterCount}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFilter("player")}
-                      aria-pressed={filter === "player"}
-                      className={`h-9 rounded-full px-3.5 transition-colors duration-150 ease-out text-xs font-medium ${
-                        filter === "player"
-                          ? "border border-accent bg-accent/15 text-copper-hi font-semibold"
-                          : "border border-line bg-transparent text-muted hover:text-ink hover:border-line"
-                      }`}
-                    >
-                      Я игрок · {playerCount}
-                    </button>
+                  <div
+                    aria-label="Фильтр столов"
+                    className="flex flex-wrap gap-1.5"
+                  >
+                    {filters.map(([value, label, count]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        aria-pressed={filter === value}
+                        onClick={() => setFilter(value)}
+                        className={`min-h-10 rounded-full border px-3 text-xs transition-colors ${filter === value ? "border-accent/50 bg-accent/10 text-copper-hi" : "border-transparent text-muted hover:border-line hover:text-ink"}`}
+                      >
+                        {label} · {count}
+                      </button>
+                    ))}
                   </div>
                 </div>
-
-              {cardsQuery.isLoading && (
-                <div className="card p-8 text-center text-muted">
-                  Загружаем столы и хроники…
-                </div>
-              )}
-
-              {cardsQuery.isError && (
-                <div className="card p-6 border-bad text-bad text-center">
-                  Не удалось загрузить кампании: {(cardsQuery.error as Error).message}
-                </div>
-              )}
-
-              <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2">
-                {cardsQuery.isSuccess && filteredList.length === 0 && (
-                  <div className="card border-dashed border-line bg-surface p-6 sm:col-span-2">
-                    <h3 className="font-heading text-2xl font-semibold text-ink">{list.length ? "В этом разделе пока нет столов" : "Ваше первое приключение впереди"}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-muted">
-                      {list.length ? "Попробуйте показать все кампании или выберите другую роль." : isAdmin ? "Выберите мир во вкладке «Миры» и пригласите отряд. Героя можно собрать заранее в библиотеке." : "Чтобы присоединиться к кампании, попросите ссылку-приглашение у ведущего. Пока можно собрать своего героя."}
-                    </p>
-                    {list.length ? <button type="button" className="btn btn-outline-copper mt-4 min-h-11" onClick={() => setFilter("all")}>Показать все кампании</button>
-                      : <Link className="btn btn-primary mt-4 min-h-11" to={isAdmin ? "/?tab=worlds" : "/heroes/new"}>{isAdmin ? "Выбрать мир" : "Создать героя"}</Link>}
+                {cardsQuery.isLoading && (
+                  <div role="status" className="card p-8 text-muted">
+                    Загружаем ваши приключения…
                   </div>
                 )}
-                {filteredList.map((c) => (
-                  <CampaignCardView key={c.id} c={c} />
-                ))}
-
-                {/* Карточка «Выбрать мир для новой кампании» */}
-                {isAdmin && (
-                  <Link
-                    to="/?tab=worlds"
-                    className="card group flex min-h-[240px] flex-col items-center justify-center gap-3 border-dashed border-line bg-surface p-6 text-center text-ink no-underline transition hover:border-accent hover:bg-surface-2"
+                {cardsQuery.isError && (
+                  <div
+                    role="alert"
+                    className="card border-bad/40 p-6 text-sm text-bad"
                   >
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full border border-dashed border-accent text-accent transition-transform group-hover:scale-110">
-                      <svg
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M12 5v14M5 12h14" />
-                      </svg>
+                    Не удалось загрузить столы.{" "}
+                    <button
+                      type="button"
+                      className="underline"
+                      onClick={() => void cardsQuery.refetch()}
+                    >
+                      Попробовать снова
+                    </button>
+                  </div>
+                )}
+                {featured && (
+                  <section aria-label="Продолжить приключение" className="mb-7">
+                    <div className="mb-3 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-muted">
+                      <span className="h-1.5 w-1.5 rounded-full bg-accent" />{" "}
+                      История продолжается
                     </div>
-                    <span className="font-heading text-2xl font-semibold">
-                      Выбрать мир для новой кампании
-                    </span>
-                    <span className="font-ui text-xs text-muted">
-                      Выберите мир, правила и характер мастера
-                    </span>
-                  </Link>
+                    <CampaignCardView c={featured} featured />
+                  </section>
+                )}
+                {remaining.length > 0 && (
+                  <section aria-label="Остальные столы">
+                    {featured && (
+                      <h2 className="mb-4 text-sm font-medium text-muted">
+                        Другие приключения
+                      </h2>
+                    )}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {remaining.map((c) => (
+                        <CampaignCardView key={c.id} c={c} />
+                      ))}
+                    </div>
+                  </section>
+                )}
+                {cardsQuery.isSuccess && filtered.length === 0 && (
+                  <section className="rounded-2xl border border-dashed border-line bg-surface/50 px-6 py-12 text-center sm:px-12">
+                    <div
+                      aria-hidden="true"
+                      className="mb-4 font-narration text-5xl text-accent"
+                    >
+                      ✧
+                    </div>
+                    <h2 className="font-narration text-2xl font-medium">
+                      {list.length
+                        ? "Здесь пока нет столов"
+                        : "Каждая история начинается с первого шага"}
+                    </h2>
+                    <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted">
+                      {list.length
+                        ? "Выберите другую роль, чтобы найти своё приключение."
+                        : isAdmin
+                          ? "Выберите мир, соберите отряд и начните своё приключение."
+                          : "Присоединитесь к столу по приглашению ведущего. А пока можно создать героя для будущих историй."}
+                    </p>
+                    {list.length ? (
+                      <button
+                        type="button"
+                        onClick={() => setFilter("all")}
+                        className="btn mt-6 min-h-11 text-sm"
+                      >
+                        Показать все столы
+                      </button>
+                    ) : (
+                      <Link
+                        to={isAdmin ? "/?tab=worlds" : "/heroes/new"}
+                        className="btn btn-primary mt-6 min-h-11 text-sm"
+                      >
+                        {isAdmin ? "Выбрать мир" : "Создать героя"}
+                      </Link>
+                    )}
+                  </section>
                 )}
               </div>
-            </div>
-
-            {/* Правая колонка: Мои герои + Телеграф */}
-            <aside className="flex w-full shrink-0 flex-col gap-8 lg:w-[360px]">
-              {/* Виджет «Мои герои» */}
-              <div className="flex flex-col gap-3.5">
-                <div className="flex items-baseline justify-between">
-                  <h3 className="font-heading text-2xl font-semibold text-ink">
-                    Мои герои
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("heroes")}
-                    className="text-xs font-medium text-copper hover:text-copper-hi transition"
-                  >
-                    Все ({heroes.length})
-                  </button>
-                </div>
-
-                <div className="card divide-y divide-line-soft overflow-hidden bg-surface">
-                  {heroesQuery.isSuccess && heroes.length === 0 && <div className="px-4 py-4 text-sm leading-relaxed text-muted">В библиотеке пока нет героев. Создайте персонажа, чтобы позже взять его в кампанию.</div>}
-                  {heroes.slice(0, 4).map((h) => (
-                    <Link
-                      key={h.id}
-                      to={`/heroes/${h.id}`}
-                      className="flex items-center gap-3.5 px-4 py-3 text-ink no-underline transition hover:bg-raised"
+              <aside className="flex min-w-0 flex-col gap-7 xl:border-l xl:border-line-soft xl:pl-7">
+                <section aria-label="Мои герои">
+                  <div className="mb-4 flex items-center justify-between gap-2">
+                    <h2 className="font-narration text-xl font-semibold">
+                      Мои герои
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("heroes")}
+                      className="min-h-10 text-xs text-copper-hi hover:underline"
                     >
-                      <span
-                        className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-patina font-semibold text-sm"
-                        style={{ background: `hsl(${hue(h.name)} 35% 32%)` }}
+                      Все · {heroes.length}
+                    </button>
+                  </div>
+                  {heroesQuery.isLoading && (
+                    <p role="status" className="py-3 text-sm text-muted">
+                      Загружаем героев…
+                    </p>
+                  )}
+                  {heroesQuery.isError && (
+                    <p role="alert" className="py-3 text-sm text-bad">
+                      Не удалось загрузить героев.{" "}
+                      <button
+                        type="button"
+                        className="underline"
+                        onClick={() => void heroesQuery.refetch()}
                       >
-                        {initials(h.name)}
-                        {h.portrait_url && <span className='absolute inset-0'><PortraitImage key={h.portrait_url} url={h.portrait_url} name={h.name || 'Без имени'} /></span>}
-                      </span>
-                      <div className="flex flex-1 flex-col min-w-0">
-                        <span className="truncate font-semibold text-sm">
-                          {h.name || "Без имени"}
+                        Повторить
+                      </button>
+                    </p>
+                  )}
+                  {heroesQuery.isSuccess && heroes.length === 0 && (
+                    <p className="mb-4 text-sm leading-relaxed text-muted">
+                      Будущие участники ваших историй. Создайте первого героя и
+                      возьмите его в приключение.
+                    </p>
+                  )}
+                  <div className="flex flex-col gap-1">
+                    {heroes.slice(0, 4).map((h) => (
+                      <Link
+                        key={h.id}
+                        to={`/heroes/${h.id}`}
+                        className="flex min-w-0 items-center gap-3 rounded-xl px-2 py-3 text-ink no-underline transition hover:bg-surface-2"
+                      >
+                        <span
+                          className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-accent/50 text-sm font-medium text-white"
+                          style={{ background: `hsl(${hue(h.name)} 30% 30%)` }}
+                        >
+                          {initials(h.name)}
+                          {h.portrait_url && <span className="absolute inset-0"><PortraitImage key={h.portrait_url} url={h.portrait_url} name={h.name || "Без имени"} /></span>}
                         </span>
-                        <span className="truncate text-xs text-muted">
-                          {[`${h.level} ур.`]
-                            .filter(Boolean)
-                            .join(" · ") || "Черновик"}
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-semibold">
+                            {h.name || "Без имени"}
+                          </span>
+                          <span className="mt-1 block truncate text-xs text-muted">
+                            {h.level} ур.
+                          </span>
                         </span>
-                      </div>
-                    </Link>
-                  ))}
-
+                      </Link>
+                    ))}
+                  </div>
                   <Link
                     to="/heroes/new"
-                    className="flex items-center gap-3.5 px-4 py-3 text-copper-hi no-underline transition hover:bg-raised font-medium text-sm"
+                    className="mt-3 flex min-h-11 items-center gap-3 rounded-xl border border-dashed border-line px-3 text-sm text-copper-hi no-underline transition hover:border-accent"
                   >
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-accent/40 text-lg text-copper">
-                      +
-                    </span>
-                    <span>Новый герой</span>
+                    <span aria-hidden="true" className="text-lg">
+                      ＋
+                    </span>{" "}
+                    Новый герой
                   </Link>
-                </div>
-              </div>
-
-              {/* Виджет «Телеграф» */}
-              <div className="flex flex-col gap-3.5">
-                <h3 className="font-heading text-2xl font-semibold text-ink">
-                  Телеграф
-                </h3>
-                <div className="card divide-y divide-line-soft overflow-hidden bg-surface p-1 font-ui text-xs">
-                  <div className="flex gap-3 px-4 py-3">
-                    <span className="font-mono text-[11px] text-patina-hi shrink-0">
-                      СЕЙЧАС
-                    </span>
-                    <span className="text-ink">
-                      Связь со штабом установлена. AI-Мастер готов к сессиям.
-                    </span>
-                  </div>
-                  {list.slice(0, 3).map((c) => (
-                    <div key={c.id} className="flex gap-3 px-4 py-3">
-                      <span className="font-mono text-[11px] text-muted shrink-0">
-                        {c.last_session_at ? when(c.last_session_at) : "ЭПОХА"}
-                      </span>
-                      <span className="text-ink-2">
-                        Стол «{c.name}»:{" "}
-                        {c.session_live
-                          ? "идёт живая сессия"
-                          : c.status === "paused"
-                          ? "на паузе"
-                          : "в режиме готовности"}
-                        .
-                      </span>
-                    </div>
-                  ))}
-                  <div className="flex gap-3 px-4 py-3">
-                    <span className="font-mono text-[11px] text-muted shrink-0">
-                      ВЕСТИ
-                    </span>
-                    <span className="text-muted">
-                      Цены на хитин стабильны. Волны у Хребта под контролем Кордона.
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </aside>
-          </main>
-
-          {/* БЕГУЩАЯ СТРОКА СВОДКИ МИРА */}
-          <div className="flex h-11 items-center gap-7 overflow-hidden whitespace-nowrap border-y border-line-soft bg-ember-bg px-4 md:px-12 font-mono text-xs tracking-wider text-copper">
-            <span className="font-bold text-copper-hi">СВОДКА ПЕПЕЛЬНОЙ ЧЕРТЫ</span>
-            <span className="text-muted/40">///</span>
-            <span>КОРДОН: ВОЛНЫ У ХРЕБТА УЧАЩАЮТСЯ</span>
-            <span className="text-muted/40">///</span>
-            <span>СИНДИКАТЫ КРОВИ ПОДНЯЛИ ЦЕНУ НА ЛИКВОР</span>
-            <span className="text-muted/40">///</span>
-            <span>МАЯК В ГЛАЗНИЦЕ МОЛЧИТ ТРЕТЬИ СУТКИ</span>
-            <span className="text-muted/40">///</span>
-            <span>СЛУШАТЕЛИ ГИЛЬДИИ ФИКСИРУЮТ НОВЫЙ ОТКЛИК РЕЗОНАНСА</span>
-          </div>
-
-          {/* ФУТЕР */}
-          <footer className="flex h-16 items-center justify-between px-4 md:px-12 text-xs text-faint">
-            <span>Taleforge · игры с ИИ-мастером по правилам 5e</span>
-            <span className="hidden sm:inline">
-              Миры: Эхо Левиафанов · Базовые правила SRD 5.1
-            </span>
-          </footer>
-        </>
-      )}
-
-      {/* ВКЛАДКА: МОИ ГЕРОИ (ОТДЕЛЬНЫЙ ЭКРАН) */}
-      {activeTab === "heroes" && (
-        <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-8 px-4 py-10 md:px-12">
-          <HeroesLibrarySection heroes={heroes} />
-        </main>
-      )}
-
-      {/* ВКЛАДКА: МИРЫ */}
-      {activeTab === "worlds" && (
-        <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-8 px-4 py-10 md:px-12">
-          <WorldsCatalog isAdmin={isAdmin} />
-        </main>
-      )}
-      </div>
-
-      {/* МОБИЛЬНАЯ НАВИГАЦИЯ (НИЖНЯЯ ПАНЕЛЬ) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-line bg-raised md:hidden">
-        <button
-          type="button"
-          onClick={() => setActiveTab("tables")}
-          className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors duration-150 ease-out ${
-            activeTab === "tables" ? "text-accent" : "text-muted"
-          }`}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <path d="M3 9h18M5 9v10M19 9v10M3 5h18" />
-          </svg>
-          <span>Столы</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("heroes")}
-          className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors duration-150 ease-out ${
-            activeTab === "heroes" ? "text-accent" : "text-muted"
-          }`}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <circle cx="12" cy="8" r="4" />
-            <path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6" />
-          </svg>
-          <span>Герои</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("worlds")}
-          className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors duration-150 ease-out ${
-            activeTab === "worlds" ? "text-accent" : "text-muted"
-          }`}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <circle cx="12" cy="12" r="9" />
-            <path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" />
-          </svg>
-          <span>Миры</span>
-        </button>
-      </nav>
-    </div>
-  );
-}
-
-/** Секция «Вахта продолжается» для активной кампании */
-function HeroSection({ campaign }: { campaign: CampaignCard }) {
-  const mode = useSession((s) => s.mode);
-  const isLight = mode === "light";
-  const isLive = campaign.session_live;
-  const action = actionOf(campaign);
-  const lastDate = when(campaign.last_session_at);
-
-  const isEcho =
-    (campaign.world ?? "").toLowerCase().includes("эхо") ||
-    (campaign.world ?? "").toLowerCase().includes("левиафан");
-  const worldName = campaign.world ?? "Базовые правила 5e";
-
-  const heroDesc = campaign.hero
-    ? `вы играете за ${campaign.hero.name}${
-        campaign.hero.level ? `, ${campaign.hero.level} ур.` : ""
-      }`
-    : campaign.my_role === "player"
-    ? "герой ещё не выбран"
-    : "вы ведёте этот стол";
-
-  return (
-    <section
-      className={`relative overflow-hidden border-b border-line px-4 py-8 md:py-12 md:px-12 lg:px-20 md:min-h-[460px] flex items-center transition-colors duration-200 ${
-        isLight ? "bg-[#f5f0e6]" : "bg-[#0d0f12]"
-      }`}
-    >
-      {/* Архивная навигационная графика: Левиафан или D&D */}
-      {isEcho ? (
-        <LeviathanEchoArt mode={mode} />
-      ) : (
-        <DndHeroArt mode={mode} />
-      )}
-
-      {/* Мягкая подсветка/градиент под текстом слева для идеальной читаемости */}
-      <div
-        className={`pointer-events-none absolute inset-y-0 left-0 w-full lg:w-3/5 bg-gradient-to-r ${
-          isLight
-            ? "from-[#f5f0e6] via-[#f5f0e6]/90 to-transparent"
-            : "from-[#0d0f12] via-[#0d0f12]/85 to-transparent"
-        } z-0`}
-      />
-
-      <div className="relative z-10 flex max-w-2xl flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
-          <span className={`rounded-full border px-3 py-1 font-medium ${isLive ? "border-patina/40 bg-patina/10 text-patina-hi" : "border-line bg-surface/80 text-ink-2"}`}>
-            {STATUS_TEXT[statusOf(campaign)]}
-          </span>
-          <span>{worldName}</span>
-        </div>
-
-        <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-semibold leading-[1.05] tracking-tight text-ink">
-          {campaign.name}
-        </h1>
-
-        {campaign.recap ? (
-          <Recap
-            text={campaign.recap}
-            clamp="line-clamp-4"
-            className="font-narration text-xl sm:text-2xl leading-relaxed text-ink-2 max-w-xl"
-          />
-        ) : (
-          <p className="font-narration text-lg text-muted">
-            Герои готовятся к выходу в туман.
-          </p>
+                </section>
+                <section className="border-t border-line-soft pt-6">
+                  <span aria-hidden="true" className="text-2xl text-accent">
+                    ◎
+                  </span>
+                  <h2 className="mt-3 font-narration text-lg font-medium">
+                    За пределами знакомого
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">
+                    У каждого мира — своя атмосфера, история и возможности для
+                    героев.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("worlds")}
+                    className="mt-3 min-h-11 text-sm font-medium text-copper-hi hover:underline"
+                  >
+                    Открыть миры <span aria-hidden="true">→</span>
+                  </button>
+                </section>
+              </aside>
+            </div>
+          </>
         )}
-
-        <div className="text-sm text-muted font-ui">
-          {lastDate ? `Прошлая сессия ${lastDate} · ` : ""}
-          {heroDesc}
-        </div>
-
-        <div className="mt-2 flex flex-wrap items-center gap-4">
-          <Link
-            to={action.href}
-            className="btn btn-primary h-12 px-6 rounded-[10px] text-sm sm:text-base font-semibold shadow-md flex items-center gap-2.5"
-          >
-            <span>{action.label}</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
-          </Link>
-
-          {(campaign.is_owner || campaign.my_role === "master") && (
+        {activeTab === "heroes" && (
+          <>
+            {heroesQuery.isLoading && <p role="status">Загружаем героев…</p>}
+            {heroesQuery.isError && (
+              <p role="alert" className="text-bad">
+                Не удалось загрузить героев.{" "}
+                <button
+                  type="button"
+                  className="underline"
+                  onClick={() => void heroesQuery.refetch()}
+                >
+                  Повторить
+                </button>
+              </p>
+            )}
+            {heroesQuery.isSuccess && <HeroesLibrarySection heroes={heroes} />}
+          </>
+        )}
+        {activeTab === "worlds" && <WorldsSection isAdmin={isAdmin} />}
+      </main>
+      <footer className="border-t border-line-soft px-4 pb-24 pt-5 sm:px-8 md:pb-5 lg:px-12">
+        <div className="mx-auto flex max-w-[1344px] flex-wrap items-center justify-between gap-3 text-xs text-muted">
+          <p>
+            <span className="font-semibold tracking-wide text-ink">
+              Taleforge
+            </span>
+            <span className="mx-3 text-faint">·</span>Ваши миры. Ваши истории.
+          </p>
+          {isAdmin && (
             <Link
-              to={`/c/${campaign.id}/manage`}
-              className="btn h-12 px-5 rounded-[10px] text-sm text-ink border-line hover:border-accent bg-surface/80"
+              to="/author"
+              className="min-h-10 content-center text-muted no-underline hover:text-copper-hi"
             >
-              Кабинет стола
+              Творческая студия <span aria-hidden="true">↗</span>
             </Link>
           )}
-
-          <div className="flex items-center gap-2 ml-1" aria-label="Участники отряда">
-            {campaign.party.map((m) => (
-              <Avatar
-                key={m.seat_id}
-                name={m.hero_name ?? m.user_name}
-                role={m.role}
-                occupant={m.occupant_type}
-                presence={
-                  m.occupant_type === "human"
-                    ? m.online
-                      ? "online"
-                      : "offline"
-                    : null
-                }
-                size={36}
-              />
-            ))}
-          </div>
         </div>
-      </div>
-
-      {/* Виджет «Сила Резонанса» (только для мира Эхо Левиафанов) */}
-      {isEcho && (
-        <div className="hidden xl:flex absolute right-12 bottom-8 w-[280px] flex-col gap-2.5 rounded-[12px] border border-line bg-surface/90 shadow-xl p-4 backdrop-blur-xs">
-          <div className="flex justify-between font-mono text-[11px] tracking-[0.14em]">
-            <span className="text-ember-hi font-semibold">СИЛА РЕЗОНАНСА</span>
-            <span className="text-muted">4 / 8</span>
-          </div>
-          <div className="grid grid-cols-8 gap-1">
-            <span className="h-2 rounded-[2px] bg-ember" />
-            <span className="h-2 rounded-[2px] bg-ember" />
-            <span className="h-2 rounded-[2px] bg-ember" />
-            <span className="h-2 rounded-[2px] bg-ember" />
-            <span className="h-2 rounded-[2px] bg-surface-2 border border-line-soft" />
-            <span className="h-2 rounded-[2px] bg-surface-2 border border-line-soft" />
-            <span className="h-2 rounded-[2px] bg-surface-2 border border-line-soft" />
-            <span className="h-2 rounded-[2px] bg-surface-2 border border-line-soft" />
-          </div>
-          <div className="text-xs text-ink font-medium">Волны у Хребта учащаются</div>
-        </div>
-      )}
-    </section>
-  );
-}
-
-/** Заглушка, когда нет ни одной кампании */
-function EmptyHeroSection({ isAdmin }: { isAdmin: boolean }) {
-  return (
-    <section className="relative overflow-hidden border-b border-line bg-surface-2 px-4 py-16 text-center md:px-12">
-      <div className="mx-auto flex max-w-xl flex-col items-center gap-4">
-        <div className="font-mono text-xs tracking-[0.18em] text-patina-hi">
-          ВАХТА ЖДЁТ ПЕРВЫЙ ОТРЯД
-        </div>
-        <h1 className="font-heading text-4xl font-semibold sm:text-5xl text-ink">
-          Добро пожаловать в Taleforge
-        </h1>
-        <p className="font-narration text-lg text-muted max-w-md">
-          «Каждая туша хранит память, а каждый кокон ждёт своего пробуждения».
-        </p>
-        {isAdmin ? (
-          <Link to="/?tab=worlds" className="btn btn-primary mt-2 h-12 px-6 text-sm font-semibold">
-            Выбрать мир для первой кампании
-          </Link>
-        ) : (
-          <p className="text-sm text-muted">
-            Попросите у ведущего или владельца ссылку-приглашение за стол.
-          </p>
-        )}
-      </div>
-    </section>
-  );
-}
-
-/** Полноценный экран библиотеки героев */
-function HeroesLibrarySection({ heroes }: { heroes: LibraryHero[] }) {
-  const qc = useQueryClient();
-
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-4 border-b border-line pb-4">
-        <div>
-          <h2 className="font-heading text-3xl font-semibold text-ink">
-            Библиотека героев
-          </h2>
-          <p className="mt-1 text-sm text-muted font-ui">
-            Персонажи профиля. Создаются заранее и могут отправляться копией в любые кампании.
-          </p>
-        </div>
-        <Link to="/heroes/new" className="btn btn-primary px-4 py-2 text-sm font-semibold">
-          + Собрать нового героя
-        </Link>
-      </div>
-
-      {heroes.length === 0 ? (
-        <div className="card p-12 text-center text-muted">
-          <p className="text-lg">У вас пока нет созданных героев.</p>
-          <p className="mt-1 text-sm">
-            Опишите первого героя и обсудите его замысел с мастером.
-          </p>
-          <Link to="/heroes/new" className="btn btn-primary mt-4 min-h-11 inline-flex">
-            Создать первого героя
-          </Link>
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {heroes.map((h) => (
-            <div
-              key={h.id}
-              className="card flex flex-col justify-between gap-4 p-5 transition hover:border-accent"
-            >
-              <div className="flex items-start gap-3.5">
-                <span
-                  className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-accent text-base font-semibold"
-                  style={{ background: `hsl(${hue(h.name)} 35% 32%)` }}
-                >
-                  {initials(h.name)}
-                  {h.portrait_url && <span className='absolute inset-0'><PortraitImage key={h.portrait_url} url={h.portrait_url} name={h.name || 'Без имени'} /></span>}
-                </span>
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <Link
-                    to={`/heroes/${h.id}`}
-                    className="truncate font-heading text-xl font-semibold text-ink no-underline hover:text-copper transition"
-                  >
-                    {h.name || "Без имени"}
-                  </Link>
-                  <span className="text-xs text-muted font-ui">
-                    {[`${h.level} уровень`]
-                      .filter(Boolean)
-                      .join(" · ") || "Черновик"}
-                  </span>
-                  {(h.errors?.length ?? 0) > 0 && (
-                    <span className="mt-1 text-xs text-bad">
-                      {h.errors?.length ?? 0} незаполненных параметров
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-2 border-t border-line-soft pt-3">
-                <Link
-                  to={`/heroes/${h.id}`}
-                  className="btn h-9 px-3 text-xs font-medium"
-                >
-                  Редактировать
-                </Link>
-                <ActionButton
-                  className="px-3 py-1 text-xs text-muted hover:text-bad"
-                  title="Удалить героя из профиля"
-                  confirm={`Удалить героя «${h.name || "без имени"}» из профиля?`}
-                  run={async () => {
-                    await api(`/api/me/characters/${h.id}`, { method: "DELETE" });
-                    await qc.invalidateQueries({ queryKey: ["library"] });
-                  }}
-                  done="Герой удалён"
-                >
-                  Удалить
-                </ActionButton>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      </footer>
+      <nav
+        aria-label="Основная навигация"
+        className="fixed inset-x-0 bottom-0 z-50 flex min-h-16 items-center justify-around border-t border-line bg-raised pb-[env(safe-area-inset-bottom)] md:hidden"
+      >
+        {TABS.map(([tab, label, icon]) => (
+          <button
+            key={tab}
+            type="button"
+            aria-current={activeTab === tab ? "page" : undefined}
+            onClick={() => setActiveTab(tab)}
+            className={`flex min-h-16 flex-1 flex-col items-center justify-center gap-1 text-[11px] ${activeTab === tab ? "text-copper-hi" : "text-muted"}`}
+          >
+            <span aria-hidden="true" className="text-xl">
+              {icon}
+            </span>
+            {label}
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }

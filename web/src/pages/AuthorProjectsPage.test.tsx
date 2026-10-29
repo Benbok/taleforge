@@ -62,3 +62,48 @@ it("creates a universal world with an empty catalogue", async () => {
   expect(sent.pack_id).toBeUndefined();
   expect(mock.calls.some(c => c.url === "/api/packs")).toBe(false);
 });
+
+function startWithIdea(draft: { status?: number; body: unknown }) {
+  const mock = mockApi(({ url, method }) => {
+    if (url === "/api/author/projects" && method === "POST") return { status: 201, body: { id: "ap_world", draft_revision: 1 } };
+    if (url === "/api/author/projects") return { body: [] };
+    if (url === "/api/author/projects/ap_world/studio/draft") return draft;
+    if (url === "/api/author/projects/ap_world/studio" && method === "PUT") return { body: { project_id: "ap_world", draft_revision: 2, fields: {} } };
+    return undefined;
+  });
+  renderWithClient(<Routes>
+    <Route path="/author" element={<AuthorProjectsPage />} />
+    <Route path="/author/:id" element={<p>Мир открыт</p>} />
+  </Routes>, undefined, "/author");
+  fireEvent.change(screen.getByLabelText("Название приключения"), { target: { value: "Средиземье" } });
+  fireEvent.change(screen.getByLabelText("Идея мира"), { target: { value: "Властелин колец, 3018 год" } });
+  return mock;
+}
+
+it("starts from an idea: the new project is created, drafted and saved before the studio opens", async () => {
+  const mock = startWithIdea({ body: { premise: "Девять идут из Раздола", world: "Средиземье", laws: "Кольцо искажает", start: "Шир" } });
+  fireEvent.click(screen.getByRole("button", { name: "Создать проект" }));
+  await screen.findByText("Мир открыт");
+  const order = mock.calls.map(c => `${c.method} ${c.url}`);
+  expect(order.indexOf("POST /api/author/projects")).toBeLessThan(order.indexOf("POST /api/author/projects/ap_world/studio/draft"));
+  expect(order.indexOf("POST /api/author/projects/ap_world/studio/draft")).toBeLessThan(order.indexOf("PUT /api/author/projects/ap_world/studio"));
+  const saved = mock.calls.find(c => c.method === "PUT")!.body as { expected_revision: number; fields: { title: string; laws: string; premise: string; secret_text: string } };
+  expect(saved.expected_revision).toBe(1);
+  expect(saved.fields).toMatchObject({ title: "Средиземье", laws: "Кольцо искажает", premise: "Девять идут из Раздола", secret_text: "" });
+});
+
+it("keeps the author's premise when an idea is given too", async () => {
+  const mock = startWithIdea({ body: { premise: "DRAFT", world: "Средиземье" } });
+  fireEvent.change(screen.getByLabelText("Замысел мира"), { target: { value: "Мой замысел" } });
+  fireEvent.click(screen.getByRole("button", { name: "Создать проект" }));
+  await screen.findByText("Мир открыт");
+  const saved = mock.calls.find(c => c.method === "PUT")!.body as { fields: { premise: string; world: string } };
+  expect(saved.fields).toMatchObject({ premise: "Мой замысел", world: "Средиземье" });
+});
+
+it("still opens the new project when the draft fails", async () => {
+  const mock = startWithIdea({ status: 409, body: { detail: "Не удалось составить черновик по идее. Повторите попытку." } });
+  fireEvent.click(screen.getByRole("button", { name: "Создать проект" }));
+  await screen.findByText("Мир открыт");
+  expect(mock.calls.some(c => c.method === "PUT")).toBe(false);
+});

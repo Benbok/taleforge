@@ -28,6 +28,7 @@ export interface CampaignCard {
   id: string;
   name: string;
   world: string | null;
+  world_version?: string | null;
   status: CampaignStatus;
   session_live: boolean;
   waiting_players: number;

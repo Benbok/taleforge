@@ -39,6 +39,16 @@ export type StudioFields = {
 export type CreationDialogue = { project_id: string; source_revision: number; status: "questions" | "ready"; question?: string | null; notes: string[]; suggestions?: { field: keyof StudioFields; text: string }[] };
 export type StudioDraft = Partial<Record<keyof StudioFields, string>>;
 export type StudioView = { project_id: string; draft_revision: number; fields: StudioFields; review?: CreationDialogue | null };
+const DRAFTABLE = ["premise", "world", "laws", "inhabitants", "powers", "history", "start", "style", "public_text"] as const;
+/** A proposal fills only the fields the author left empty; secrets and the title are never offered. */
+export const mergeDraft = (fields: StudioFields, proposal: StudioDraft): StudioFields => {
+  const next = { ...fields };
+  for (const key of DRAFTABLE) {
+    const text = proposal[key];
+    if (typeof text === "string" && text.trim() && !fields[key].trim()) next[key] = text;
+  }
+  return next;
+};
 export const emptyStudio = (title: string): StudioFields => ({ title, premise: "", world: "", laws: "", inhabitants: "", powers: "", history: "", start: "", style: "", difficulty: "normal", excluded_themes: [], public_text: "", secret_text: "" });
 
 export type View = "summary" | "full";

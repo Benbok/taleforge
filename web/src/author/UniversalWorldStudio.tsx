@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ApiError } from "../lib/api";
-import { authoring, authorKeys, newRequestKey, type StudioFields, type StudioView } from "../lib/authoring";
+import { authoring, authorKeys, mergeDraft, newRequestKey, type StudioFields, type StudioView } from "../lib/authoring";
 
 interface FieldMeta {
   key: keyof StudioFields;
@@ -129,7 +129,8 @@ export default function UniversalWorldStudio({ projectId }: { projectId: string 
   });
   const [fields, setFields] = useState<StudioFields | null>(null);
   const [answer, setAnswer] = useState("");
-  const [idea, setIdea] = useState("");
+  // The idea typed on the project list survives a failed draft, so the author can retry here.
+  const [idea, setIdea] = useState(() => (useLocation().state as { idea?: string } | null)?.idea ?? "");
   const acceptKey = useRef(newRequestKey());
   const launchKeys = useRef<Record<string, string>>({});
 
@@ -165,18 +166,7 @@ export default function UniversalWorldStudio({ projectId }: { projectId: string 
   // A proposal only: it fills the fields the author left empty and saves nothing.
   const draft = useMutation({
     mutationFn: () => authoring.draftStudio(projectId, idea.trim()),
-    onSuccess: (proposal) =>
-      setFields((old) => {
-        if (!old) return old;
-        const next = { ...old };
-        for (const meta of ALL_META) {
-          const text = proposal[meta.key];
-          if (meta.key !== "secret_text" && typeof text === "string" && text.trim() && !String(old[meta.key]).trim()) {
-            (next as Record<string, unknown>)[meta.key] = text;
-          }
-        }
-        return next;
-      }),
+    onSuccess: (proposal) => setFields((old) => (old ? mergeDraft(old, proposal) : old)),
   });
 
   const accept = useMutation({

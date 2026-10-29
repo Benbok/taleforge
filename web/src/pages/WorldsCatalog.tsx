@@ -48,7 +48,11 @@ export default function WorldsCatalog({ isAdmin }: { isAdmin: boolean }) {
         </p>
       )}
 
-      {catalog.isLoading ? (
+      {catalog.isError ? (
+        <p role="alert" className="card p-6 text-sm text-bad">
+          Не удалось загрузить миры. <button type="button" className="underline" onClick={() => void catalog.refetch()}>Попробовать снова</button>
+        </p>
+      ) : catalog.isLoading ? (
         <div className="card p-8 text-center text-muted font-mono text-sm">Загрузка каталога миров…</div>
       ) : !catalog.data || catalog.data.length === 0 ? (
         <div className="card p-8 text-center text-muted text-sm">

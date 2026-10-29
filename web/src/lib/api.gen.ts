@@ -2885,6 +2885,8 @@ export interface components {
             waiting_players: number;
             /** World */
             world: string | null;
+            /** World Version */
+            world_version: string | null;
         };
         /** CampaignCreateIn */
         CampaignCreateIn: {
