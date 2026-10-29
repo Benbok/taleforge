@@ -37,14 +37,14 @@ def test_session_intro_is_saved_once_and_only_the_greeting_needs_the_model(tmp_p
             c = await s.get(Campaign, "c")
             c.public_intro = "Исследуйте порт на парящих островах."
             await s.commit()
-        provider = Provider(["Добро пожаловать к столу."])
+        provider = Provider(["Тайны мира.", "Добро пожаловать к столу."])  # secrets, then the greeting
         service = MasterService(maker, Bus(), provider)
         assert await open_universal_session(service, "c", "game")
         assert await open_universal_session(service, "c", "game")
         async with maker() as s:
             rows = list(await s.scalars(select(Message).where(Message.kind == "narration").order_by(Message.seq)))
             assert [r.content for r in rows] == ["Исследуйте порт на парящих островах.", "Добро пожаловать к столу."]
-        assert len(provider.prompts) == 1
+        assert len(provider.prompts) == 2
         await engine.dispose()
 
     asyncio.run(run())
@@ -169,6 +169,82 @@ def test_a_player_turn_waits_for_the_session_greeting(tmp_path):
             assert not turn.done() and not provider.prompts  # the master does not answer over the greeting
             turn.cancel()
         await asyncio.gather(turn, return_exceptions=True)
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+async def _studio(maker, **extra):
+    from app.db.models import CampaignSecret
+
+    async with maker() as s:
+        secret = await s.get(CampaignSecret, "c")
+        secret.setting = {
+            "studio": {"premise": "Путь Кольца", "world": "Средиземье", "laws": "Кольцо искажает", **extra}
+        }
+        await s.commit()
+
+
+async def _stored_secret(maker):
+    from app.db.models import CampaignSecret
+
+    async with maker() as s:
+        return ((await s.get(CampaignSecret, "c")).setting or {}).get("studio", {}).get("secret_text", "")
+
+
+def test_empty_master_secrets_are_invented_before_the_greeting_once_and_stay_private(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        await _studio(maker)
+        provider = Provider(["SECRET-1: хозяин трактира служит Тени.", "Добро пожаловать к столу."])
+        service = MasterService(maker, Bus(), provider)
+        assert await open_universal_session(service, "c", "game")
+        assert await open_universal_session(service, "c", "game")  # nothing more is asked
+        assert len(provider.prompts) == 2
+        assert await _stored_secret(maker) == "SECRET-1: хозяин трактира служит Тени."
+        assert "Кольцо искажает" in str(provider.prompts[0])  # invented from the world facts
+        assert "SECRET-1" not in str(provider.prompts[1])  # the greeting never hears the secrets
+        async with maker() as s:
+            texts = [m.content for m in await s.scalars(select(Message).where(Message.kind == "narration"))]
+            assert not any("SECRET-1" in t for t in texts)  # and the table never reads them
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_author_written_secrets_are_never_replaced(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        await _studio(maker, secret_text="Авторская тайна")
+        provider = Provider(["Добро пожаловать."])
+        service = MasterService(maker, Bus(), provider)
+        assert await open_universal_session(service, "c", "game")
+        assert len(provider.prompts) == 1  # only the greeting
+        assert await _stored_secret(maker) == "Авторская тайна"
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_failed_secret_invention_does_not_block_the_session_and_is_retried(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        await _studio(maker)
+        provider = Provider(
+            [
+                RuntimeError("down"),
+                "Добро пожаловать.",
+                "SECRET-2: тайна",
+            ]
+        )
+        service = MasterService(maker, Bus(), provider)
+        assert await open_universal_session(service, "c", "game")
+        assert await _stored_secret(maker) == ""
+        assert await open_universal_session(service, "c", "game")
+        assert await _stored_secret(maker) == "SECRET-2: тайна"
         await engine.dispose()
 
     asyncio.run(run())
