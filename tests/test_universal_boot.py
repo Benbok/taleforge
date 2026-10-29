@@ -42,7 +42,7 @@ def test_fresh_boot_uses_universal_and_restart_keeps_real_library_hero(tmp_path,
         assert client.get(f"/api/me/characters/{hero_id}", headers=headers).json() == before
         assert client.get(f"/api/campaigns/{campaign_id}", headers=headers).json()["ruleset_id"] == "universal"
     with sqlite3.connect(tmp_path / "fresh-install.db") as connection:
-        assert connection.execute("select version_num from alembic_version").fetchone() == ("universal_0016",)
+        assert connection.execute("select version_num from alembic_version").fetchone() == ("universal_0017",)
         assert connection.execute("select count(*) from equipment_artworks").fetchone() == (0,)
 
 
