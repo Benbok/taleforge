@@ -15,6 +15,7 @@ export interface SketchSurfaceProps {
   pickedExit?: SketchExit | null;
   pickedPassageRef?: string | null;
   showPassageLabels?: boolean;
+  floorOpacity?: number;
   children?: ReactNode;
 }
 
@@ -26,7 +27,7 @@ export function terrainCells(rects: number[][]): [number, number][] {
       Array.from({ length: x1 - x0 + 1 }, (_, x) => [x0 + x, y0 + y] as [number, number])).flat());
 }
 
-export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, onFeature, pickedExit, pickedPassageRef, showPassageLabels=false, children }: SketchSurfaceProps) {
+export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, onFeature, pickedExit, pickedPassageRef, showPassageLabels=false, floorOpacity=1, children }: SketchSurfaceProps) {
   const area: MapKnownArea = { id: areaId, name: areaId, offset: [0, 0], level: 0, status: "here", revision: 0, sketch };
   const geometry = surfaceGeometry(area);
   const torchMounts = wallTorchMounts(sketch, geometry.floor, geometry.contours);
@@ -42,7 +43,7 @@ export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, on
           {geometry.floor.map(([x, y]) => <rect key={`${x},${y}`} x={x} y={y} width="1" height="1" />)}
         </clipPath>
       </defs>
-      <rect width={sketch.cols} height={sketch.rows} fill={`url(#${idPrefix}-pattern-${material})`} clipPath={`url(#${clipId})`} />
+      <rect width={sketch.cols} height={sketch.rows} fill={`url(#${idPrefix}-pattern-${material})`} clipPath={`url(#${clipId})`} opacity={floorOpacity} />
       {(sketch.terrain ?? []).filter((t) => t.kind !== "bridge").map((terrain, i) => (
         <g key={`terrain-${i}`} data-terrain={terrain.kind} clipPath={`url(#${clipId})`}>
           {terrainCells(terrain.cells).map(([x, y], j) => <rect key={j} x={x} y={y} width="1" height="1" fill={`var(--tf-map-${terrain.kind}, ${terrain.kind === "stream" ? "#77a9c6" : "#b6a66a"})`} opacity=".65" />)}

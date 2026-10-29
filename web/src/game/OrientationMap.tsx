@@ -6,6 +6,8 @@ import {useState} from 'react';
 import {api,ApiError} from '../lib/api';
 import {useGame} from '../stores/game';
 import {useMapWindow} from './map';
+import type {MapLocationPlan} from './map';
+import {BackdropControls,useMapBackdrop} from './MapBackdrop';
 
 function GenerateMap({locationId}:{locationId:string}){
  const campaignId=useGame(s=>s.snapshot?.campaign.id);
@@ -27,12 +29,23 @@ function GenerateMap({locationId}:{locationId:string}){
  </div>;
 }
 
+function OrientedPlan({map,visual,campaignId,hereId}:{map:MapState;visual:MapLocationPlan;campaignId:string;hereId:string}){
+ const backdrop=useMapBackdrop(campaignId,hereId);
+ const url=backdrop.artwork?.image_url;
+ return <>
+  <BackdropControls backdrop={backdrop}/>
+  <p className='text-xs text-muted'>Ориентирующая схема: масштаб и положение ориентиров условны.</p>
+  <LocationMap map={visual} m={map} orientationOnly backdrop={url?{areaId:visual.here_id??hereId,url}:null}/>
+ </>;
+}
+
 export default function OrientationMap({map}:{map:MapState}){
  const inspect=useInspector(s=>s.open);
  const visual=orientationPlan(map);
+ const campaignId=useGame(s=>s.snapshot?.campaign.id);
  return <section className='space-y-4' aria-label='Ориентирующая карта'>
   <p className='rounded-lg border border-line-soft bg-raised p-3 text-sm text-muted'>Карта показывает известное окружение. Осмотр и масштаб не расходуют время. Действия и перемещения описывайте в чате.</p>
-  {visual ? <><p className='text-xs text-muted'>Ориентирующая схема: масштаб и положение ориентиров условны.</p><LocationMap map={visual} m={map} orientationOnly /></> : <div className='space-y-3'><p className='text-sm text-muted'>Точная схема ещё не известна. Для игры достаточно описания и известных ориентиров. Схема создаётся при первом входе; для уже начатой игры её можно создать здесь.</p>{map.here&&<GenerateMap key={map.here.id} locationId={map.here.id}/>}</div>}
+  {visual ? (campaignId&&map.here ? <OrientedPlan key={map.here.id} map={map} visual={visual} campaignId={campaignId} hereId={map.here.id}/> : <><p className='text-xs text-muted'>Ориентирующая схема: масштаб и положение ориентиров условны.</p><LocationMap map={visual} m={map} orientationOnly /></>) : <div className='space-y-3'><p className='text-sm text-muted'>Точная схема ещё не известна. Для игры достаточно описания и известных ориентиров. Схема создаётся при первом входе; для уже начатой игры её можно создать здесь.</p>{map.here&&<GenerateMap key={map.here.id} locationId={map.here.id}/>}</div>}
   {map.here?.description&&<p className='whitespace-pre-line leading-relaxed text-ink-2'>{map.here.description}</p>}
   {map.around.length>0&&<div className='space-y-2'>
    <h3 className='font-semibold'>Известное окружение</h3>
