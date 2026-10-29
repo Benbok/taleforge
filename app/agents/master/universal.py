@@ -176,6 +176,8 @@ async def _call(service, campaign, turn, purpose, payload, *, generation_id=None
 
 
 async def run_universal_turn(service, cid, place=None):
+    async with service.intro_lock(cid):
+        pass  # the session greeting is written first; a turn never answers over it
     async with service.maker() as s:
         c = await s.get(Campaign, cid)
         if c is None or master_seat(c).occupant_type != "agent":

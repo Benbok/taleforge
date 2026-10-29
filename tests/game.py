@@ -137,6 +137,8 @@ def party(
     ch = add_hero(client, c["id"], heads[0], FIGHTER["name"])
     if start:
         ok(client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin))
+        quiet(client)  # the session greeting is written first; it is not part of what scenarios script or count
+        getattr(client.app.state.master.llm, "requests", []).clear()
     return c, heads, ch
 
 

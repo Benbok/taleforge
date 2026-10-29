@@ -180,6 +180,7 @@ def test_master_turn_succeeds_when_tts_fails(settings, tmp_path):
         client.patch(
             f"/api/campaigns/{c['id']}", json={"tts_line_provider": "gemini"}, headers=admin
         )  # реплики облаком
+        client.portal.call(client.app.state.master.wait_idle, c["id"])  # the session greeting is done first
         llm.replies += [
             {
                 "tool_calls": [

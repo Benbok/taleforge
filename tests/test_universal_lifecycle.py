@@ -29,7 +29,7 @@ def test_master_status_is_scoped_and_cleared_after_session_intro(tmp_path):
     asyncio.run(run())
 
 
-def test_session_intro_is_saved_once_without_catalog_or_model(tmp_path):
+def test_session_intro_is_saved_once_and_only_the_greeting_needs_the_model(tmp_path):
     async def run():
         engine, maker = await setup(tmp_path)
         await prepare(maker)
@@ -37,15 +37,14 @@ def test_session_intro_is_saved_once_without_catalog_or_model(tmp_path):
             c = await s.get(Campaign, "c")
             c.public_intro = "Исследуйте порт на парящих островах."
             await s.commit()
-        provider = Provider([])
+        provider = Provider(["Добро пожаловать к столу."])
         service = MasterService(maker, Bus(), provider)
         assert await open_universal_session(service, "c", "game")
         assert await open_universal_session(service, "c", "game")
         async with maker() as s:
-            rows = list(await s.scalars(select(Message).where(Message.kind == "narration")))
-            assert len(rows) == 1
-            assert rows[0].content == "Исследуйте порт на парящих островах."
-        assert not provider.prompts
+            rows = list(await s.scalars(select(Message).where(Message.kind == "narration").order_by(Message.seq)))
+            assert [r.content for r in rows] == ["Исследуйте порт на парящих островах.", "Добро пожаловать к столу."]
+        assert len(provider.prompts) == 1
         await engine.dispose()
 
     asyncio.run(run())
@@ -80,6 +79,96 @@ def test_private_question_needs_no_catalog_and_answer_stays_private(tmp_path):
             assert set(reply.visible_to) == {"seat", "master"}
             assert (await s.get(Message, "whisper")).data["answer"] == "answered"
         assert "HIDDEN-SECRET" not in str(provider.prompts)
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+async def _table(maker):
+    """The seated hero gets a public bio and a private backstory; the secret plot sits in the campaign secrets."""
+    from app.db.models import CampaignSecret, Character
+
+    async with maker() as s:
+        hero = await s.get(Character, "hero")
+        hero.name = "Мира"
+        hero.public_bio = "Бывшая лодочница с Озёрного края"
+        hero.private_backstory = "HERO-PRIVATE: убила брата"
+        c = await s.get(Campaign, "c")
+        c.name = "Кольцо власти"
+        c.public_intro = "Шир ждёт."
+        secret = await s.get(CampaignSecret, "c")
+        secret.setting = {
+            "studio": {
+                "premise": "Путь Кольца",
+                "world": "Средиземье",
+                "laws": "Кольцо искажает носителя",
+                "style": "Героический эпос",
+                "history": "Эпохи сменяли друг друга",
+                "start": "Трактир в Байуотере",
+                "secret_text": "WORLD-SECRET: хозяин трактира шпион",
+            }
+        }
+        await s.commit()
+
+
+def test_session_opening_greets_the_table_and_weaves_in_the_heroes_once(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        await _table(maker)
+        provider = Provider(["Добро пожаловать, друзья! Мира, у стойки тебя ждёт знакомый лодочник."])
+        service = MasterService(maker, Bus(), provider)
+        assert await open_universal_session(service, "c", "game")
+        assert await open_universal_session(service, "c", "game")  # the second start adds nothing
+        async with maker() as s:
+            rows = list(await s.scalars(select(Message).where(Message.kind == "narration").order_by(Message.seq)))
+            assert [r.content for r in rows][0] == "Шир ждёт."  # the authored intro stays first
+            assert rows[1].content.startswith("Добро пожаловать")
+            assert rows[1].visible_to is None or rows[1].visible_to == []  # said to the whole table
+            assert len(rows) == 2
+        assert len(provider.prompts) == 1
+        prompt = str(provider.prompts[0])
+        assert "Мира" in prompt and "лодочница" in prompt and "Кольцо искажает носителя" in prompt
+        assert "HERO-PRIVATE" not in prompt and "WORLD-SECRET" not in prompt and "HIDDEN-SECRET" not in prompt
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_failed_opening_does_not_block_the_session_and_is_retried_at_the_next_start(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        await _table(maker)
+        provider = Provider([RuntimeError("provider down"), "Добро пожаловать после сбоя."])
+        service = MasterService(maker, Bus(), provider)
+        assert await open_universal_session(service, "c", "game")
+        async with maker() as s:
+            rows = list(await s.scalars(select(Message).where(Message.kind == "narration")))
+            assert [r.content for r in rows] == ["Шир ждёт."]  # the session opened without the greeting
+        assert await open_universal_session(service, "c", "game")
+        async with maker() as s:
+            rows = list(await s.scalars(select(Message).where(Message.kind == "narration").order_by(Message.seq)))
+            assert rows[-1].content == "Добро пожаловать после сбоя."
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_player_turn_waits_for_the_session_greeting(tmp_path):
+    from app.agents.master.universal import run_universal_turn
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        provider = Provider([])
+        service = MasterService(maker, Bus(), provider)
+        async with service.intro_lock("c"):  # the greeting is being written
+            turn = asyncio.create_task(run_universal_turn(service, "c"))
+            await asyncio.sleep(0.2)
+            assert not turn.done() and not provider.prompts  # the master does not answer over the greeting
+            turn.cancel()
+        await asyncio.gather(turn, return_exceptions=True)
         await engine.dispose()
 
     asyncio.run(run())

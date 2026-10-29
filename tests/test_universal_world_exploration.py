@@ -106,7 +106,7 @@ def test_new_session_prepares_entry_once_but_existing_intro_does_not_generate(tm
             c = await s.get(Campaign, "c")
             c.settings = {**c.settings, "studio_entry_location_id": "gorge"}
             await s.commit()
-        provider = Provider([entry(), {"verdict": "pass"}])
+        provider = Provider([entry(), {"verdict": "pass"}, "Добро пожаловать."])
         service = MasterService(maker, Bus(), provider)
         assert await open_universal_session(service, "c", "game")
         assert await open_universal_session(service, "c", "game")
@@ -116,7 +116,7 @@ def test_new_session_prepares_entry_once_but_existing_intro_does_not_generate(tm
             assert "следы колёс" in message.content
             assert await s.scalar(select(func.count()).select_from(WorldGenerationState)) == 1
             assert await s.scalar(select(func.count()).select_from(Event)) == 0
-        assert len(provider.prompts) == 2
+        assert len(provider.prompts) == 3  # entry preparation, its review, the greeting
         await engine.dispose()
 
     asyncio.run(run())

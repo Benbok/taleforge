@@ -24,4 +24,6 @@ def test_no_rhythm_without_plan(game_client, admin_g, llm, settings):
     ok(game_client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin_g))
     ok(game_client.post(f"/api/campaigns/{c['id']}/session/end", headers=admin_g))
     game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])
-    assert llm.requests == [] and narrations(settings, c["id"]) == []
+    # a failed session greeting is retried at the next start; nothing else asks the model without a plan
+    assert all("Игра только начинается" in str(r["messages"]) for r in llm.requests)
+    assert narrations(settings, c["id"]) == []

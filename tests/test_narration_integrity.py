@@ -74,6 +74,7 @@ def test_voice_line_drops_json_commands(game_client, admin_g, llm):  # noqa: F81
     from app.tools.runtime import open_context
 
     c, _, _ = party(game_client, admin_g)
+    game_client.portal.call(game_client.app.state.master.wait_idle, c["id"])  # the session greeting is done first
     llm.replies += [{"voice_line": True, "text": 'Доки затихли.\n[{"call":"spawn_entity","args":{}}]'}]
     master = game_client.app.state.master
 

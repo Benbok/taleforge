@@ -57,6 +57,8 @@ def test_parser_target_projection_matches_local_visible_objects(game_client, adm
 @pytest.mark.parametrize("hidden", [False, True])
 def test_card_inspection_uses_exact_visible_target(game_client, admin_g, llm, settings, hidden):
     campaign, _, hero = party(game_client, admin_g)
+    game_client.portal.call(game_client.app.state.master.wait_idle, campaign["id"])
+    llm.requests.clear()  # the session greeting is not part of the admission under test
     hid = hero["id"]
 
     async def setup(ctx):
