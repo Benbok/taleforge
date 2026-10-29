@@ -29,12 +29,43 @@ class StudioFields(Contract):
     secret_text: str = Field(default="", max_length=16000)
 
 
+SuggestibleField = Literal[
+    "premise", "world", "laws", "inhabitants", "powers", "history", "start", "style", "public_text"
+]
+
+
+class FieldSuggestion(Contract):
+    """A proposal for one text field. Only the author applies it; secrets are never suggested."""
+
+    field: SuggestibleField
+    text: str = Field(min_length=1, max_length=8000)
+
+
+class StudioDraftRequest(Contract):
+    idea: str = Field(min_length=1, max_length=4000)
+
+
+class StudioDraft(Contract):
+    """Proposed text for the fields; an empty string means "nothing offered"."""
+
+    premise: str = Field(default="", max_length=8000)
+    world: str = Field(default="", max_length=8000)
+    laws: str = Field(default="", max_length=8000)
+    inhabitants: str = Field(default="", max_length=8000)
+    powers: str = Field(default="", max_length=8000)
+    history: str = Field(default="", max_length=8000)
+    start: str = Field(default="", max_length=8000)
+    style: str = Field(default="", max_length=4000)
+    public_text: str = Field(default="", max_length=8000)
+
+
 class CreationDialogue(Contract):
     project_id: str
     source_revision: int
     status: Literal["questions", "ready"]
     question: str | None = None
     notes: list[str] = Field(default_factory=list)
+    suggestions: list[FieldSuggestion] = Field(default_factory=list)
 
 
 class StudioView(Contract):

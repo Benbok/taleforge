@@ -112,6 +112,12 @@ const SECTION_5: FieldMeta[] = [
   },
 ];
 
+const ALL_META = [...SECTION_1, ...SECTION_2, ...SECTION_3, ...SECTION_4, ...SECTION_5];
+const metaOf = (key: keyof StudioFields) => ALL_META.find((m) => m.key === key)!;
+// The master's review asks for these four, so they stay in the open part of the form.
+const MAIN_KEYS: (keyof StudioFields)[] = ["laws", "world", "start"];
+const EXTRA_KEYS: (keyof StudioFields)[] = ["inhabitants", "powers", "history", "style", "public_text", "secret_text"];
+
 export default function UniversalWorldStudio({ projectId }: { projectId: string }) {
   const client = useQueryClient();
   const navigate = useNavigate();
@@ -123,6 +129,7 @@ export default function UniversalWorldStudio({ projectId }: { projectId: string 
   });
   const [fields, setFields] = useState<StudioFields | null>(null);
   const [answer, setAnswer] = useState("");
+  const [idea, setIdea] = useState("");
   const acceptKey = useRef(newRequestKey());
   const launchKeys = useRef<Record<string, string>>({});
 
@@ -155,6 +162,23 @@ export default function UniversalWorldStudio({ projectId }: { projectId: string 
     },
   });
 
+  // A proposal only: it fills the fields the author left empty and saves nothing.
+  const draft = useMutation({
+    mutationFn: () => authoring.draftStudio(projectId, idea.trim()),
+    onSuccess: (proposal) =>
+      setFields((old) => {
+        if (!old) return old;
+        const next = { ...old };
+        for (const meta of ALL_META) {
+          const text = proposal[meta.key];
+          if (meta.key !== "secret_text" && typeof text === "string" && text.trim() && !String(old[meta.key]).trim()) {
+            (next as Record<string, unknown>)[meta.key] = text;
+          }
+        }
+        return next;
+      }),
+  });
+
   const accept = useMutation({
     mutationFn: () => authoring.acceptStudio(projectId, studio.data!.draft_revision, acceptKey.current),
     onSuccess: refresh,
@@ -177,8 +201,8 @@ export default function UniversalWorldStudio({ projectId }: { projectId: string 
   });
 
   const dirty = !!fields && JSON.stringify(fields) !== JSON.stringify(studio.data?.fields);
-  const busy = save.isPending || review.isPending || accept.isPending || launch.isPending;
-  const error = save.error || review.error || accept.error || launch.error || studio.error;
+  const busy = save.isPending || review.isPending || accept.isPending || launch.isPending || draft.isPending;
+  const error = save.error || review.error || accept.error || launch.error || draft.error || studio.error;
 
   if (!fields) {
     return (
@@ -323,103 +347,100 @@ export default function UniversalWorldStudio({ projectId }: { projectId: string 
                 />
               </div>
 
+              <div className="flex flex-col gap-2 rounded-xl border border-accent/30 bg-surface-2/30 p-4">
+                <label htmlFor="studio-idea" className="text-sm font-semibold text-ink">
+                  Есть готовая идея?
+                </label>
+                <p className="text-xs leading-relaxed text-muted">
+                  Назовите вселенную или опишите мир в нескольких фразах. Мастер предложит черновик для пустых полей,
+                  а ваш текст и сохранённые данные он не тронет.
+                </p>
+                <textarea
+                  id="studio-idea"
+                  aria-label="Идея мира"
+                  className="field workshop-field min-h-20"
+                  maxLength={4000}
+                  placeholder="Например: «Властелин колец», 3018 год, Братство выходит из Раздола…"
+                  value={idea}
+                  onChange={(e) => setIdea(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="btn btn-outline-copper self-start font-mono text-xs"
+                  disabled={busy || !idea.trim()}
+                  onClick={() => draft.mutate()}
+                >
+                  {draft.isPending ? "Мастер пишет черновик…" : "Заполнить из идеи"}
+                </button>
+              </div>
+
               {SECTION_1.map((meta) => renderFieldBlock(meta, fields, update))}
             </section>
 
-            {/* Карточка 02: Законы и Устройство */}
+            {/* Карточка 02: то, без чего мастер не примет мир */}
             <section className="card flex flex-col gap-5 p-5 md:p-6 shadow-sm">
               <div className="border-b border-line pb-4">
-                <span className="text-xs uppercase tracking-widest text-patina font-semibold">
-                  02 / Законы реальности
-                </span>
-                <h2 className="mt-1 font-heading text-xl font-bold text-ink">Устройство и фундаментальные законы</h2>
+                <span className="text-xs uppercase tracking-widest text-patina font-semibold">02 / Мир и законы</span>
+                <h2 className="mt-1 font-heading text-xl font-bold text-ink">Законы, мир и начало</h2>
                 <p className="mt-1 text-xs leading-relaxed text-muted">
                   Фундаментальные правила мира незыблемы: мастер строго следует им и не меняет молча.
                 </p>
               </div>
 
-              {SECTION_2.map((meta) => renderFieldBlock(meta, fields, update))}
+              {MAIN_KEYS.map((k) => renderFieldBlock(metaOf(k), fields, update))}
             </section>
 
-            {/* Карточка 03: Обитатели и Силы */}
-            <section className="card flex flex-col gap-5 p-5 md:p-6 shadow-sm">
-              <div className="border-b border-line pb-4">
-                <span className="text-xs uppercase tracking-widest text-patina font-semibold">
-                  03 / Силы и обитатели
-                </span>
-                <h2 className="mt-1 font-heading text-xl font-bold text-ink">
-                  Обитатели, народы и природа способностей
-                </h2>
-                <p className="mt-1 text-xs leading-relaxed text-muted">
-                  Кто населяет мир и через какие источники проявляются необычные возможности.
-                </p>
-              </div>
+            {/* Дополнительно: открывается сам, если что-то уже заполнено */}
+            <details
+              data-testid="extra-fields"
+              className="card p-5 md:p-6 shadow-sm"
+              open={EXTRA_KEYS.some((k) => String(fields[k]).trim()) || undefined}
+            >
+              <summary className="cursor-pointer font-heading text-xl font-bold text-ink">Дополнительно</summary>
+              <p className="mt-1 text-xs leading-relaxed text-muted">
+                Необязательно: обитатели, силы, история, тон, текст для игроков и секреты мастера.
+              </p>
+              <div className="mt-4 flex flex-col gap-5">
+                {EXTRA_KEYS.map((k) => renderFieldBlock(metaOf(k), fields, update))}
 
-              {SECTION_3.map((meta) => renderFieldBlock(meta, fields, update))}
-            </section>
+                <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-line">
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="studio-difficulty" className="text-sm font-semibold text-ink">
+                      Сложность
+                    </label>
+                    <select
+                      id="studio-difficulty"
+                      className="field workshop-field"
+                      value={fields.difficulty}
+                      onChange={(e) => update("difficulty", e.target.value as StudioFields["difficulty"])}
+                    >
+                      <option value="easy">Лёгкая</option>
+                      <option value="normal">Обычная</option>
+                      <option value="hard">Трудная</option>
+                      <option value="deadly">Смертельная</option>
+                    </select>
+                  </div>
 
-            {/* Карточка 04: Приключение и Атмосфера */}
-            <section className="card flex flex-col gap-5 p-5 md:p-6 shadow-sm">
-              <div className="border-b border-line pb-4">
-                <span className="text-xs uppercase tracking-widest text-patina font-semibold">
-                  04 / Старт и атмосфера
-                </span>
-                <h2 className="mt-1 font-heading text-xl font-bold text-ink">Начало приключения, история и тон</h2>
-              </div>
-
-              {SECTION_4.map((meta) => renderFieldBlock(meta, fields, update))}
-
-              <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-line">
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="studio-difficulty" className="text-sm font-semibold text-ink">
-                    Сложность
-                  </label>
-                  <select
-                    id="studio-difficulty"
-                    className="field workshop-field"
-                    value={fields.difficulty}
-                    onChange={(e) => update("difficulty", e.target.value as StudioFields["difficulty"])}
-                  >
-                    <option value="easy">Лёгкая</option>
-                    <option value="normal">Обычная</option>
-                    <option value="hard">Трудная</option>
-                    <option value="deadly">Смертельная</option>
-                  </select>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="studio-taboos" className="text-sm font-semibold text-ink">
-                    Исключённые темы
-                  </label>
-                  <input
-                    id="studio-taboos"
-                    className="field workshop-field"
-                    value={fields.excluded_themes.join(", ")}
-                    onChange={(e) =>
-                      update(
-                        "excluded_themes",
-                        e.target.value.split(",").map((x) => x.trim())
-                      )
-                    }
-                    placeholder="Через запятую (например: пауки, насилие)"
-                  />
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="studio-taboos" className="text-sm font-semibold text-ink">
+                      Исключённые темы
+                    </label>
+                    <input
+                      id="studio-taboos"
+                      className="field workshop-field"
+                      value={fields.excluded_themes.join(", ")}
+                      onChange={(e) =>
+                        update(
+                          "excluded_themes",
+                          e.target.value.split(",").map((x) => x.trim())
+                        )
+                      }
+                      placeholder="Через запятую (например: пауки, насилие)"
+                    />
+                  </div>
                 </div>
               </div>
-            </section>
-
-            {/* Карточка 05: Публичный текст и Тайны мастера */}
-            <section className="card flex flex-col gap-5 p-5 md:p-6 shadow-sm">
-              <div className="border-b border-line pb-4 flex items-center justify-between">
-                <div>
-                  <span className="text-xs uppercase tracking-widest text-patina font-semibold">
-                    05 / Видимость и секреты
-                  </span>
-                  <h2 className="mt-1 font-heading text-xl font-bold text-ink">Публичный лор и авторские тайны</h2>
-                </div>
-              </div>
-
-              {SECTION_5.map((meta) => renderFieldBlock(meta, fields, update))}
-            </section>
+            </details>
 
             {/* Панель действий формы */}
             <div className="card flex flex-wrap items-center justify-between gap-4 p-5 shadow-sm">
@@ -523,6 +544,32 @@ export default function UniversalWorldStudio({ projectId }: { projectId: string 
                     {note}
                   </p>
                 ))}
+              </div>
+            )}
+
+            {receipt?.suggestions && receipt.suggestions.length > 0 && (
+              <div className="flex flex-col gap-3 border-t border-line pt-4">
+                <span className="font-mono text-xs font-semibold text-muted uppercase">Предложения мастера:</span>
+                {receipt.suggestions.map((sug) => {
+                  const label = metaOf(sug.field).label;
+                  const applied = fields[sug.field] === sug.text;
+                  return (
+                    <div key={sug.field} className="rounded-xl border border-line bg-surface-2/30 p-3">
+                      <p className="text-xs font-semibold text-ink">{label}</p>
+                      <p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed text-ink-2">{sug.text}</p>
+                      <button
+                        type="button"
+                        className="btn btn-outline-copper mt-2 font-mono text-xs"
+                        aria-label={`Применить предложение: ${label}`}
+                        disabled={applied}
+                        onClick={() => update(sug.field, sug.text)}
+                      >
+                        {applied ? "Применено" : "Применить"}
+                      </button>
+                    </div>
+                  );
+                })}
+                <p className="text-xs text-muted">Применённое попадёт в поля как несохранённая правка: сохраните и проверьте снова.</p>
               </div>
             )}
 
@@ -630,9 +677,7 @@ export default function UniversalWorldStudio({ projectId }: { projectId: string 
 
           <ul className="space-y-2.5 border-y border-line py-4">
             {allFieldKeys.map((k) => {
-              const meta = [...SECTION_1, ...SECTION_2, ...SECTION_3, ...SECTION_4, ...SECTION_5].find(
-                (m) => m.key === k
-              );
+              const meta = ALL_META.find((m) => m.key === k);
               const isFilled = String(fields[k] ?? "").trim().length > 0;
               return (
                 <li key={k} className={`flex items-center gap-3 text-xs ${isFilled ? "text-ink" : "text-muted"}`}>

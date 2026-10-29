@@ -35,6 +35,8 @@ from app.core.authoring.contracts import (
     PublishRequest,
     StageReceipt,
     StageTask,
+    StudioDraft,
+    StudioDraftRequest,
     StudioReviewRequest,
     StudioSaveRequest,
     StudioView,
@@ -502,6 +504,14 @@ async def studio_review(
     result = await review_project(session, project_id, user.id, body.expected_revision, llm=llm, answer=body.answer)
     await session.commit()
     return result
+
+
+@router.post("/projects/{project_id}/studio/draft", response_model=StudioDraft)
+async def studio_draft(project_id: str, body: StudioDraftRequest, request: Request, session: SessionDep, user: UserDep):
+    from app.core.authoring.studio import draft_project
+
+    llm = getattr(request.app.state, "studio_llm", request.app.state.hero_llm)
+    return await draft_project(session, project_id, user.id, body.idea, llm=llm)
 
 
 @router.post("/projects/{project_id}/studio/accept", response_model=VersionOut, status_code=201)

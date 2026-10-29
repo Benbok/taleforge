@@ -36,7 +36,8 @@ export type StudioFields = {
   difficulty: "easy" | "normal" | "hard" | "deadly"; excluded_themes: string[];
   public_text: string; secret_text: string;
 };
-export type CreationDialogue = { project_id: string; source_revision: number; status: "questions" | "ready"; question?: string | null; notes: string[] };
+export type CreationDialogue = { project_id: string; source_revision: number; status: "questions" | "ready"; question?: string | null; notes: string[]; suggestions?: { field: keyof StudioFields; text: string }[] };
+export type StudioDraft = Partial<Record<keyof StudioFields, string>>;
 export type StudioView = { project_id: string; draft_revision: number; fields: StudioFields; review?: CreationDialogue | null };
 export const emptyStudio = (title: string): StudioFields => ({ title, premise: "", world: "", laws: "", inhabitants: "", powers: "", history: "", start: "", style: "", difficulty: "normal", excluded_themes: [], public_text: "", secret_text: "" });
 
@@ -62,6 +63,7 @@ export const authoring = {
   getStudio: (id: string) => api<StudioView>(`${base(id)}/studio`),
   saveStudio: (id: string, expected_revision: number, fields: StudioFields) => api<StudioView>(`${base(id)}/studio`, { method: "PUT", body: { expected_revision, fields } }),
   reviewStudio: (id: string, expected_revision: number, answer = "") => api<CreationDialogue>(`${base(id)}/studio/review`, { body: { expected_revision, answer } }),
+  draftStudio: (id: string, idea: string) => api<StudioDraft>(`${base(id)}/studio/draft`, { body: { idea } }),
   acceptStudio: (id: string, expected_revision: number, request_key: string) => api<VersionOut>(`${base(id)}/studio/accept`, { body: { expected_revision, request_key } }),
   listProjects: () => api<ProjectSummary[]>("/api/author/projects"),
   createProject: (body: AuthorProjectCreate & { studio?: StudioFields }) => api<ProjectDetail>("/api/author/projects", { body }),

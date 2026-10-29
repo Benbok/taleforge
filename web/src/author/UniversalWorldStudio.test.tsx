@@ -41,3 +41,55 @@ it('saves authored laws, asks a question, accepts the reviewed revision and disp
  expect(sent.fields.laws).toBe('Летать нельзя. Можно плавать.');
  expect(sent.fields.secret_text).toBe('PRIVATE SECRET');
 });
+
+const sparse = {...fields, world:'', laws:'', start:'', inhabitants:'', powers:'', history:'', style:'', public_text:'', secret_text:''};
+
+it('fills only the empty fields from an idea and never overwrites the author text', async () => {
+ const mock = mockApi(c => {
+  if (c.url.endsWith('/studio') && c.method !== 'POST') return {body:{project_id:'ap_1',draft_revision:3,fields:sparse,review:null}};
+  if (c.url.endsWith('?view=summary')) return {body:{project:{id:'ap_1',title:fields.title,draft_revision:3},preparation:{stages:[]},published:[]}};
+  if (c.url.endsWith('/studio/draft')) return {body:{premise:'DRAFT PREMISE',world:'Средиземье, Третья эпоха',laws:'Кольцо искажает носителя',inhabitants:'',powers:'',history:'',start:'Шир, 3018 год',style:'',public_text:''}};
+  return undefined;
+ });
+ renderWithClient(<UniversalWorldStudio projectId='ap_1' />);
+ await screen.findByDisplayValue(fields.premise);
+ const fill = screen.getByRole('button',{name:'Заполнить из идеи'});
+ expect(fill.hasAttribute('disabled')).toBe(true);
+ fireEvent.change(screen.getByLabelText('Идея мира'),{target:{value:'Властелин колец, 3018 год'}});
+ fireEvent.click(fill);
+ await screen.findByDisplayValue('Средиземье, Третья эпоха');
+ expect((screen.getByLabelText('Законы мира') as HTMLTextAreaElement).value).toBe('Кольцо искажает носителя');
+ expect((screen.getByLabelText('Начало приключения') as HTMLTextAreaElement).value).toBe('Шир, 3018 год');
+ expect((screen.getByLabelText('Замысел') as HTMLTextAreaElement).value).toBe(fields.premise); // the author's text stays
+ expect(mock.calls.some(c=>c.method==='PUT')).toBe(false); // a proposal only: nothing saved
+ expect(screen.getByRole('button',{name:'Сохранить мир'}).hasAttribute('disabled')).toBe(false);
+ expect(mock.calls.find(c=>c.url.endsWith('/studio/draft'))!.body).toEqual({idea:'Властелин колец, 3018 год'});
+});
+
+it('applies a master suggestion to the field only when the author asks', async () => {
+ const review = {project_id:'ap_1',source_revision:3,status:'questions',question:'Как освещена гавань?',notes:[],suggestions:[{field:'style',text:'Тихо и жутковато'}]};
+ mockApi(c => {
+  if (c.url.endsWith('/studio')) return {body:{project_id:'ap_1',draft_revision:3,fields,review}};
+  if (c.url.endsWith('?view=summary')) return {body:{project:{id:'ap_1',title:fields.title,draft_revision:3},preparation:{stages:[]},published:[]}};
+  return undefined;
+ });
+ renderWithClient(<UniversalWorldStudio projectId='ap_1' />);
+ await screen.findByText('Тихо и жутковато');
+ expect((screen.getByLabelText('Стиль') as HTMLTextAreaElement).value).toBe('Исследование');
+ fireEvent.click(screen.getByRole('button',{name:'Применить предложение: Стиль'}));
+ expect((screen.getByLabelText('Стиль') as HTMLTextAreaElement).value).toBe('Тихо и жутковато');
+ expect(screen.getByRole('button',{name:'Сохранить мир'}).hasAttribute('disabled')).toBe(false);
+});
+
+it('keeps the extra fields in a collapsed section that opens by itself when they are filled', async () => {
+ mockApi(c => {
+  if (c.url.endsWith('/studio')) return {body:{project_id:'ap_1',draft_revision:3,fields:sparse,review:null}};
+  if (c.url.endsWith('?view=summary')) return {body:{project:{id:'ap_1',title:fields.title,draft_revision:3},preparation:{stages:[]},published:[]}};
+  return undefined;
+ });
+ const { container } = renderWithClient(<UniversalWorldStudio projectId='ap_1' />);
+ await screen.findByDisplayValue(fields.premise);
+ const extra = container.querySelector('details[data-testid="extra-fields"]') as HTMLDetailsElement;
+ expect(extra.open).toBe(false);
+ expect(screen.getByText('Дополнительно')).toBeTruthy();
+});

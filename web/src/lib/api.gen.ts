@@ -931,6 +931,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/author/projects/{project_id}/studio/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Studio Draft */
+        post: operations["studio_draft_api_author_projects__project_id__studio_draft_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/author/projects/{project_id}/studio/review": {
         parameters: {
             query?: never;
@@ -3371,6 +3388,8 @@ export interface components {
              * @enum {string}
              */
             status: "questions" | "ready";
+            /** Suggestions */
+            suggestions?: components["schemas"]["FieldSuggestion"][];
         };
         /** CreationIn */
         CreationIn: {
@@ -4103,6 +4122,19 @@ export interface components {
              * @enum {string}
              */
             type: "vote.updated";
+        };
+        /**
+         * FieldSuggestion
+         * @description A proposal for one text field. Only the author applies it; secrets are never suggested.
+         */
+        FieldSuggestion: {
+            /**
+             * Field
+             * @enum {string}
+             */
+            field: "premise" | "world" | "laws" | "inhabitants" | "powers" | "history" | "start" | "style" | "public_text";
+            /** Text */
+            text: string;
         };
         /** GameItemAction */
         GameItemAction: {
@@ -6631,6 +6663,62 @@ export interface components {
             votes: components["schemas"]["Vote"][];
         };
         /**
+         * StudioDraft
+         * @description Proposed text for the fields; an empty string means "nothing offered".
+         */
+        StudioDraft: {
+            /**
+             * History
+             * @default
+             */
+            history?: string;
+            /**
+             * Inhabitants
+             * @default
+             */
+            inhabitants?: string;
+            /**
+             * Laws
+             * @default
+             */
+            laws?: string;
+            /**
+             * Powers
+             * @default
+             */
+            powers?: string;
+            /**
+             * Premise
+             * @default
+             */
+            premise?: string;
+            /**
+             * Public Text
+             * @default
+             */
+            public_text?: string;
+            /**
+             * Start
+             * @default
+             */
+            start?: string;
+            /**
+             * Style
+             * @default
+             */
+            style?: string;
+            /**
+             * World
+             * @default
+             */
+            world?: string;
+        };
+        /** StudioDraftRequest */
+        StudioDraftRequest: {
+            /** Idea */
+            idea: string;
+        };
+        /**
          * StudioFields
          * @description Author-owned world facts. Only public_text is intended for players before play.
          */
@@ -7210,6 +7298,7 @@ export type Event_turn_changed = components['schemas']['Event_turn_changed'];
 export type Event_vote_ended = components['schemas']['Event_vote_ended'];
 export type Event_vote_started = components['schemas']['Event_vote_started'];
 export type Event_vote_updated = components['schemas']['Event_vote_updated'];
+export type FieldSuggestion = components['schemas']['FieldSuggestion'];
 export type GameItemAction = components['schemas']['GameItemAction'];
 export type GeneratedObject = components['schemas']['GeneratedObject'];
 export type GenerationStatusOut = components['schemas']['GenerationStatusOut'];
@@ -7363,6 +7452,8 @@ export type StartingWeapon = components['schemas']['StartingWeapon'];
 export type StatExplained = components['schemas']['StatExplained'];
 export type StateActions = components['schemas']['StateActions'];
 export type StateSnapshot = components['schemas']['StateSnapshot'];
+export type StudioDraft = components['schemas']['StudioDraft'];
+export type StudioDraftRequest = components['schemas']['StudioDraftRequest'];
 export type StudioFields = components['schemas']['StudioFields'];
 export type StudioReviewRequest = components['schemas']['StudioReviewRequest'];
 export type StudioSaveRequest = components['schemas']['StudioSaveRequest'];
@@ -9279,6 +9370,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VersionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    studio_draft_api_author_projects__project_id__studio_draft_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StudioDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudioDraft"];
                 };
             };
             /** @description Validation Error */

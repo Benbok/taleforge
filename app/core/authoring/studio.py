@@ -2,8 +2,15 @@
 
 from sqlalchemy import update
 
-from app.agents.studio_review import ask_studio
-from app.core.authoring.contracts import CreationDialogue, StudioFields, StudioView, ValidationIssue, ValidationReport
+from app.agents.studio_review import ask_studio, draft_from_idea
+from app.core.authoring.contracts import (
+    CreationDialogue,
+    StudioDraft,
+    StudioFields,
+    StudioView,
+    ValidationIssue,
+    ValidationReport,
+)
 from app.core.authoring.projects import author_write, require_project
 from app.core.campaigns import Conflict
 from app.db.models import AuthorProject, Campaign, CampaignSecret, User
@@ -102,6 +109,7 @@ async def review_project(
         status="questions" if question else "ready",
         question=question,
         notes=result.notes,
+        suggestions=[x for x in result.suggestions if x.text.strip() != getattr(fields, x.field).strip()],
     )
     transcript.append(dict(role="assistant", content=question or "Мир готов к принятию."))
     project.dependencies = {
@@ -143,3 +151,12 @@ async def accept_project(
     return await publish_project(
         session, project, expected_revision, request_key or f"studio-accept-{expected_revision}"
     )
+
+
+async def draft_project(session, project_id: str, owner_id: str, idea: str, *, llm) -> StudioDraft:
+    """A proposal only: nothing is saved, the author decides what to take."""
+    project = await _owned(session, project_id, owner_id)
+    fields = studio_fields(project)
+    if fields is None:
+        raise Conflict("studio_fields_required")
+    return await draft_from_idea(session, llm, project.workspace_campaign_id, fields.title, idea)

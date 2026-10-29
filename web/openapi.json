@@ -2394,6 +2394,13 @@
       ],
       "title": "Status",
       "type": "string"
+     },
+     "suggestions": {
+      "items": {
+       "$ref": "#/components/schemas/FieldSuggestion"
+      },
+      "title": "Suggestions",
+      "type": "array"
      }
     },
     "required": [
@@ -4715,6 +4722,39 @@
      "payload"
     ],
     "title": "Event_vote_updated",
+    "type": "object"
+   },
+   "FieldSuggestion": {
+    "additionalProperties": false,
+    "description": "A proposal for one text field. Only the author applies it; secrets are never suggested.",
+    "properties": {
+     "field": {
+      "enum": [
+       "premise",
+       "world",
+       "laws",
+       "inhabitants",
+       "powers",
+       "history",
+       "start",
+       "style",
+       "public_text"
+      ],
+      "title": "Field",
+      "type": "string"
+     },
+     "text": {
+      "maxLength": 8000,
+      "minLength": 1,
+      "title": "Text",
+      "type": "string"
+     }
+    },
+    "required": [
+     "field",
+     "text"
+    ],
+    "title": "FieldSuggestion",
     "type": "object"
    },
    "GameItemAction": {
@@ -12034,6 +12074,84 @@
     "title": "StateSnapshot",
     "type": "object"
    },
+   "StudioDraft": {
+    "additionalProperties": false,
+    "description": "Proposed text for the fields; an empty string means \"nothing offered\".",
+    "properties": {
+     "history": {
+      "default": "",
+      "maxLength": 8000,
+      "title": "History",
+      "type": "string"
+     },
+     "inhabitants": {
+      "default": "",
+      "maxLength": 8000,
+      "title": "Inhabitants",
+      "type": "string"
+     },
+     "laws": {
+      "default": "",
+      "maxLength": 8000,
+      "title": "Laws",
+      "type": "string"
+     },
+     "powers": {
+      "default": "",
+      "maxLength": 8000,
+      "title": "Powers",
+      "type": "string"
+     },
+     "premise": {
+      "default": "",
+      "maxLength": 8000,
+      "title": "Premise",
+      "type": "string"
+     },
+     "public_text": {
+      "default": "",
+      "maxLength": 8000,
+      "title": "Public Text",
+      "type": "string"
+     },
+     "start": {
+      "default": "",
+      "maxLength": 8000,
+      "title": "Start",
+      "type": "string"
+     },
+     "style": {
+      "default": "",
+      "maxLength": 4000,
+      "title": "Style",
+      "type": "string"
+     },
+     "world": {
+      "default": "",
+      "maxLength": 8000,
+      "title": "World",
+      "type": "string"
+     }
+    },
+    "title": "StudioDraft",
+    "type": "object"
+   },
+   "StudioDraftRequest": {
+    "additionalProperties": false,
+    "properties": {
+     "idea": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Idea",
+      "type": "string"
+     }
+    },
+    "required": [
+     "idea"
+    ],
+    "title": "StudioDraftRequest",
+    "type": "object"
+   },
    "StudioFields": {
     "additionalProperties": false,
     "description": "Author-owned world facts. Only public_text is intended for players before play.",
@@ -16112,6 +16230,63 @@
      }
     ],
     "summary": "Studio Accept",
+    "tags": [
+     "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/studio/draft": {
+   "post": {
+    "operationId": "studio_draft_api_author_projects__project_id__studio_draft_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/StudioDraftRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/StudioDraft"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Studio Draft",
     "tags": [
      "author"
     ]

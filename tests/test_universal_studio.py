@@ -232,3 +232,70 @@ def test_optional_generated_objects_do_not_replace_authored_entry_scene(client, 
             assert next(e for e in bundle["entities"] if e["ref"] == "studio_entry")["name"] != FIELDS["title"]
 
     asyncio.run(check())
+
+
+def _fields(client, root, pid):
+    return client.get(f"{BASE}/{pid}/studio", headers=root).json()
+
+
+def test_review_offers_field_suggestions_without_changing_the_draft(client, root):
+    project = create(client, root)
+    pid, rev = project["id"], project["draft_revision"]
+    reply = {
+        "text": json.dumps(
+            {
+                "question": "How is the harbor lit?",
+                "notes": [],
+                "suggestions": [
+                    {"field": "style", "text": "Quiet and eerie"},
+                    {"field": "world", "text": FIELDS["world"]},  # same as now: not a suggestion
+                ],
+            }
+        )
+    }
+    client.app.state.studio_llm = ScriptedLLM([reply])
+    r = client.post(f"{BASE}/{pid}/studio/review", headers=root, json={"expected_revision": rev})
+    assert r.status_code == 200, r.text
+    assert r.json()["suggestions"] == [{"field": "style", "text": "Quiet and eerie"}]
+    assert _fields(client, root, pid)["fields"]["style"] == FIELDS["style"]  # the master never writes fields
+    assert _fields(client, root, pid)["draft_revision"] == rev
+
+
+def test_review_rejects_suggestions_for_unknown_fields(client, root):
+    project = create(client, root)
+    reply = {
+        "text": json.dumps({"question": None, "notes": [], "suggestions": [{"field": "secret_text", "text": "x"}]})
+    }
+    client.app.state.studio_llm = ScriptedLLM([reply])
+    r = client.post(
+        f"{BASE}/{project['id']}/studio/review", headers=root, json={"expected_revision": project["draft_revision"]}
+    )
+    assert r.status_code == 409  # secrets are never touched through the master's reply
+
+
+def test_draft_from_idea_returns_text_without_saving(client, root):
+    project = create(client, root)
+    pid = project["id"]
+    draft = {"premise": "Nine walkers leave Rivendell", "world": "Middle-earth, Third Age", "laws": "The Ring corrupts"}
+    client.app.state.studio_llm = ScriptedLLM([{"text": json.dumps(draft)}])
+    before = _fields(client, root, pid)
+    r = client.post(f"{BASE}/{pid}/studio/draft", headers=root, json={"idea": "The Lord of the Rings, year 3018"})
+    assert r.status_code == 200, r.text
+    assert r.json()["premise"] == draft["premise"] and r.json()["laws"] == draft["laws"]
+    assert r.json()["start"] == ""  # not offered: left empty
+    assert _fields(client, root, pid) == before  # nothing saved
+    assert "secret_text" not in r.json() and "title" not in r.json()
+
+
+def test_draft_requires_an_idea_and_the_owner(client, root, admin):
+    project = create(client, root)
+    url = f"{BASE}/{project['id']}/studio/draft"
+    assert client.post(url, headers=root, json={"idea": ""}).status_code == 422
+    assert client.post(url, headers=admin, json={"idea": "x"}).status_code == 404
+
+
+def test_draft_provider_failure_is_a_clear_conflict(client, root):
+    project = create(client, root)
+    client.app.state.studio_llm = ScriptedLLM([{"text": "not json"}])
+    r = client.post(f"{BASE}/{project['id']}/studio/draft", headers=root, json={"idea": "x"})
+    assert r.status_code == 409
