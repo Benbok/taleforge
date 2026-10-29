@@ -284,8 +284,6 @@ class FinishMixin:
             voices = [{**voice_data, "text": voice_line}] if voice_data else []
             if voices:
                 data.update(voiceover.data_of(voices, len(voices)))
-            if self._tts_for(c, voicing.TEXT) is not None:
-                data["voiceable"] = True  # голос текста мастера делается по кнопке игрока, а не сам
             msg.data = data or None
             party = [await system_message(s, c, text, None) for text in (cp.get("inputs") or {}).get("party_notes", [])]
             turn.status, turn.finished_at, turn.narration_message_id = "done", now(), msg.id

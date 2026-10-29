@@ -5,7 +5,10 @@ import RollCardView from "./RollCardView";
 import VoiceClip from "./VoiceClip";
 import { useState } from "react";
 import { useGame } from "../stores/game";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
+import type { Room } from "../lib/campaign";
+import { channelOf } from "../cabinet/VoiceChannels";
 
 export interface Who {
   seats: Record<string, SeatState>;
@@ -57,6 +60,13 @@ function NarrationVoice({ m }: { m: ChatMessage }) {
   const campaignId = useGame((st) => st.snapshot?.campaign.id);
   const [asked, setAsked] = useState(false);
   const [failed, setFailed] = useState(false);
+  const room = useQuery({
+    queryKey: ["room", campaignId],
+    queryFn: () => api<Room>(`/api/campaigns/${campaignId}`),
+    enabled: !!campaignId,
+    staleTime: 30_000,
+  });
+  const textVoice = room.data ? channelOf(room.data.settings, "text").enabled : false;
   const data = m.data;
   if (data?.voice || data?.voice_parts) {
     return (
@@ -67,7 +77,8 @@ function NarrationVoice({ m }: { m: ChatMessage }) {
       />
     );
   }
-  if (!data?.voiceable || !campaignId) return null;
+  // Кнопка у любого готового ответа мастера без записи, пока включён канал «Текст мастера»: озвучить можно и старое.
+  if (!textVoice || !m.created_at) return null;
   const ask = async () => {
     setAsked(true);
     setFailed(false);

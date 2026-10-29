@@ -29,9 +29,7 @@ def narration(game_client, settings, cid, *, text="Серое утро над Ш
     async def go(s):
         c = await s.get(Campaign, cid)
         c.settings = {**(c.settings or {}), "tts_enabled": enabled, "tts_text_enabled": enabled}
-        m = Message(
-            campaign_id=cid, kind="narration", content=text, seq=await next_seq(s, cid), data={"voiceable": True}
-        )
+        m = Message(campaign_id=cid, kind="narration", content=text, seq=await next_seq(s, cid))
         s.add(m)
         await s.commit()
         return m.id

@@ -161,12 +161,4 @@ async def describe_turn(service, c, game, tid, trace):
                 m = await s.get(Message, job["message_id"])
             t.trace = dict(trace)
             await s.commit()
-        from app.agents import voicing
-
-        if service._tts_for(c, voicing.TEXT) is not None and not (m.data or {}).get("voiceable"):
-            async with service.maker() as s:
-                voiced = await s.get(Message, m.id)
-                voiced.data = {**(voiced.data or {}), "voiceable": True}  # голос по кнопке игрока
-                await s.commit()
-                m = voiced
         await publish_message(service.bus, m)

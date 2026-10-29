@@ -343,7 +343,6 @@ def test_voiced_narration_is_stored_where_the_player_reads_it(tmp_path):
         async with maker() as s:
             message = await s.get(Message, (await s.get(MasterTurn, tid)).narration_message_id)
             # the text is shown at once; the voice is made when the player asks (POST .../messages/{id}/voice)
-            assert message.data["voiceable"] is True
             assert not message.data.get("voices") and not message.data.get("voice_parts")
         await engine.dispose()
 

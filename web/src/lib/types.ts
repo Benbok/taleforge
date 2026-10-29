@@ -104,7 +104,6 @@ export interface ChatMessage {
         voice?: VoiceData;
         voices?: VoiceData[];
         voice_parts?: number;
-        voiceable?: boolean; // текст мастера можно озвучить по кнопке
         whisper_reply?: string;
         action_failure?: { category: string; code: string; message: string; retryable?: boolean };
         location_ref?: { id: string; name: string } | null;

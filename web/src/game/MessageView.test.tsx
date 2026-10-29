@@ -1,8 +1,13 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, fireEvent, render as rtlRender, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { ChatMessage } from "../lib/types";
 import { useGame } from "../stores/game";
 import MessageView from "./MessageView";
+
+// Голосовая кнопка читает настройки кампании, поэтому карточке нужен клиент запросов.
+const render = (ui: React.ReactElement) =>
+  rtlRender(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>);
 
 const send = vi.fn();
 beforeEach(() => {
@@ -80,24 +85,39 @@ it("captions a player's own recording as a voice message, not as the master's na
   expect(screen.queryByText("Озвучка мастера")).toBeNull();
 });
 
-it("offers to voice a master text on demand and asks the server once", async () => {
-  const calls: string[] = [];
+const who = { seats: {}, heroBySeat: {}, mySeat: "seat_me" };
+const master = { ...failed, kind: "narration", state: null, content: "Серое утро.", created_at: "2026-10-29T10:00:00Z", data: {} } as ChatMessage;
+
+function stubServer(settings: Record<string, unknown>, calls: string[]) {
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-    calls.push(`${init?.method} ${url}`);
-    return new Response(JSON.stringify({ status: "started" }), { status: 202, headers: { "content-type": "application/json" } });
+    calls.push(`${init?.method ?? "GET"} ${url}`);
+    const body = init?.method === "POST" ? { status: "started" } : { id: "c1", settings };
+    return new Response(JSON.stringify(body), { status: init?.method === "POST" ? 202 : 200, headers: { "content-type": "application/json" } });
   }));
+}
+
+it("offers to voice any finished master text when the text voice is on, old ones too", async () => {
+  const calls: string[] = [];
+  stubServer({ tts_enabled: true, tts_text_enabled: true }, calls);
   useGame.setState({ snapshot: { campaign: { id: "c1" } } as never });
-  const message = { ...failed, kind: "narration", state: null, content: "Серое утро.", data: { voiceable: true } } as ChatMessage;
-  render(<MessageView m={message} who={{ seats: {}, heroBySeat: {}, mySeat: "seat_me" }} />);
-  fireEvent.click(screen.getByRole("button", { name: /Озвучить/ }));
+  render(<MessageView m={master} who={who} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Озвучить/ }));
   await screen.findByRole("button", { name: /Озвучиваем/ });
-  expect(calls).toEqual(["POST /api/campaigns/c1/messages/m1/voice"]);
+  expect(calls.filter((c) => c.startsWith("POST"))).toEqual(["POST /api/campaigns/c1/messages/m1/voice"]);
   vi.unstubAllGlobals();
 });
 
-it("shows no voice button for a text that is not voiceable or already voiced", () => {
+it("shows no voice button while the text voice is off, for a draft, or for an already voiced text", async () => {
+  const calls: string[] = [];
   useGame.setState({ snapshot: { campaign: { id: "c1" } } as never });
-  const plain = { ...failed, kind: "narration", state: null, content: "Тихо.", data: {} } as ChatMessage;
-  render(<MessageView m={plain} who={{ seats: {}, heroBySeat: {}, mySeat: "seat_me" }} />);
+  stubServer({ tts_enabled: true, tts_text_enabled: false }, calls);
+  const off = render(<MessageView m={master} who={who} />);
+  await vi.waitFor(() => expect(calls.length).toBeGreaterThan(0));
   expect(screen.queryByRole("button", { name: /Озвучить/ })).toBeNull();
+  off.unmount();
+  stubServer({ tts_enabled: true, tts_text_enabled: true }, calls);
+  render(<MessageView m={{ ...master, created_at: null }} who={who} />);
+  await vi.waitFor(() => expect(calls.length).toBeGreaterThan(1));
+  expect(screen.queryByRole("button", { name: /Озвучить/ })).toBeNull();
+  vi.unstubAllGlobals();
 });
