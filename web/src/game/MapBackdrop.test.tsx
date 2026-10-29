@@ -110,3 +110,14 @@ it("без картины слой не рисуется", () => {
   const { container } = render(<LocationMapSvg map={plan} idPrefix="t" />);
   expect(container.querySelector("[data-map-backdrop]")).toBeNull();
 });
+
+it("поверх картины предметы — компактные метки, без спрайтов; без картины всё как раньше", () => {
+  const withObject: MapLocationPlan = { ...plan, areas: [{ ...plan.areas[0], sketch: { ...sketch, features: [{ id: "f1", name: "Бочка", kind: "object" as const, cells: [[1, 1, 1, 1]] }] } }, plan.areas[1]] };
+  const over = render(<LocationMapSvg map={withObject} idPrefix="o" backdrop={{ areaId: "here", url: "/img/1" }} />);
+  expect(over.container.querySelectorAll("[data-feature-marker]")).toHaveLength(1);
+  expect(over.container.querySelector('[data-feature-id="f1"]')).toBeNull();
+  cleanup();
+  const plain = render(<LocationMapSvg map={withObject} idPrefix="p" />);
+  expect(plain.container.querySelector("[data-feature-marker]")).toBeNull();
+  expect(plain.container.querySelector('[data-feature-id="f1"]')).not.toBeNull();
+});

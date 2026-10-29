@@ -16,6 +16,8 @@ export interface SketchSurfaceProps {
   pickedPassageRef?: string | null;
   showPassageLabels?: boolean;
   floorOpacity?: number;
+  /** Под нарисованной картиной: предметы — компактные метки, подписи с тёмным ореолом. */
+  overPicture?: boolean;
   children?: ReactNode;
 }
 
@@ -27,7 +29,7 @@ export function terrainCells(rects: number[][]): [number, number][] {
       Array.from({ length: x1 - x0 + 1 }, (_, x) => [x0 + x, y0 + y] as [number, number])).flat());
 }
 
-export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, onFeature, pickedExit, pickedPassageRef, showPassageLabels=false, floorOpacity=1, children }: SketchSurfaceProps) {
+export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, onFeature, pickedExit, pickedPassageRef, showPassageLabels=false, floorOpacity=1, overPicture=false, children }: SketchSurfaceProps) {
   const area: MapKnownArea = { id: areaId, name: areaId, offset: [0, 0], level: 0, status: "here", revision: 0, sketch };
   const geometry = surfaceGeometry(area);
   const torchMounts = wallTorchMounts(sketch, geometry.floor, geometry.contours);
@@ -74,7 +76,16 @@ export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, on
           strokeWidth=".03"
         />
       ))}
-      {sketch.features.map((feature, i) => <MapFeature key={`feature-${i}`} feature={feature} idPrefix={`${idPrefix}-feature-${i}`} onFeature={onFeature} torchMounts={torchMounts.get(feature)} />)}
+      {overPicture
+        ? sketch.features.filter((f) => !f.hidden && f.kind === "object").map((feature, i) => {
+            const [cx, cy] = terrainCells(feature.cells)[0] ?? [0, 0];
+            return <g key={`marker-${i}`} data-feature-marker={feature.id ?? undefined} pointerEvents="none">
+              <circle cx={cx + .5} cy={cy + .5} r=".2" fill="rgba(8,12,14,.7)" stroke="var(--tf-accent)" strokeWidth=".06" />
+              <circle cx={cx + .5} cy={cy + .5} r=".07" fill="var(--tf-accent)" />
+              <title>{feature.name}</title>
+            </g>;
+          })
+        : sketch.features.map((feature, i) => <MapFeature key={`feature-${i}`} feature={feature} idPrefix={`${idPrefix}-feature-${i}`} onFeature={onFeature} torchMounts={torchMounts.get(feature)} />)}
       {(sketch.edges ?? []).map((edge, i) => {
         const vertical = edge.side === "e" || edge.side === "w";
         const x = edge.side === "e" ? sketch.cols : 0;
@@ -112,7 +123,7 @@ export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, on
             <text x={x} y={y+.14} textAnchor='middle' fontSize='.43' fontWeight='700' fill={color}>{symbol}</text>
             <text x={x+(exit.side==='e'?-.5:exit.side==='w'?.5:0)} y={y+(exit.side==='n'?.85:exit.side==='s'?-.5:.14)}
               textAnchor={exit.side==='e'?'end':exit.side==='w'?'start':'middle'} fontSize='.4' fontWeight='600'
-              fill='var(--tf-ink, #e9e0ce)' stroke='var(--tf-surface)' strokeWidth='.12' paintOrder='stroke'>{label}</text>
+              fill={overPicture?'#fff':'var(--tf-ink, #e9e0ce)'} stroke={overPicture?'rgba(8,12,14,.9)':'var(--tf-surface)'} strokeWidth={overPicture?'.28':'.12'} strokeLinejoin='round' paintOrder='stroke'>{label}</text>
           </g>}
           <title>{exit.name}</title>
         </g>;

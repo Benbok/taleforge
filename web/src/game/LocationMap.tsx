@@ -48,6 +48,7 @@ export function LocationMapSvg({ map, liveSketch, tokens = [], activeLevel, idPr
             {backdrop?.areaId === area.id && <BackdropLayer url={backdrop.url} cols={area.sketch.cols} rows={area.sketch.rows} />}
             <SketchSurface
               floorOpacity={backdrop?.areaId === area.id ? .05 : 1}
+              overPicture={backdrop?.areaId === area.id}
               sketch={isCurrent ? liveSketch ?? area.sketch : area.sketch}
               areaId={area.id}
               idPrefix={`${idPrefix}-${area.id}`}

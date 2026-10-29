@@ -5,8 +5,9 @@ from app.agents.technical_portrait_translation import TechnicalPortraitTranslato
 from app.config import ROOT
 
 MAP_BACKDROP_STYLE = (
-    "Top-down stylized cartoon game map, seen from above, bold clean shapes, vibrant colors, simple soft shading, "
-    "chunky bushes and rocks with drop shadows, wooden fences, rich ground details, casual adventure game art. "
+    "Aerial view looking straight down, camera pointing at the ground, flat orthographic top view, "
+    "stylized painted game map, ground, paths, fences, hedges, bushes and rocks seen from directly above, "
+    "bold clean shapes, vibrant colors, soft shadows. "
     "Environment only, no characters, no lettering, no interface, no frame."
 )
 MAP_BACKDROP_TRANSLATION = (
