@@ -282,24 +282,42 @@ class FinishMixin:
                 "scope": (msg.data or {}).get("scope") or ("party" if msg.visible_to is not None else "public"),
             }
             voices = [{**voice_data, "text": voice_line}] if voice_data else []
-            spoken = MARKUP.sub(r"\2", narration)
-            text_ch = self._tts_for(c, voicing.TEXT)
-            parts = voiceover.split(spoken) if text_ch is not None else []
-            if voices or parts:
-                data.update(voiceover.data_of(voices, len(voices) + len(parts)))
+            if voices:
+                data.update(voiceover.data_of(voices, len(voices)))
+            if self._tts_for(c, voicing.TEXT) is not None:
+                data["voiceable"] = True  # голос текста мастера делается по кнопке игрока, а не сам
             msg.data = data or None
             party = [await system_message(s, c, text, None) for text in (cp.get("inputs") or {}).get("party_notes", [])]
             turn.status, turn.finished_at, turn.narration_message_id = "done", now(), msg.id
             turn.trace = {**(turn.trace or {}), "audit": audit, "voice_line": voice_line}
             turn.generation_checkpoint = {**cp, "stage": "done"}
             await s.commit()
-        if parts:
-            self._spawn(voiceover.attach(self, msg, self._narration_voice(c, text_ch).finish(spoken)))
         return [msg, *party]
 
+    async def voice_message(self, message_id: str) -> None:
+        """Озвучка текста мастера по просьбе игрока: запись делается каналом текста кампании, части прикрепляются
+        к уже показанному сообщению. Сбой части не трогает ни текст, ни ход."""
+        if message_id in self._voicing:
+            return
+        self._voicing.add(message_id)
+        try:
+            async with self.maker() as s:
+                msg = await s.get(Message, message_id)
+                c = await s.get(Campaign, msg.campaign_id) if msg else None
+                ch = self._tts_for(c, voicing.TEXT) if c else None
+                if msg is None or ch is None or (msg.data or {}).get("voice_parts"):
+                    return
+                tasks = self._narration_voice(c, ch).finish(MARKUP.sub(r"\2", msg.content))
+                if not tasks:
+                    return
+                msg.data = {**(msg.data or {}), **voiceover.data_of([], len(tasks))}
+                s.expunge(msg)
+            await voiceover.attach(self, msg, tasks)
+        finally:
+            self._voicing.discard(message_id)
+
     def _narration_voice(self, c: Campaign, ch: voicing.Channel) -> voiceover.VoiceJob:
-        """Озвучка всего текста мастера каналом текста после короткой реплики: идёт в фоне, когда ход уже
-        сохранён, части прикрепляются к показанному сообщению. Сбой части не трогает ни текст, ни следующий ход."""
+        """Синтез частей текста мастера каналом текста кампании."""
 
         async def synth(part: str) -> dict | None:
             return await self.tts.voice_for_narration(

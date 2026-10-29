@@ -61,7 +61,7 @@ async def narration_jobs(service, campaign, tid, trace):
 
 
 async def describe_turn(service, c, game, tid, trace):
-    from app.agents.master.universal import _call, log
+    from app.agents.master.universal import _call
 
     cid = c.id
     jobs = await narration_jobs(service, c, tid, trace)
@@ -161,21 +161,12 @@ async def describe_turn(service, c, game, tid, trace):
                 m = await s.get(Message, job["message_id"])
             t.trace = dict(trace)
             await s.commit()
-        from app.agents import voiceover, voicing
+        from app.agents import voicing
 
-        channel = service._tts_for(c, voicing.TEXT)
-        if channel and not (m.data or {}).get("voice"):
-            try:
-                audio = await service.tts.voice_for_narration(
-                    service.media_dir, cid, m.content, provider=channel.provider, voice_name=channel.voice
-                )
-                async with service.maker() as s:
-                    voiced = await s.get(Message, m.id)
-                    if audio:
-                        # The chat's player reads voices/voice/voice_parts, as the old master wrote them.
-                        voiced.data = {**voiced.data, **voiceover.data_of([audio], 1)}
-                    await s.commit()
-                    m = voiced
-            except Exception:
-                log.exception("master text voice failed")  # optional: never replays saved actions
+        if service._tts_for(c, voicing.TEXT) is not None and not (m.data or {}).get("voiceable"):
+            async with service.maker() as s:
+                voiced = await s.get(Message, m.id)
+                voiced.data = {**(voiced.data or {}), "voiceable": True}  # голос по кнопке игрока
+                await s.commit()
+                m = voiced
         await publish_message(service.bus, m)

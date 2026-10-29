@@ -342,9 +342,9 @@ def test_voiced_narration_is_stored_where_the_player_reads_it(tmp_path):
         tid = await service.run_turn("c")
         async with maker() as s:
             message = await s.get(Message, (await s.get(MasterTurn, tid)).narration_message_id)
-            # the chat's player reads voices/voice/voice_parts, as the old master wrote them
-            assert message.data["voice"] == {"id": "v1", "duration": 3.5}
-            assert message.data["voices"] == [{"id": "v1", "duration": 3.5}] and message.data["voice_parts"] == 1
+            # the text is shown at once; the voice is made when the player asks (POST .../messages/{id}/voice)
+            assert message.data["voiceable"] is True
+            assert not message.data.get("voices") and not message.data.get("voice_parts")
         await engine.dispose()
 
     asyncio.run(run())

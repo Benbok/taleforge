@@ -83,6 +83,7 @@ class MasterService(WhisperMixin, TurnMixin, FinishMixin, NarrationMixin, Recall
         self._tasks: dict[str, asyncio.Task] = {}
         self._pending: set[str] = set()
         self._background: set[asyncio.Task] = set()
+        self._voicing: set[str] = set()  # сообщения, которые озвучиваются сейчас
         self._timers: dict[str, asyncio.Task] = {}  # таймер хода героя в бою, по кампаниям
         self._summarizing: set[str] = set()
         self.presence = None  # app/gateway/presence.py: кто из игроков ушёл во время сессии (раздел 11)

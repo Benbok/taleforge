@@ -10,11 +10,12 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request, Response
 from sqlalchemy import String, cast, select
 
+from app.agents import voicing
 from app.agents.stt import MAX_AUDIO_BYTES, SpeechToText
 from app.agents.tts import TTSManager
 from app.api.deps import SessionDep, UserDep
 from app.core import voice
-from app.core.campaigns import AccessDenied, NotFound, get_viewer, is_admin, stand_in_seats
+from app.core.campaigns import AccessDenied, Conflict, NotFound, get_viewer, is_admin, stand_in_seats
 from app.core.chat import visible
 from app.db.models import Message
 
@@ -72,6 +73,29 @@ async def get_voice(campaign_id: str, voice_id: str, request: Request, user: Use
         raise NotFound("запись не найдена")
     meta, audio = voice.read(request.app.state.settings.media_dir, campaign_id, voice_id)
     return Response(audio, media_type=meta["mime"], headers={"Cache-Control": "private, max-age=86400"})
+
+
+@router.post("/campaigns/{campaign_id}/messages/{message_id}/voice", status_code=202)
+async def voice_message(
+    campaign_id: str, message_id: str, request: Request, response: Response, user: UserDep, session: SessionDep
+) -> dict:
+    """Озвучка текста мастера по просьбе игрока. Запись делается в фоне и прикрепляется к сообщению."""
+    viewer = await get_viewer(session, user, campaign_id)
+    msg = await session.get(Message, message_id)
+    seats = [viewer.seat.id] if viewer.seat else []
+    seats += stand_in_seats(viewer.campaign, user.id)
+    if msg is None or msg.campaign_id != campaign_id or msg.kind != "narration":
+        raise NotFound("сообщение не найдено")
+    if not any(visible(msg, s) for s in seats or [None]):
+        raise NotFound("сообщение не найдено")
+    master = request.app.state.master
+    if master._tts_for(viewer.campaign, voicing.TEXT) is None:
+        raise Conflict("озвучка текста мастера выключена в настройках кампании")
+    if (msg.data or {}).get("voice_parts"):
+        response.status_code = 200
+        return {"status": "voiced"}
+    master._spawn(master.voice_message(message_id))
+    return {"status": "started"}
 
 
 @router.get("/admin/voice")

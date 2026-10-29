@@ -3,7 +3,9 @@ import Avatar from "../components/Avatar";
 import RichText from "./RichText";
 import RollCardView from "./RollCardView";
 import VoiceClip from "./VoiceClip";
+import { useState } from "react";
 import { useGame } from "../stores/game";
+import { api } from "../lib/api";
 
 export interface Who {
   seats: Record<string, SeatState>;
@@ -50,6 +52,44 @@ function ReplyStatus({ m, mine }: { m: ChatMessage; mine: boolean }) {
   );
 }
 
+/** Голос текста мастера делается по кнопке: текст виден сразу, запись игрок заказывает сам. */
+function NarrationVoice({ m }: { m: ChatMessage }) {
+  const campaignId = useGame((st) => st.snapshot?.campaign.id);
+  const [asked, setAsked] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const data = m.data;
+  if (data?.voice || data?.voice_parts) {
+    return (
+      <VoiceClip
+        clips={data.voices ?? (data.voice ? [data.voice] : [])}
+        expected={data.voice_parts}
+        autoPlay={m.fresh || asked}
+      />
+    );
+  }
+  if (!data?.voiceable || !campaignId) return null;
+  const ask = async () => {
+    setAsked(true);
+    setFailed(false);
+    try {
+      await api(`/api/campaigns/${campaignId}/messages/${m.id}/voice`, { method: "POST" });
+    } catch {
+      setAsked(false);
+      setFailed(true);
+    }
+  };
+  return (
+    <button
+      type="button"
+      className="rounded-lg border border-line-soft px-2.5 py-1 font-mono text-[11px] text-accent hover:bg-accent/10 disabled:opacity-60"
+      disabled={asked}
+      onClick={ask}
+    >
+      {asked ? "Озвучиваем…" : failed ? "Не вышло, ещё раз" : "🔊 Озвучить"}
+    </button>
+  );
+}
+
 /** Каждый тип сообщения выглядит по-своему: повествование, действие, речь, шёпот, вне игры, бросок, система. */
 export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
   if (m.kind === "roll" && m.data) return <RollCardView card={m.data} />;
@@ -68,13 +108,7 @@ export default function MessageView({ m, who }: { m: ChatMessage; who: Who }) {
               <span className="font-mono text-[10px] text-patina lowercase">· для группы</span>
             )}
           </div>
-          {(m.data?.voice || m.data?.voice_parts) && (
-            <VoiceClip
-              clips={m.data.voices ?? (m.data.voice ? [m.data.voice] : [])}
-              expected={m.data.voice_parts}
-              autoPlay={m.fresh}
-            />
-          )}
+          <NarrationVoice m={m} />
         </div>
         <div className="tf-narration-text break-words whitespace-pre-line font-narration text-[19px] leading-[1.65] sm:text-[21px] text-ink">
           <RichText text={m.content} />

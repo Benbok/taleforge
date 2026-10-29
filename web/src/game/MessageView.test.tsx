@@ -79,3 +79,25 @@ it("captions a player's own recording as a voice message, not as the master's na
   expect(screen.getByText("Голосовое сообщение")).toBeTruthy();
   expect(screen.queryByText("Озвучка мастера")).toBeNull();
 });
+
+it("offers to voice a master text on demand and asks the server once", async () => {
+  const calls: string[] = [];
+  vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+    calls.push(`${init?.method} ${url}`);
+    return new Response(JSON.stringify({ status: "started" }), { status: 202, headers: { "content-type": "application/json" } });
+  }));
+  useGame.setState({ snapshot: { campaign: { id: "c1" } } as never });
+  const message = { ...failed, kind: "narration", state: null, content: "Серое утро.", data: { voiceable: true } } as ChatMessage;
+  render(<MessageView m={message} who={{ seats: {}, heroBySeat: {}, mySeat: "seat_me" }} />);
+  fireEvent.click(screen.getByRole("button", { name: /Озвучить/ }));
+  await screen.findByRole("button", { name: /Озвучиваем/ });
+  expect(calls).toEqual(["POST /api/campaigns/c1/messages/m1/voice"]);
+  vi.unstubAllGlobals();
+});
+
+it("shows no voice button for a text that is not voiceable or already voiced", () => {
+  useGame.setState({ snapshot: { campaign: { id: "c1" } } as never });
+  const plain = { ...failed, kind: "narration", state: null, content: "Тихо.", data: {} } as ChatMessage;
+  render(<MessageView m={plain} who={{ seats: {}, heroBySeat: {}, mySeat: "seat_me" }} />);
+  expect(screen.queryByRole("button", { name: /Озвучить/ })).toBeNull();
+});

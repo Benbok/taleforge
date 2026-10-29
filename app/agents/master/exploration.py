@@ -71,6 +71,24 @@ PLAIN_OUTCOMES = CheckNarration(
     critical_failure="Попытка провалилась неловко.",
 )
 
+
+def plain_outcomes(reason: str | None = None) -> CheckNarration:
+    """Neutral outcomes; when the model's idea could not be realised, the reason travels with them so the writer
+    plays the scene around what is missing (no such item, no such target) instead of reporting a bare success."""
+    if not reason:
+        return PLAIN_OUTCOMES
+    note = (
+        f" Замысел заявки воплотить не удалось: {reason.strip()[:300]} Расскажи это как обстоятельство сцены "
+        "и не выдумывай недостающее."
+    )
+    return CheckNarration(
+        success=PLAIN_OUTCOMES.success + note,
+        failure=PLAIN_OUTCOMES.failure + note,
+        critical_success=PLAIN_OUTCOMES.critical_success + note,
+        critical_failure=PLAIN_OUTCOMES.critical_failure + note,
+    )
+
+
 SYSTEM = (
     "Перемещение между локациями — move с travel_scope=between_locations и destination_id из known_exits. "
     "Фраза «иду в туннель/лес/комнату» означает вход в другое место, а не подход к его устью. "
@@ -244,7 +262,7 @@ async def journal(service, campaign, kind, mid, context, detail):
         log.exception("journal entry failed")
 
 
-async def fallback_action(service, campaign, mid, context, scope, leaning, name="", sized=None):
+async def fallback_action(service, campaign, mid, context, scope, leaning, name="", sized=None, reason=None):
     """The floor under every request the world allows: when the model could not shape it, the player's own words
     become a free effect (magic) or a plain turn (ordinary), never a refusal the engine invented.
     Returns the action, a shortfall fact when the spell is unaffordable, or None when even this does not compile."""
@@ -273,7 +291,7 @@ async def fallback_action(service, campaign, mid, context, scope, leaning, name=
             resolution="check",
             attribute=(sized or {}).get("attribute", "wis"),
             difficulty=(sized or {}).get("difficulty", 10),
-            check_outcomes=PLAIN_OUTCOMES,
+            check_outcomes=plain_outcomes(reason),
             requirements=[RequirementV2(id="req_1", quote=text[:1000], effect="free_effect")],
             effects=[
                 EffectIntentV2(
@@ -501,7 +519,7 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
         )
     if last_failure.code == "not_realised":
         await journal(service, campaign, "exhausted", mid, context, {"hint": hint or "", "floor": leaning or "mundane"})
-        floor = await fallback_action(service, campaign, mid, context, scope, leaning, named, sized)
+        floor = await fallback_action(service, campaign, mid, context, scope, leaning, named, sized, hint)
         if isinstance(floor, ExplorationAction):
             result = PreparedExploration(proposal=floor)
             prepared[mid] = result.model_dump(mode="json")
@@ -564,6 +582,29 @@ async def reviewed_narration(
         await store(service, tid, trace)
         if review.verdict == "pass":
             return text
+    # Two reviews did not pass: one more plain telling from the saved facts only, so the table gets a scene
+    # and not a bare outcome line. The bare outcomes remain the floor when even this cannot be written.
+    try:
+        text = await ask(
+            "narrate",
+            [
+                {
+                    "role": "system",
+                    "content": NARRATION_SYSTEM
+                    + "\n\nРасскажи кратко и строго по сохранённым outcomes: ничего нового не добавляй."
+                    + ("\n\n" + tone if tone else ""),
+                },
+                {
+                    "role": "user",
+                    "content": json.dumps({**public, "repair": state.get("feedback")}, ensure_ascii=False),
+                },
+            ],
+        )
+    except Exception:  # noqa: BLE001
+        log.exception("plain narration failed")
+        text = ""
+    if text and text.strip():
+        return text
     return "\n\n".join(
         o.get("description") or o.get("reason") or "Действие обработано; дополнительных наблюдений нет."
         for o in facts.values()

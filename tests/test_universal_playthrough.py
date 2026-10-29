@@ -82,8 +82,7 @@ def test_whole_adventure_on_upgraded_database_isolated_and_replay_safe(settings,
         root = login(client, "root", "rootpass")
         voice = []
         cid, other_id, hero_id, library_before = first_adventure_scenario(client, root, settings, monkeypatch, voice)
-        assert len(voice) == 1 and "SECRET-LAW" not in voice[0]
-        assert "Vines trace" in voice[0]
+        assert voice == []  # the master's text is voiced on the player's request, never by itself
         maker = client.app.state.sessionmaker
 
         async def adventure():
