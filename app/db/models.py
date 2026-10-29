@@ -755,6 +755,37 @@ class LocationArtwork(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class Artwork(Base):
+    """Generic immutable attempts for shared artwork (kind + subject); at most one pending attempt per subject."""
+
+    __tablename__ = "artworks"
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "kind", "request_key", name="uq_artwork_request"),
+        CheckConstraint("status IN ('pending', 'ready', 'failed')", name="ck_artwork_status"),
+        Index("ix_artwork_subject", "campaign_id", "kind", "subject_id"),
+        Index(
+            "uq_artwork_pending",
+            "campaign_id",
+            "kind",
+            "subject_id",
+            unique=True,
+            sqlite_where=text("status = 'pending'"),
+            postgresql_where=text("status = 'pending'"),
+        ),
+    )
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("aw"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(32))
+    subject_id: Mapped[str] = mapped_column(String(64))
+    request_key: Mapped[str] = mapped_column(String(128))
+    source_digest: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    mime: Mapped[str | None] = mapped_column(String(64))
+    error: Mapped[str | None] = mapped_column(String(64))
+    lease_until: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class WorldGenerationState(Base):
     """Состояние однократной материализации локации/контейнера; не запускает генерацию само по себе."""
 
