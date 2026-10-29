@@ -9,6 +9,7 @@ export interface SavedHero {
 }
 
 export interface CampaignHero extends SavedHero {
+  combat?: { inventory: { id: string; kind: string; name: string; description?: string }[] } | null;
   seat_id: string | null;
   status: string;
   reviewer?: "ai" | "master" | null;

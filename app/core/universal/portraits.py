@@ -24,7 +24,9 @@ def portrait_url(portrait_id: str | None) -> str | None:
     return f"/api/portraits/{portrait_id}" if portrait_id else None
 
 
-async def generate(session, user_id, hero, request_key, expected_revision, generator, media_dir):
+async def generate(session, user_id, hero, request_key, expected_revision, generator, media_dir, translator=None):
+    timeout_seconds = getattr(generator, "timeout_seconds", 125)
+    lease = max(LEASE, timedelta(seconds=timeout_seconds + 30))
     model = type(hero)
     hero_id = hero.id
     revision = hero.revision if isinstance(hero, LibraryCharacter) else 1
@@ -43,7 +45,7 @@ async def generate(session, user_id, hero, request_key, expected_revision, gener
         )
     if hero.portrait_job_id:
         pending = await session.get(HeroPortrait, hero.portrait_job_id)
-        if pending and as_utc(pending.created_at) + LEASE > now():
+        if pending and as_utc(pending.created_at) + lease > now():
             raise PortraitPending("Портрет уже создаётся. Дождитесь результата.")
         if pending and pending.status == "pending":
             pending.status = "failed"
@@ -78,7 +80,9 @@ async def generate(session, user_id, hero, request_key, expected_revision, gener
     reason = None
     path = media_dir / "portraits" / job.id
     try:
-        async with asyncio.timeout(125):
+        async with asyncio.timeout(timeout_seconds + 10):
+            if translator:
+                description = await translator.translate(session, description, campaign_id)
             reply = await generator.generate(description)
         validate_image(reply.data, reply.mime)
         await asyncio.to_thread(path.parent.mkdir, parents=True, exist_ok=True)
@@ -117,6 +121,13 @@ async def generate(session, user_id, hero, request_key, expected_revision, gener
             "not_configured": "Генерация портретов пока не настроена на сервере.",
             "quota": "У сервиса изображений исчерпана квота. Попробуйте позже.",
             "stale_hero": "Описание изменилось во время генерации. Обновите карточку перед новой попыткой.",
+            "comfyui_unavailable": "Локальный ComfyUI недоступен. Запустите его и попробуйте снова.",
+            "comfyui_timeout": "ComfyUI не успел создать портрет. Проверьте его очередь перед новой попыткой.",
+            "translation_unavailable": (
+                "Не удалось перевести описание портрета. Попробуйте позже; прежний портрет сохранён."
+            ),
+            "translation_invalid": "Сервис не смог перевести описание на английский. Попробуйте позже.",
+            "translation_timeout": "Сервис перевода не ответил вовремя. Попробуйте позже.",
         }
         raise Conflict(
             messages.get(reason, "Не удалось создать портрет. Прежнее изображение сохранено; попробуйте ещё раз.")

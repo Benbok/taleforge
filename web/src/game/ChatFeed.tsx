@@ -21,6 +21,7 @@ export default function ChatFeed({ campaignId }: { campaignId: string }) {
   const box = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [stuck, setStuck] = useState(true);
+  const following = useRef(true);
   const [unseen, setUnseen] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   // долгая отправка: ИИ-мастер сначала разбирает реплику, игрок должен видеть, что она не потерялась
@@ -62,10 +63,11 @@ export default function ChatFeed({ campaignId }: { campaignId: string }) {
   useLayoutEffect(() => {
     const el = box.current;
     if (!el) return;
-    if (stuck || masterStage) {
-      scrollToBottom();
-      const raf = requestAnimationFrame(() => scrollToBottom());
-      const timer = setTimeout(() => scrollToBottom(), 80);
+    if (following.current) {
+      const followBottom = () => { if (following.current) scrollToBottom(); };
+      followBottom();
+      const raf = requestAnimationFrame(followBottom);
+      const timer = setTimeout(followBottom, 80);
       return () => {
         cancelAnimationFrame(raf);
         clearTimeout(timer);
@@ -80,22 +82,24 @@ export default function ChatFeed({ campaignId }: { campaignId: string }) {
     const el = box.current;
     if (!el) return;
     const ro = new ResizeObserver(() => {
-      if (stuck || masterStage) {
+      if (following.current) {
         el.scrollTop = el.scrollHeight;
       }
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [stuck, masterStage]);
+  }, []);
 
   function onScroll() {
     const el = box.current!;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    following.current = atBottom;
     setStuck(atBottom);
     if (atBottom) setUnseen(0);
   }
 
   function toBottom() {
+    following.current = true;
     scrollToBottom(true);
     setUnseen(0);
     setStuck(true);
@@ -184,17 +188,11 @@ export default function ChatFeed({ campaignId }: { campaignId: string }) {
 
 /** Атмосферный индикатор размышления и подготовки ответа мастера */
 function MasterThinkingCard({ stage }: { stage: string }) {
-  const cardRef = useRef<HTMLDivElement>(null);
   const theme = useSession((s) => s.theme);
   const text = label(theme, `master_status.${stage}`, STAGES[stage] ?? "Мастер обдумывает ответ…");
 
-  useEffect(() => {
-    cardRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-  }, [stage]);
-
   return (
     <div
-      ref={cardRef}
       className="tf-pop tf-master-thinking my-2 flex w-full min-w-0 shrink-0 flex-col gap-2.5 rounded-xl border p-3.5 shadow-xs sm:p-4"
       role="status"
       aria-live="polite"

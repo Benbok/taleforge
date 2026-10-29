@@ -466,3 +466,33 @@
   font-size: 16.5px !important;
   line-height: 1.6 !important;
 }
+/* ========================================================
+   Начертание и семейство шрифтов повествования мастера
+   ======================================================== */
+
+.tf-narration-text {
+  font-weight: 550;
+  letter-spacing: 0.01em;
+}
+
+.tf-chat-family-serif .tf-narration-text {
+  font-family: var(--tf-font-narration, 'Lora', Georgia, serif) !important;
+  font-weight: 550 !important;
+  letter-spacing: 0.01em !important;
+}
+
+.tf-chat-family-sans .tf-narration-text {
+  font-family: var(--tf-font-ui, 'Inter', system-ui, sans-serif) !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.tf-chat-family-serif .tf-message-body {
+  font-family: var(--tf-font-narration, 'Lora', Georgia, serif) !important;
+  font-weight: 500 !important;
+}
+
+.tf-chat-family-sans .tf-message-body {
+  font-family: var(--tf-font-ui, 'Inter', system-ui, sans-serif) !important;
+  font-weight: 450 !important;
+}

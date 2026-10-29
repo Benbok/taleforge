@@ -31,9 +31,13 @@ from app.api import (
 from app.api import adventures as adventures_api
 from app.api import audio as audio_api
 from app.api import authoring as authoring_api
+from app.api import equipment_artwork as equipment_artwork_api
 from app.api import generation as generation_api
 from app.api import hero_creation as hero_creation_api
+from app.api import library_equipment_artwork as library_equipment_artwork_api
+from app.api import location_artwork as location_artwork_api
 from app.api import modules as modules_api
+from app.api import npc_portraits as npc_portraits_api
 from app.api import portraits as portraits_api
 from app.api import sfx as sfx_api
 from app.api.errors import validation_handler
@@ -115,10 +119,40 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
         app.state.tts = TTSManager(settings)
         effective_llm = llm or LiteLLMClient()
         app.state.hero_llm = effective_llm
-        from app.agents.portraits import GeminiPortraitGenerator
+        from app.agents.portraits import create_portrait_generator
 
-        app.state.portraits = GeminiPortraitGenerator(settings.portrait_model)
+        app.state.portraits = create_portrait_generator(settings)
+        from app.agents.technical_portrait_translation import TechnicalPortraitTranslator
+
+        app.state.portrait_translator = (
+            TechnicalPortraitTranslator(effective_llm, settings) if settings.portrait_provider == "comfyui" else None
+        )
         app.state.portrait_media_dir = settings.media_dir
+        from app.agents.location_images import create_location_generator, create_location_translator
+
+        app.state.location_artwork_generator = (
+            create_location_generator(settings) if settings.location_artwork_enabled else None
+        )
+        app.state.location_artwork_translator = (
+            create_location_translator(effective_llm, settings) if settings.location_artwork_enabled else None
+        )
+        app.state.location_artwork_media_dir = settings.media_dir
+        from app.agents.equipment_images import create_equipment_generator, create_equipment_translator
+
+        app.state.equipment_artwork_generator = (
+            create_equipment_generator(settings) if settings.equipment_artwork_enabled else None
+        )
+        app.state.equipment_artwork_translator = (
+            create_equipment_translator(effective_llm, settings) if settings.equipment_artwork_enabled else None
+        )
+        app.state.equipment_artwork_media_dir = settings.media_dir
+        from app.agents.npc_images import create_npc_generator, create_npc_translator
+
+        app.state.npc_portrait_generator = create_npc_generator(settings) if settings.npc_portraits_enabled else None
+        app.state.npc_portrait_translator = (
+            create_npc_translator(effective_llm, settings) if settings.npc_portraits_enabled else None
+        )
+        app.state.npc_portrait_media_dir = settings.media_dir
         app.state.coordination = InMemoryCoordination()
         app.state.narrative_jobs = SqlNarrativeJobs(app.state.sessionmaker)
         app.state.narrative_reader = DbNarrativeReader(
@@ -206,6 +240,10 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     app.include_router(library.router)
     app.include_router(hero_creation_api.router)
     app.include_router(portraits_api.router)
+    app.include_router(npc_portraits_api.router)
+    app.include_router(location_artwork_api.router)
+    app.include_router(equipment_artwork_api.router)
+    app.include_router(library_equipment_artwork_api.router)
     app.include_router(models.router)
     app.include_router(modules_api.router)
     app.include_router(generation_api.router)

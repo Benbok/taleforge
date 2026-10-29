@@ -4,6 +4,7 @@ import UniversalCombatPanel from './UniversalCombatPanel';
 import { api } from '../lib/api';
 
 vi.mock('../lib/api',()=>({api:vi.fn()}));
+vi.mock('./EquipmentArtwork',()=>({default:()=>null}));
 afterEach(()=>{cleanup();vi.clearAllMocks();});
 
 it('shows authoritative defense and sends an equip action with a stable request key',async()=>{

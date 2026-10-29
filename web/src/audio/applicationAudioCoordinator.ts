@@ -36,9 +36,11 @@ export function installAutoUnlock(
 }
 
 export function audioSurfaceFor(pathname: string, signedIn: boolean): AudioSurface {
-  const path = pathname.split(/[?#]/, 1)[0] || "/";
+  const rawPath = pathname.split(/[?#]/, 1)[0] || "/";
+  const path = rawPath.length > 1 ? rawPath.replace(/\/+$/, "") : rawPath;
   if (/^\/c\/[^/]+$/.test(path)) return signedIn ? "scene" : "silent";
   if (path === "/" || path === "/admin" || path === "/profile"
+    || /^\/author(\/[^/]+)?$/.test(path)
     || /^\/worlds(\/[^/]+)?$/.test(path)
     || /^\/heroes\/[^/]+$/.test(path)
     || /^\/c\/[^/]+\/(manage|hero)$/.test(path)) return "menu";

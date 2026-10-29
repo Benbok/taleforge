@@ -653,6 +653,108 @@ class Entity(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+def _equipment_pending_scope(context):
+    values = context.get_current_parameters()
+    return ("owner:" + values["owner_user_id"]) if values.get("owner_user_id") else "campaign:" + values["campaign_id"]
+
+
+class EquipmentArtwork(Base):
+    """Campaign-scoped visual cache; identical available items share immutable artwork attempts."""
+
+    __tablename__ = "equipment_artworks"
+    __table_args__ = (
+        Index("uq_equipment_shared_pending", "pending_scope", "source_digest", unique=True,
+              sqlite_where=text("status = 'pending'"), postgresql_where=text("status = 'pending'")),
+        UniqueConstraint("campaign_id", "request_key", name="uq_equipment_artwork_request"),
+        UniqueConstraint("owner_user_id", "request_key", name="uq_equipment_artwork_owner_request"),
+        CheckConstraint("(campaign_id IS NULL) <> (owner_user_id IS NULL)", name="ck_equipment_artwork_scope"),
+        Index("ix_equipment_artwork_owner_source", "owner_user_id", "source_digest"),
+        Index(
+            "uq_equipment_artwork_owner_pending", "owner_user_id", "source_digest", unique=True,
+            sqlite_where=text("status = 'pending'"), postgresql_where=text("status = 'pending'"),
+        ),
+        CheckConstraint("status IN ('pending', 'ready', 'failed')", name="ck_equipment_artwork_status"),
+        Index("ix_equipment_artwork_source", "campaign_id", "source_digest"),
+        Index(
+            "uq_equipment_artwork_pending", "campaign_id", "source_digest", unique=True,
+            sqlite_where=text("status = 'pending'"), postgresql_where=text("status = 'pending'"),
+        ),
+    )
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("ea"))
+    campaign_id: Mapped[str | None] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"))
+    owner_user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE", name="fk_equipment_artwork_owner")
+    )
+    request_key: Mapped[str] = mapped_column(String(128))
+    source_digest: Mapped[str] = mapped_column(String(64))
+    pending_scope: Mapped[str] = mapped_column(String(80), default=_equipment_pending_scope, server_default="")
+    regenerate: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    selected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    mime: Mapped[str | None] = mapped_column(String(64))
+    reused_from: Mapped[str | None] = mapped_column(
+        ForeignKey("equipment_artworks.id", ondelete="CASCADE", name="fk_equipment_artwork_reused_from")
+    )
+    error: Mapped[str | None] = mapped_column(String(64))
+    lease_until: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class NpcPortrait(Base):
+    __tablename__ = "npc_portraits"
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "request_key", name="uq_npc_portrait_request"),
+        CheckConstraint("status IN ('pending', 'ready', 'failed')", name="ck_npc_portrait_status"),
+        Index("uq_npc_portrait_pending", "npc_id", unique=True,
+              sqlite_where=text("status = 'pending'"), postgresql_where=text("status = 'pending'")),
+    )
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("np"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    npc_id: Mapped[str] = mapped_column(ForeignKey("entities.id", ondelete="CASCADE"), index=True)
+    request_key: Mapped[str] = mapped_column(String(128))
+    source_digest: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    mime: Mapped[str | None] = mapped_column(String(64))
+    error: Mapped[str | None] = mapped_column(String(64))
+    lease_until: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class NpcPortraitSelection(Base):
+    __tablename__ = "npc_portrait_selections"
+    npc_id: Mapped[str] = mapped_column(ForeignKey("entities.id", ondelete="CASCADE"), primary_key=True)
+    source_digest: Mapped[str] = mapped_column(String(64), primary_key=True)
+    image_id: Mapped[str] = mapped_column(ForeignKey("npc_portraits.id", ondelete="CASCADE"))
+    chosen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class LocationArtwork(Base):
+    """Immutable attempts for public location illustrations; at most one pending attempt per room."""
+
+    __tablename__ = "location_artworks"
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "request_key", name="uq_location_artwork_request"),
+        CheckConstraint("status IN ('pending', 'ready', 'failed')", name="ck_location_artwork_status"),
+        Index(
+            "uq_location_artwork_pending",
+            "location_id",
+            unique=True,
+            sqlite_where=text("status = 'pending'"),
+            postgresql_where=text("status = 'pending'"),
+        ),
+    )
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("la"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    location_id: Mapped[str] = mapped_column(ForeignKey("entities.id", ondelete="CASCADE"), index=True)
+    request_key: Mapped[str] = mapped_column(String(128))
+    source_digest: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    mime: Mapped[str | None] = mapped_column(String(64))
+    error: Mapped[str | None] = mapped_column(String(64))
+    lease_until: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class WorldGenerationState(Base):
     """Состояние однократной материализации локации/контейнера; не запускает генерацию само по себе."""
 

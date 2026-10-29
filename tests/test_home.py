@@ -55,6 +55,7 @@ def test_campaign_cards(game_client, admin_g):
     players = [m for m in card["party"] if m["role"] == "player"]
     assert [m["user_name"] for m in players] == ["Арагорн", "Гимли"] and players[0]["hero_name"] == "Бран"
     assert card["party"][0]["role"] == "master" and card["waiting_players"] == 0
+    assert card["world_version"] is None
     assert "brief" not in card and "settings" not in card
 
     (own,) = ok(game_client.get("/api/me/campaigns", headers=admin_g))
@@ -77,3 +78,21 @@ def test_spa_routes(game_client):
     # вложенные папки ассетов (портреты происхождений), но не выход за их пределы
     assert game_client.get("/assets/races/nope.png").status_code == 404
     assert game_client.get("/assets/races/..%2F..%2F..%2Fapp%2Fmain.py").status_code == 404
+
+
+def test_authored_card_keeps_published_world_identity(client, root, admin, settings):
+    from tests.game import import_base
+    from tests.test_author_secret_access import publish
+    from tests.test_worlds_catalog import second_version
+    from tests.test_worlds_launch import launch
+
+    import_base(settings)
+    version_id = publish(client, root)
+    receipt = launch(client, admin, version_id)
+    assert receipt.status_code == 201, receipt.text
+    second_version(client, version_id)
+    cards = ok(client.get("/api/me/campaigns", headers=admin))
+    card = next(c for c in cards if c["id"] == receipt.json()["campaign_id"])
+    assert card["world"] == "Glass islands"
+    assert card["world_version"] == "1"
+    assert "SECRET" not in str(card)

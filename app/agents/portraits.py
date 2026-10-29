@@ -129,3 +129,17 @@ class GeminiPortraitGenerator:
             raise
         except (httpx.HTTPError, ValueError, KeyError, TypeError) as exc:
             raise PortraitError("provider_error", audit_reply) from exc
+
+
+def create_portrait_generator(settings):
+    if settings.portrait_provider == "gemini":
+        return GeminiPortraitGenerator(settings.portrait_model)
+    if settings.portrait_provider == "comfyui":
+        from app.agents.comfyui_portraits import ComfyUIPortraitGenerator
+
+        return ComfyUIPortraitGenerator(
+            settings.portrait_comfyui_url,
+            settings.portrait_comfyui_workflow,
+            timeout_seconds=settings.portrait_comfyui_timeout_sec,
+        )
+    raise ValueError("PORTRAIT_PROVIDER must be gemini or comfyui")

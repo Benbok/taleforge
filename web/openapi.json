@@ -755,12 +755,24 @@
        }
       ],
       "title": "World"
+     },
+     "world_version": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "World Version"
      }
     },
     "required": [
      "id",
      "name",
      "world",
+     "world_version",
      "status",
      "session_live",
      "waiting_players",
@@ -2767,6 +2779,96 @@
      "chronicle"
     ],
     "title": "Epilogue",
+    "type": "object"
+   },
+   "EquipmentArtworkIn": {
+    "properties": {
+     "regenerate": {
+      "default": false,
+      "title": "Regenerate",
+      "type": "boolean"
+     },
+     "request_key": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Key",
+      "type": "string"
+     }
+    },
+    "required": [
+     "request_key"
+    ],
+    "title": "EquipmentArtworkIn",
+    "type": "object"
+   },
+   "EquipmentArtworkOut": {
+    "properties": {
+     "can_generate": {
+      "title": "Can Generate",
+      "type": "boolean"
+     },
+     "can_regenerate": {
+      "default": false,
+      "title": "Can Regenerate",
+      "type": "boolean"
+     },
+     "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "image_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Image Url"
+     },
+     "status": {
+      "enum": [
+       "idle",
+       "pending",
+       "ready",
+       "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+     },
+     "thumbnail_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Thumbnail Url"
+     }
+    },
+    "required": [
+     "status",
+     "image_url",
+     "thumbnail_url",
+     "enabled",
+     "can_generate",
+     "error"
+    ],
+    "title": "EquipmentArtworkOut",
     "type": "object"
    },
    "EquipmentIn": {
@@ -4823,6 +4925,21 @@
     "title": "GameItemAction",
     "type": "object"
    },
+   "GenerateIn": {
+    "properties": {
+     "request_key": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Key",
+      "type": "string"
+     }
+    },
+    "required": [
+     "request_key"
+    ],
+    "title": "GenerateIn",
+    "type": "object"
+   },
    "GeneratedObject": {
     "properties": {
      "id": {
@@ -5909,6 +6026,84 @@
      "request_key"
     ],
     "title": "LaunchRequest",
+    "type": "object"
+   },
+   "LocationArtworkIn": {
+    "properties": {
+     "regenerate": {
+      "default": false,
+      "title": "Regenerate",
+      "type": "boolean"
+     },
+     "request_key": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Key",
+      "type": "string"
+     }
+    },
+    "required": [
+     "request_key"
+    ],
+    "title": "LocationArtworkIn",
+    "type": "object"
+   },
+   "LocationArtworkOut": {
+    "properties": {
+     "can_generate": {
+      "title": "Can Generate",
+      "type": "boolean"
+     },
+     "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "image_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Image Url"
+     },
+     "stale": {
+      "title": "Stale",
+      "type": "boolean"
+     },
+     "status": {
+      "enum": [
+       "idle",
+       "pending",
+       "ready",
+       "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "status",
+     "image_url",
+     "stale",
+     "enabled",
+     "can_generate",
+     "error"
+    ],
+    "title": "LocationArtworkOut",
     "type": "object"
    },
    "LocationPresentation": {
@@ -9989,6 +10184,72 @@
     "title": "PortraitIn",
     "type": "object"
    },
+   "PortraitsOut": {
+    "properties": {
+     "can_generate": {
+      "title": "Can Generate",
+      "type": "boolean"
+     },
+     "can_select": {
+      "title": "Can Select",
+      "type": "boolean"
+     },
+     "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "selected_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Selected Id"
+     },
+     "status": {
+      "enum": [
+       "idle",
+       "pending",
+       "ready",
+       "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+     },
+     "variants": {
+      "items": {
+       "$ref": "#/components/schemas/Variant"
+      },
+      "title": "Variants",
+      "type": "array"
+     }
+    },
+    "required": [
+     "status",
+     "selected_id",
+     "variants",
+     "enabled",
+     "can_generate",
+     "can_select",
+     "error"
+    ],
+    "title": "PortraitsOut",
+    "type": "object"
+   },
    "PreparationView": {
     "additionalProperties": false,
     "properties": {
@@ -10977,6 +11238,21 @@
      }
     },
     "title": "SecretsIn",
+    "type": "object"
+   },
+   "SelectIn": {
+    "properties": {
+     "image_id": {
+      "maxLength": 32,
+      "minLength": 1,
+      "title": "Image Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "image_id"
+    ],
+    "title": "SelectIn",
     "type": "object"
    },
    "ServerEvent": {
@@ -13041,6 +13317,29 @@
      "current"
     ],
     "title": "ValidationSummary",
+    "type": "object"
+   },
+   "Variant": {
+    "properties": {
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "image_url": {
+      "title": "Image Url",
+      "type": "string"
+     },
+     "thumbnail_url": {
+      "title": "Thumbnail Url",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "image_url",
+     "thumbnail_url"
+    ],
+    "title": "Variant",
     "type": "object"
    },
    "VersionOut": {
@@ -18200,6 +18499,288 @@
     ]
    }
   },
+  "/api/campaigns/{campaign_id}/characters/{hero_id}/items/{item_id}/artwork": {
+   "get": {
+    "operationId": "artwork_status_api_campaigns__campaign_id__characters__hero_id__items__item_id__artwork_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "hero_id",
+      "required": true,
+      "schema": {
+       "title": "Hero Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "item_id",
+      "required": true,
+      "schema": {
+       "title": "Item Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EquipmentArtworkOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Artwork Status",
+    "tags": [
+     "equipment-artwork"
+    ]
+   },
+   "post": {
+    "operationId": "create_artwork_api_campaigns__campaign_id__characters__hero_id__items__item_id__artwork_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "hero_id",
+      "required": true,
+      "schema": {
+       "title": "Hero Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "item_id",
+      "required": true,
+      "schema": {
+       "title": "Item Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EquipmentArtworkIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EquipmentArtworkOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Create Artwork",
+    "tags": [
+     "equipment-artwork"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/characters/{hero_id}/items/{item_id}/artwork/{image_id}": {
+   "get": {
+    "operationId": "image_api_campaigns__campaign_id__characters__hero_id__items__item_id__artwork__image_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "hero_id",
+      "required": true,
+      "schema": {
+       "title": "Hero Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "item_id",
+      "required": true,
+      "schema": {
+       "title": "Item Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "image_id",
+      "required": true,
+      "schema": {
+       "title": "Image Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Image",
+    "tags": [
+     "equipment-artwork"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/characters/{hero_id}/items/{item_id}/artwork/{image_id}/thumbnail": {
+   "get": {
+    "operationId": "preview_api_campaigns__campaign_id__characters__hero_id__items__item_id__artwork__image_id__thumbnail_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "hero_id",
+      "required": true,
+      "schema": {
+       "title": "Hero Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "item_id",
+      "required": true,
+      "schema": {
+       "title": "Item Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "image_id",
+      "required": true,
+      "schema": {
+       "title": "Image Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Preview",
+    "tags": [
+     "equipment-artwork"
+    ]
+   }
+  },
   "/api/campaigns/{campaign_id}/characters/{hero_id}/portrait": {
    "post": {
     "operationId": "game_portrait_api_campaigns__campaign_id__characters__hero_id__portrait_post",
@@ -18576,6 +19157,189 @@
     "summary": "Leave",
     "tags": [
      "campaigns"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/locations/{location_id}/artwork": {
+   "get": {
+    "operationId": "artwork_status_api_campaigns__campaign_id__locations__location_id__artwork_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "location_id",
+      "required": true,
+      "schema": {
+       "title": "Location Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LocationArtworkOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Artwork Status",
+    "tags": [
+     "location-artwork"
+    ]
+   },
+   "post": {
+    "operationId": "create_artwork_api_campaigns__campaign_id__locations__location_id__artwork_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "location_id",
+      "required": true,
+      "schema": {
+       "title": "Location Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LocationArtworkIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LocationArtworkOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Create Artwork",
+    "tags": [
+     "location-artwork"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/locations/{location_id}/artwork/{image_id}": {
+   "get": {
+    "operationId": "image_api_campaigns__campaign_id__locations__location_id__artwork__image_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "location_id",
+      "required": true,
+      "schema": {
+       "title": "Location Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "image_id",
+      "required": true,
+      "schema": {
+       "title": "Image Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Image",
+    "tags": [
+     "location-artwork"
     ]
    }
   },
@@ -19297,6 +20061,65 @@
     ]
    }
   },
+  "/api/campaigns/{campaign_id}/messages/{message_id}/voice": {
+   "post": {
+    "description": "Озвучка текста мастера по просьбе игрока. Запись делается в фоне и прикрепляется к сообщению.",
+    "operationId": "voice_message_api_campaigns__campaign_id__messages__message_id__voice_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "message_id",
+      "required": true,
+      "schema": {
+       "title": "Message Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Voice Message Api Campaigns  Campaign Id  Messages  Message Id  Voice Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Voice Message",
+    "tags": [
+     "voice"
+    ]
+   }
+  },
   "/api/campaigns/{campaign_id}/narrative/status": {
    "get": {
     "description": "Безопасный статус подготовки сюжета (только status/error, без спойлеров и закрытых причин).",
@@ -19342,6 +20165,318 @@
     "summary": "Get Narrative Status",
     "tags": [
      "plan"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/npcs/{npc_id}/portraits": {
+   "get": {
+    "operationId": "status_api_campaigns__campaign_id__npcs__npc_id__portraits_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "npc_id",
+      "required": true,
+      "schema": {
+       "title": "Npc Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PortraitsOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Status",
+    "tags": [
+     "npc-portraits"
+    ]
+   },
+   "post": {
+    "operationId": "generate_api_campaigns__campaign_id__npcs__npc_id__portraits_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "npc_id",
+      "required": true,
+      "schema": {
+       "title": "Npc Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/GenerateIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PortraitsOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Generate",
+    "tags": [
+     "npc-portraits"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/npcs/{npc_id}/portraits/selection": {
+   "put": {
+    "operationId": "select_api_campaigns__campaign_id__npcs__npc_id__portraits_selection_put",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "npc_id",
+      "required": true,
+      "schema": {
+       "title": "Npc Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SelectIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PortraitsOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Select",
+    "tags": [
+     "npc-portraits"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/npcs/{npc_id}/portraits/{image_id}": {
+   "get": {
+    "operationId": "image_api_campaigns__campaign_id__npcs__npc_id__portraits__image_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "npc_id",
+      "required": true,
+      "schema": {
+       "title": "Npc Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "image_id",
+      "required": true,
+      "schema": {
+       "title": "Image Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Image",
+    "tags": [
+     "npc-portraits"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/npcs/{npc_id}/portraits/{image_id}/thumbnail": {
+   "get": {
+    "operationId": "thumbnail_api_campaigns__campaign_id__npcs__npc_id__portraits__image_id__thumbnail_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "npc_id",
+      "required": true,
+      "schema": {
+       "title": "Npc Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "image_id",
+      "required": true,
+      "schema": {
+       "title": "Image Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Thumbnail",
+    "tags": [
+     "npc-portraits"
     ]
    }
   },
@@ -21080,6 +22215,252 @@
     "summary": "List Heroes",
     "tags": [
      "profile"
+    ]
+   }
+  },
+  "/api/me/characters/{hero_id}/equipment/{kind}/artwork": {
+   "get": {
+    "operationId": "status_api_me_characters__hero_id__equipment__kind__artwork_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "hero_id",
+      "required": true,
+      "schema": {
+       "title": "Hero Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "kind",
+      "required": true,
+      "schema": {
+       "title": "Kind",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EquipmentArtworkOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Status",
+    "tags": [
+     "equipment-artwork"
+    ]
+   },
+   "post": {
+    "operationId": "create_api_me_characters__hero_id__equipment__kind__artwork_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "hero_id",
+      "required": true,
+      "schema": {
+       "title": "Hero Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "kind",
+      "required": true,
+      "schema": {
+       "title": "Kind",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EquipmentArtworkIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EquipmentArtworkOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Create",
+    "tags": [
+     "equipment-artwork"
+    ]
+   }
+  },
+  "/api/me/characters/{hero_id}/equipment/{kind}/artwork/{image_id}": {
+   "get": {
+    "operationId": "image_api_me_characters__hero_id__equipment__kind__artwork__image_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "hero_id",
+      "required": true,
+      "schema": {
+       "title": "Hero Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "kind",
+      "required": true,
+      "schema": {
+       "title": "Kind",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "image_id",
+      "required": true,
+      "schema": {
+       "title": "Image Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Image",
+    "tags": [
+     "equipment-artwork"
+    ]
+   }
+  },
+  "/api/me/characters/{hero_id}/equipment/{kind}/artwork/{image_id}/thumbnail": {
+   "get": {
+    "operationId": "preview_api_me_characters__hero_id__equipment__kind__artwork__image_id__thumbnail_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "hero_id",
+      "required": true,
+      "schema": {
+       "title": "Hero Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "kind",
+      "required": true,
+      "schema": {
+       "title": "Kind",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "image_id",
+      "required": true,
+      "schema": {
+       "title": "Image Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Preview",
+    "tags": [
+     "equipment-artwork"
     ]
    }
   },

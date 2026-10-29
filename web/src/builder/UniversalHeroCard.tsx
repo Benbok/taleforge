@@ -6,8 +6,9 @@ import StartingEquipmentList from './StartingEquipmentList';
 
 export { energyThemes };
 
-export default function UniversalHeroCard({ card, portraitActions, equipmentActions, compact = false }: {
-  card: HeroCard; portraitActions?: ReactNode; equipmentActions?: ReactNode; compact?: boolean;
+export default function UniversalHeroCard({ card, portraitActions, equipmentActions, equipmentArtworkBase, equipmentArtworkFor, compact = false }: {
+  card: HeroCard; portraitActions?: ReactNode; equipmentActions?: ReactNode; equipmentArtworkBase?: string; compact?: boolean;
+  equipmentArtworkFor?: (item: Record<string, unknown>) => ReactNode;
 }) {
   const description = card.sheet?.description ?? { identity: '', appearance: '', personality: '', capabilities: '' };
   const hpCur = Number(card.hp ?? 0);
@@ -230,7 +231,7 @@ export default function UniversalHeroCard({ card, portraitActions, equipmentActi
         <div className='rounded-xl border border-line bg-surface p-3.5 flex flex-col gap-1.5'>
           <h3 className='font-semibold text-xs uppercase tracking-wider text-ink'>Снаряжение</h3>
           {card.equipment?.length ? (
-            <StartingEquipmentList items={card.equipment} />
+            <StartingEquipmentList items={card.equipment} artworkBase={equipmentArtworkBase} artworkFor={equipmentArtworkFor} />
           ) : (
             <p className='text-xs leading-relaxed text-muted'>Пока нет снаряжения</p>
           )}

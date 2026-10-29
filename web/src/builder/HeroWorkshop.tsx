@@ -80,6 +80,7 @@ export default function HeroWorkshop() {
           <>
             <UniversalHeroCard
               card={hero.data}
+              equipmentArtworkBase={`/api/me/characters/${id}/equipment`}
               equipmentActions={<HeroEquipmentStudio card={hero.data} onSaved={card => {
                 qc.setQueryData(['library', id], card);
                 void qc.invalidateQueries({ queryKey: ['library'], exact: true });

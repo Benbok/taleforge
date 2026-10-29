@@ -52,6 +52,13 @@ def session_report(calls: list[LlmCall], turns: list) -> dict[str, Any]:
         "greeting",
         "intro",
         "hero_portrait",
+        "hero_portrait_translation",
+        "location_illustration",
+        "location_artwork_translation",
+        "equipment_illustration",
+        "equipment_artwork_translation",
+        "npc_portrait",
+        "npc_portrait_translation",
     }
     background = {"director", "summary", "catchup", "replan"}
     for call in calls:

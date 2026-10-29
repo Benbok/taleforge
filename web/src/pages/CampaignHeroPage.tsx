@@ -8,6 +8,7 @@ import HeroPortraitStudio from '../builder/HeroPortraitStudio';
 import { universalCard, emptyDescription, type HeroDialogue } from '../lib/universal';
 import HeroCreationDialogue from '../builder/HeroCreationDialogue';
 import HeroDescriptionForm from '../builder/HeroDescriptionForm';
+import EquipmentArtwork from '../game/EquipmentArtwork';
 import { api } from "../lib/api";
 import { type CampaignHero, type LibraryHero } from "../lib/builder";
 
@@ -93,7 +94,13 @@ export default function CampaignHeroPage() {
       </section>
     );
   } else if (universalCard(hero)) {
-    body = <UniversalHeroCard card={universalCard(hero)!} portraitActions={
+    body = <UniversalHeroCard card={universalCard(hero)!} equipmentArtworkFor={item => {
+      const inventoryItem = hero?.combat?.inventory.find(entry => typeof item.id === 'string'
+        ? entry.id === item.id
+        : entry.kind === item.kind && entry.name === item.name && (entry.description ?? '') === (item.description ?? ''));
+      return inventoryItem ? <EquipmentArtwork campaignId={id} heroId={hero!.id} itemId={inventoryItem.id}
+        name={inventoryItem.name} description={inventoryItem.description} /> : null;
+    }} portraitActions={
       <HeroPortraitStudio card={universalCard(hero)!} endpoint={`/api/campaigns/${id}/characters/${hero!.id}/portrait`} onSaved={() => { void refresh(); }} />} />;
   } else if (!hero) {
     body = <UniversalAdmission id={id} library={library.data ?? []} onDone={refresh} />;

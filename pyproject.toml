@@ -19,6 +19,7 @@ dependencies = [
     "litellm>=1.80,<1.106",  # 1.106 needs the optional mcp package for every tool call
     "jinja2>=3.1",
     "httpx>=0.27",
+    "pillow>=12.0",
 ]
 
 [project.optional-dependencies]

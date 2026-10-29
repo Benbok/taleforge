@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { api } from '../lib/api';
+import EquipmentArtwork from './EquipmentArtwork';
 
 export interface CombatView {
   life_state: 'conscious' | 'unconscious' | 'stable' | 'dead';
@@ -60,6 +61,7 @@ export default function UniversalCombatPanel({ campaignId, heroId, state, onUpda
           </button>}
         </div>
         {item.description && <p className='mt-1.5 leading-relaxed text-muted'>{item.description}</p>}
+        <EquipmentArtwork campaignId={campaignId} heroId={heroId} itemId={item.id} name={item.name} description={item.description} />
         {item.kind === 'armor' && <p className='mt-1 text-patina'>Защита +{item.defense_bonus ?? '0'}</p>}
         {item.kind === 'weapon' && <p className='mt-1 text-patina'>{item.base_dice ?? '1d6'} · попадание +{item.attack_bonus ?? '0'} · урон +{item.damage_bonus ?? '0'}</p>}
         {awake && item.kind === 'weapon' && item.equipped && target && <button disabled={busy || !!state.pending_request} className='btn-ghost mt-2 px-2 py-1' onClick={() => send('weapon_attack',item.id,target)}>Атаковать оружием</button>}

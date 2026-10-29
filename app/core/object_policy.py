@@ -94,23 +94,28 @@ async def observe(ctx, place_id: str | None, inverse: list, *, only: Iterable[st
     objects = [
         e
         for e in w.entities.values()
-        if e.kind == "object"
+        if (e.kind == "object" or (e.kind == "creature" and _st(e).get("visibility") not in {"hidden", "private"}))
         and e.location_id == place_id
         and (wanted is None or e.id in wanted)
         and not _st(e).get("area")
     ]
+    await remember_visible(ctx.session, w.entities, heroes, objects, inverse)
+
+
+async def remember_visible(session, entities, heroes, objects, inverse):
+    """Persist public observation snapshots through the same concealment policy."""
     if not heroes or not objects:
         return
-    await ctx.session.flush()
+    await session.flush()
     for hero in heroes:
-        found = await revealed_to(ctx.session, hero.id)
+        found = await revealed_to(session, hero.id)
         for e in objects:
-            if concealed(e, w.entities, found):
+            if concealed(e, entities, found):
                 continue
-            row = await ctx.session.get(Knowledge, (hero.id, e.id))
+            row = await session.get(Knowledge, (hero.id, e.id))
             seen = snapshot(e)
             if row is None:
-                ctx.session.add(Knowledge(character_id=hero.id, entity_id=e.id, level=0, observed_snapshot=seen))
+                session.add(Knowledge(character_id=hero.id, entity_id=e.id, level=0, observed_snapshot=seen))
                 inverse.append({"table": "knowledge", "op": "delete", "id": [hero.id, e.id]})
                 continue
             old = row.observed_snapshot or {}
@@ -125,4 +130,4 @@ async def observe(ctx, place_id: str | None, inverse: list, *, only: Iterable[st
                 }
             )
             row.observed_snapshot = seen
-    await ctx.session.flush()
+    await session.flush()

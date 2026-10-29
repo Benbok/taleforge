@@ -4,6 +4,8 @@ import {
   loadSceneHeaderCollapsed,
   saveChatFontSize,
   saveSceneHeaderCollapsed,
+  loadChatFontFamily,
+  saveChatFontFamily,
 } from "./scenePreferences";
 
 describe("настройка свёрнутой шапки сцены", () => {
@@ -39,5 +41,21 @@ describe("настройка размера шрифта чата", () => {
   it("ignores malformed font size values", () => {
     localStorage.setItem("tf_chat_font_size", "huge");
     expect(loadChatFontSize()).toBe("medium");
+  });
+});
+describe("настройка стиля шрифта чата (книжный / экранный)", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("uses serif by default and persists serif/sans", () => {
+    expect(loadChatFontFamily()).toBe("serif");
+    saveChatFontFamily("sans");
+    expect(loadChatFontFamily()).toBe("sans");
+    saveChatFontFamily("serif");
+    expect(loadChatFontFamily()).toBe("serif");
+  });
+
+  it("ignores malformed font family values", () => {
+    localStorage.setItem("tf_chat_font_family", "comic-sans");
+    expect(loadChatFontFamily()).toBe("serif");
   });
 });

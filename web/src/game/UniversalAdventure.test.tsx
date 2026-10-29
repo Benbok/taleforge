@@ -99,6 +99,26 @@ it('переключает масштаб шрифта чата и сохран�
   expect(localStorage.getItem('tf_chat_font_size')).toBe('large');
 });
 
+it('переключает стиль шрифта чата (книга / экран) и сохраняет выбор в localStorage', () => {
+  localStorage.clear();
+  useGame.setState({
+    snapshot: { campaign: { name: 'Острова', public_intro: 'Путь в порт', ruleset_id: 'universal' } } as never,
+    scene: { location: { id: 'port', name: 'Порт', description: 'Перед вами ворота.' } } as never,
+    sheet: { name: 'Ива', hp: '19', derived: { hp_max: '22', ac: '14' }, sheet: { rules_version: 'universal.v1' } } as never,
+  });
+  render(<MemoryRouter><UniversalAdventure campaignId='c' /></MemoryRouter>);
+
+  // Нажимаем Экран
+  const sansBtn = screen.getByRole('button', { name: 'Экран' });
+  fireEvent.click(sansBtn);
+  expect(localStorage.getItem('tf_chat_font_family')).toBe('sans');
+
+  // Нажимаем Книга
+  const serifBtn = screen.getByRole('button', { name: 'Книга' });
+  fireEvent.click(serifBtn);
+  expect(localStorage.getItem('tf_chat_font_family')).toBe('serif');
+});
+
 it('предлагает добавить героя и не выдумывает изученные способности', () => {
   render(<MemoryRouter><UniversalAdventure campaignId='c' /></MemoryRouter>);
   expect(screen.getByRole('link', { name: 'Выбрать или создать героя' }).getAttribute('href')).toBe('/c/c/hero');

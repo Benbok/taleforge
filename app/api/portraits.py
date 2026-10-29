@@ -28,6 +28,7 @@ async def _generate(request, session, user_id, hero, body):
             body.expected_revision,
             request.app.state.portraits,
             request.app.state.portrait_media_dir,
+            translator=getattr(request.app.state, "portrait_translator", None),
         )
     except PortraitPending as exc:
         raise HTTPException(409, detail={"code": "portrait_pending", "message": str(exc)}) from exc

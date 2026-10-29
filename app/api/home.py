@@ -18,7 +18,7 @@ from app.api.schemas import Out
 from app.content import theme as themes
 from app.core import campaigns as svc
 from app.core.inspect import types_for
-from app.db.models import Campaign, Character, ContentPack, GameSession
+from app.db.models import AdventureVersion, Campaign, Character, ContentPack, GameSession
 
 router = APIRouter(prefix="/api", tags=["home"])
 
@@ -45,6 +45,7 @@ class CampaignCard(Out):
     id: str
     name: str
     world: str | None = None
+    world_version: str | None = None
     status: Literal["lobby", "active", "paused", "ended"]
     session_live: bool
     waiting_players: int
@@ -108,10 +109,17 @@ async def _card(session, c: Campaign, user, online: set[str]) -> CampaignCard:
     )
     last = await memory.latest(session, c.id)
     world = None
-    if c.pack_id:
+    world_version = None
+    if c.adventure_version_id:
+        version = await session.get(AdventureVersion, c.adventure_version_id)
+        if version:
+            world = (version.public_summary or {}).get("title") or None
+            world_version = str(version.version)
+    elif c.pack_id:
         world = await session.scalar(
             select(ContentPack.name).where(ContentPack.id == c.pack_id, ContentPack.version == c.pack_version)
         )
+        world_version = c.pack_version if world else None
     party = [
         PartyMember(
             seat_id=s.id,
@@ -127,6 +135,7 @@ async def _card(session, c: Campaign, user, online: set[str]) -> CampaignCard:
         id=c.id,
         name=c.name,
         world=world,
+        world_version=world_version,
         status=c.status,
         session_live=bool(game and game.ended_at is None),
         waiting_players=sum(1 for s in c.seats if s.role == "player" and s.occupant_type == "empty"),

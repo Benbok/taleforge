@@ -1,4 +1,9 @@
-export default function StartingEquipmentList({ items }: { items: Record<string, unknown>[] }) {
+import { EquipmentArtworkAt } from '../game/EquipmentArtwork';
+import type { ReactNode } from 'react';
+
+export default function StartingEquipmentList({ items, artworkBase, artworkFor }: {
+  items: Record<string, unknown>[]; artworkBase?: string; artworkFor?: (item: Record<string, unknown>) => ReactNode;
+}) {
   if (!items || !items.length) return null;
 
   return (
@@ -12,7 +17,8 @@ export default function StartingEquipmentList({ items }: { items: Record<string,
           : kind === 'armor'
             ? `+${String(item.defense_bonus ?? '1')} КД`
             : null;
-        const hasDetails = Boolean(item.description || item.reason || kind === 'weapon' || kind === 'armor');
+        const hasArtwork = Boolean(artworkFor || (artworkBase && (kind === 'weapon' || kind === 'armor')));
+        const hasDetails = Boolean(item.description || item.reason || kind === 'weapon' || kind === 'armor' || hasArtwork);
 
         return (
           <li key={index}>
@@ -50,27 +56,45 @@ export default function StartingEquipmentList({ items }: { items: Record<string,
               </summary>
 
               {hasDetails && (
-                <div className='border-t border-line-soft bg-surface/60 px-3.5 py-2.5 space-y-2 text-xs'>
-                  {item.description ? (
-                    <p className='leading-relaxed text-ink-2'>{String(item.description)}</p>
-                  ) : null}
+                <div className='border-t border-line-soft bg-surface/50 p-3.5 text-xs'>
+                  <div className='flex flex-col sm:flex-row gap-4 items-start'>
+                    {hasArtwork && (
+                      <div className='shrink-0 self-center sm:self-start'>
+                        {artworkFor
+                          ? artworkFor(item)
+                          : artworkBase && (kind === 'weapon' || kind === 'armor') && (
+                              <EquipmentArtworkAt
+                                endpoint={`${artworkBase}/${kind}/artwork`}
+                                name={String(item.name ?? '')}
+                                description={String(item.description ?? '')}
+                              />
+                            )}
+                      </div>
+                    )}
 
-                  {kind === 'weapon' ? (
-                    <p className='text-accent font-medium'>
-                      Базовый урон {String(item.damage_dice ?? '1d6')} · {item.attack_ability === 'dex' ? 'Ловкость' : 'Сила'}
-                    </p>
-                  ) : kind === 'armor' ? (
-                    <p className='text-accent font-medium'>
-                      Защита +{String(item.defense_bonus ?? '1')}
-                    </p>
-                  ) : null}
+                    <div className='flex-1 min-w-0 space-y-2.5'>
+                      {item.description ? (
+                        <p className='leading-relaxed text-ink-2'>{String(item.description)}</p>
+                      ) : null}
 
-                  {item.reason ? (
-                    <div className='border-t border-line-soft pt-1.5 text-muted leading-relaxed'>
-                      <span className='font-semibold text-patina'>Обоснование: </span>
-                      {String(item.reason)}
+                      {kind === 'weapon' ? (
+                        <p className='text-accent font-medium'>
+                          Базовый урон {String(item.damage_dice ?? '1d6')} · {item.attack_ability === 'dex' ? 'Ловкость' : 'Сила'}
+                        </p>
+                      ) : kind === 'armor' ? (
+                        <p className='text-accent font-medium'>
+                          Защита +{String(item.defense_bonus ?? '1')}
+                        </p>
+                      ) : null}
+
+                      {item.reason ? (
+                        <div className='border-t border-line-soft/80 pt-2 text-muted leading-relaxed'>
+                          <span className='font-semibold text-patina'>Обоснование: </span>
+                          {String(item.reason)}
+                        </div>
+                      ) : null}
                     </div>
-                  ) : null}
+                  </div>
                 </div>
               )}
             </details>

@@ -1405,6 +1405,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaign_id}/characters/{hero_id}/items/{item_id}/artwork": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Artwork Status */
+        get: operations["artwork_status_api_campaigns__campaign_id__characters__hero_id__items__item_id__artwork_get"];
+        put?: never;
+        /** Create Artwork */
+        post: operations["create_artwork_api_campaigns__campaign_id__characters__hero_id__items__item_id__artwork_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/characters/{hero_id}/items/{item_id}/artwork/{image_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Image */
+        get: operations["image_api_campaigns__campaign_id__characters__hero_id__items__item_id__artwork__image_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/characters/{hero_id}/items/{item_id}/artwork/{image_id}/thumbnail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview */
+        get: operations["preview_api_campaigns__campaign_id__characters__hero_id__items__item_id__artwork__image_id__thumbnail_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaign_id}/characters/{hero_id}/portrait": {
         parameters: {
             query?: never;
@@ -1508,6 +1560,41 @@ export interface paths {
         put?: never;
         /** Leave */
         post: operations["leave_api_campaigns__campaign_id__leave_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/locations/{location_id}/artwork": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Artwork Status */
+        get: operations["artwork_status_api_campaigns__campaign_id__locations__location_id__artwork_get"];
+        put?: never;
+        /** Create Artwork */
+        post: operations["create_artwork_api_campaigns__campaign_id__locations__location_id__artwork_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/locations/{location_id}/artwork/{image_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Image */
+        get: operations["image_api_campaigns__campaign_id__locations__location_id__artwork__image_id__get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1695,6 +1782,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaign_id}/messages/{message_id}/voice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Voice Message
+         * @description Озвучка текста мастера по просьбе игрока. Запись делается в фоне и прикрепляется к сообщению.
+         */
+        post: operations["voice_message_api_campaigns__campaign_id__messages__message_id__voice_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaign_id}/narrative/status": {
         parameters: {
             query?: never;
@@ -1707,6 +1814,75 @@ export interface paths {
          * @description Безопасный статус подготовки сюжета (только status/error, без спойлеров и закрытых причин).
          */
         get: operations["get_narrative_status_api_campaigns__campaign_id__narrative_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/npcs/{npc_id}/portraits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Status */
+        get: operations["status_api_campaigns__campaign_id__npcs__npc_id__portraits_get"];
+        put?: never;
+        /** Generate */
+        post: operations["generate_api_campaigns__campaign_id__npcs__npc_id__portraits_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/npcs/{npc_id}/portraits/selection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Select */
+        put: operations["select_api_campaigns__campaign_id__npcs__npc_id__portraits_selection_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/npcs/{npc_id}/portraits/{image_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Image */
+        get: operations["image_api_campaigns__campaign_id__npcs__npc_id__portraits__image_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/npcs/{npc_id}/portraits/{image_id}/thumbnail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Thumbnail */
+        get: operations["thumbnail_api_campaigns__campaign_id__npcs__npc_id__portraits__image_id__thumbnail_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2222,6 +2398,58 @@ export interface paths {
         };
         /** List Heroes */
         get: operations["list_heroes_api_me_characters_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/characters/{hero_id}/equipment/{kind}/artwork": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Status */
+        get: operations["status_api_me_characters__hero_id__equipment__kind__artwork_get"];
+        put?: never;
+        /** Create */
+        post: operations["create_api_me_characters__hero_id__equipment__kind__artwork_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/characters/{hero_id}/equipment/{kind}/artwork/{image_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Image */
+        get: operations["image_api_me_characters__hero_id__equipment__kind__artwork__image_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/characters/{hero_id}/equipment/{kind}/artwork/{image_id}/thumbnail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview */
+        get: operations["preview_api_me_characters__hero_id__equipment__kind__artwork__image_id__thumbnail_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3573,6 +3801,39 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** EquipmentArtworkIn */
+        EquipmentArtworkIn: {
+            /**
+             * Regenerate
+             * @default false
+             */
+            regenerate?: boolean;
+            /** Request Key */
+            request_key: string;
+        };
+        /** EquipmentArtworkOut */
+        EquipmentArtworkOut: {
+            /** Can Generate */
+            can_generate: boolean;
+            /**
+             * Can Regenerate
+             * @default false
+             */
+            can_regenerate?: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Error */
+            error: string | null;
+            /** Image Url */
+            image_url: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "idle" | "pending" | "ready" | "failed";
+            /** Thumbnail Url */
+            thumbnail_url: string | null;
+        };
         /** EquipmentIn */
         EquipmentIn: {
             /** Expected Revision */
@@ -4197,6 +4458,11 @@ export interface components {
             /** Target Id */
             target_id?: string | null;
         };
+        /** GenerateIn */
+        GenerateIn: {
+            /** Request Key */
+            request_key: string;
+        };
         /** GeneratedObject */
         GeneratedObject: {
             /** Id */
@@ -4605,6 +4871,34 @@ export interface components {
             options?: components["schemas"]["InstanceOptions"] | null;
             /** Request Key */
             request_key: string;
+        };
+        /** LocationArtworkIn */
+        LocationArtworkIn: {
+            /**
+             * Regenerate
+             * @default false
+             */
+            regenerate?: boolean;
+            /** Request Key */
+            request_key: string;
+        };
+        /** LocationArtworkOut */
+        LocationArtworkOut: {
+            /** Can Generate */
+            can_generate: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Error */
+            error: string | null;
+            /** Image Url */
+            image_url: string | null;
+            /** Stale */
+            stale: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "idle" | "pending" | "ready" | "failed";
         };
         /** LocationPresentation */
         LocationPresentation: {
@@ -6004,6 +6298,26 @@ export interface components {
             /** Request Key */
             request_key: string;
         };
+        /** PortraitsOut */
+        PortraitsOut: {
+            /** Can Generate */
+            can_generate: boolean;
+            /** Can Select */
+            can_select: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Error */
+            error: string | null;
+            /** Selected Id */
+            selected_id: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "idle" | "pending" | "ready" | "failed";
+            /** Variants */
+            variants: components["schemas"]["Variant"][];
+        };
         /** PreparationView */
         PreparationView: {
             /** Budget Usd */
@@ -6364,6 +6678,11 @@ export interface components {
             setting?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /** SelectIn */
+        SelectIn: {
+            /** Image Id */
+            image_id: string;
         };
         ServerEvent: components["schemas"]["Event_audio_sfx_ready"] | components["schemas"]["Event_audio_state"] | components["schemas"]["Event_auth_ok"] | components["schemas"]["Event_campaign_deleted"] | components["schemas"]["Event_campaign_epilogue"] | components["schemas"]["Event_campaign_plan"] | components["schemas"]["Event_character_bonds"] | components["schemas"]["Event_character_review_failed"] | components["schemas"]["Event_character_review_started"] | components["schemas"]["Event_character_reviewed"] | components["schemas"]["Event_character_sheet"] | components["schemas"]["Event_character_updated"] | components["schemas"]["Event_entity_card"] | components["schemas"]["Event_error"] | components["schemas"]["Event_knowledge_revealed"] | components["schemas"]["Event_map_changed"] | components["schemas"]["Event_map_state"] | components["schemas"]["Event_map_step_result"] | components["schemas"]["Event_map_traverse_result"] | components["schemas"]["Event_master_status"] | components["schemas"]["Event_master_tool_result"] | components["schemas"]["Event_message_chunk"] | components["schemas"]["Event_message_new"] | components["schemas"]["Event_message_notice"] | components["schemas"]["Event_message_rejected"] | components["schemas"]["Event_message_state"] | components["schemas"]["Event_message_withdrawn"] | components["schemas"]["Event_pong"] | components["schemas"]["Event_presence_changed"] | components["schemas"]["Event_reaction_closed"] | components["schemas"]["Event_reaction_prompt"] | components["schemas"]["Event_scene_updated"] | components["schemas"]["Event_seat_changed"] | components["schemas"]["Event_session_ended"] | components["schemas"]["Event_session_paused"] | components["schemas"]["Event_session_started"] | components["schemas"]["Event_session_summary"] | components["schemas"]["Event_stand_in_changed"] | components["schemas"]["Event_stat_explained"] | components["schemas"]["Event_state_actions"] | components["schemas"]["Event_state_snapshot"] | components["schemas"]["Event_turn_changed"] | components["schemas"]["Event_vote_ended"] | components["schemas"]["Event_vote_started"] | components["schemas"]["Event_vote_updated"];
         /** SessionSummary */
@@ -7160,6 +7479,15 @@ export interface components {
             /** Warnings */
             warnings: number;
         };
+        /** Variant */
+        Variant: {
+            /** Id */
+            id: string;
+            /** Image Url */
+            image_url: string;
+            /** Thumbnail Url */
+            thumbnail_url: string;
+        };
         /** VersionOut */
         VersionOut: {
             /** Id */
@@ -7309,6 +7637,8 @@ export type EditsRequest = components['schemas']['EditsRequest'];
 export type Empty = components['schemas']['Empty'];
 export type EntityCard = components['schemas']['EntityCard'];
 export type Epilogue = components['schemas']['Epilogue'];
+export type EquipmentArtworkIn = components['schemas']['EquipmentArtworkIn'];
+export type EquipmentArtworkOut = components['schemas']['EquipmentArtworkOut'];
 export type EquipmentIn = components['schemas']['EquipmentIn'];
 export type Error = components['schemas']['Error'];
 export type Event_audio_sfx_ready = components['schemas']['Event_audio_sfx_ready'];
@@ -7358,6 +7688,7 @@ export type Event_vote_started = components['schemas']['Event_vote_started'];
 export type Event_vote_updated = components['schemas']['Event_vote_updated'];
 export type FieldSuggestion = components['schemas']['FieldSuggestion'];
 export type GameItemAction = components['schemas']['GameItemAction'];
+export type GenerateIn = components['schemas']['GenerateIn'];
 export type GeneratedObject = components['schemas']['GeneratedObject'];
 export type GenerationStatusOut = components['schemas']['GenerationStatusOut'];
 export type Grid = components['schemas']['Grid'];
@@ -7383,6 +7714,8 @@ export type JobOut = components['schemas']['JobOut'];
 export type KnowledgeRevealed = components['schemas']['KnowledgeRevealed'];
 export type LaunchReceipt = components['schemas']['LaunchReceipt'];
 export type LaunchRequest = components['schemas']['LaunchRequest'];
+export type LocationArtworkIn = components['schemas']['LocationArtworkIn'];
+export type LocationArtworkOut = components['schemas']['LocationArtworkOut'];
 export type LocationPresentation = components['schemas']['LocationPresentation'];
 export type LoginIn = components['schemas']['LoginIn'];
 export type MapArea = components['schemas']['MapArea'];
@@ -7462,6 +7795,7 @@ export type Place = components['schemas']['Place'];
 export type PlanRequestIn = components['schemas']['PlanRequestIn'];
 export type PointAllocation = components['schemas']['PointAllocation'];
 export type PortraitIn = components['schemas']['PortraitIn'];
+export type PortraitsOut = components['schemas']['PortraitsOut'];
 export type PreparationView = components['schemas']['PreparationView'];
 export type PrepareRequest = components['schemas']['PrepareRequest'];
 export type PresenceChanged = components['schemas']['PresenceChanged'];
@@ -7488,6 +7822,7 @@ export type SeatChanged = components['schemas']['SeatChanged'];
 export type SeatOut = components['schemas']['SeatOut'];
 export type SeatState = components['schemas']['SeatState'];
 export type SecretsIn = components['schemas']['SecretsIn'];
+export type SelectIn = components['schemas']['SelectIn'];
 export type ServerEvent = components['schemas']['ServerEvent'];
 export type SessionSummary = components['schemas']['SessionSummary'];
 export type SetLore = components['schemas']['SetLore'];
@@ -7532,6 +7867,7 @@ export type ValidationError = components['schemas']['ValidationError'];
 export type ValidationIssue = components['schemas']['ValidationIssue'];
 export type ValidationReport = components['schemas']['ValidationReport'];
 export type ValidationSummary = components['schemas']['ValidationSummary'];
+export type Variant = components['schemas']['Variant'];
 export type VersionOut = components['schemas']['VersionOut'];
 export type Vote = components['schemas']['Vote'];
 export type VoteEnded = components['schemas']['VoteEnded'];
@@ -10464,6 +10800,144 @@ export interface operations {
             };
         };
     };
+    artwork_status_api_campaigns__campaign_id__characters__hero_id__items__item_id__artwork_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                hero_id: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentArtworkOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_artwork_api_campaigns__campaign_id__characters__hero_id__items__item_id__artwork_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                hero_id: string;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EquipmentArtworkIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentArtworkOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    image_api_campaigns__campaign_id__characters__hero_id__items__item_id__artwork__image_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                hero_id: string;
+                item_id: string;
+                image_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_api_campaigns__campaign_id__characters__hero_id__items__item_id__artwork__image_id__thumbnail_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                hero_id: string;
+                item_id: string;
+                image_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     game_portrait_api_campaigns__campaign_id__characters__hero_id__portrait_post: {
         parameters: {
             query?: never;
@@ -10680,6 +11154,107 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    artwork_status_api_campaigns__campaign_id__locations__location_id__artwork_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                location_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationArtworkOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_artwork_api_campaigns__campaign_id__locations__location_id__artwork_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                location_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationArtworkIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationArtworkOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    image_api_campaigns__campaign_id__locations__location_id__artwork__image_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                location_id: string;
+                image_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
             };
             /** @description Validation Error */
             422: {
@@ -11144,6 +11719,40 @@ export interface operations {
             };
         };
     };
+    voice_message_api_campaigns__campaign_id__messages__message_id__voice_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_narrative_status_api_campaigns__campaign_id__narrative_status_get: {
         parameters: {
             query?: never;
@@ -11162,6 +11771,176 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NarrativePreparationStatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    status_api_campaigns__campaign_id__npcs__npc_id__portraits_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                npc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortraitsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_api_campaigns__campaign_id__npcs__npc_id__portraits_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                npc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortraitsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    select_api_campaigns__campaign_id__npcs__npc_id__portraits_selection_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                npc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelectIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortraitsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    image_api_campaigns__campaign_id__npcs__npc_id__portraits__image_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                npc_id: string;
+                image_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    thumbnail_api_campaigns__campaign_id__npcs__npc_id__portraits__image_id__thumbnail_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                npc_id: string;
+                image_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -12266,6 +13045,140 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HeroCard"][];
+                };
+            };
+        };
+    };
+    status_api_me_characters__hero_id__equipment__kind__artwork_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hero_id: string;
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentArtworkOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_api_me_characters__hero_id__equipment__kind__artwork_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hero_id: string;
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EquipmentArtworkIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentArtworkOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    image_api_me_characters__hero_id__equipment__kind__artwork__image_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hero_id: string;
+                kind: string;
+                image_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_api_me_characters__hero_id__equipment__kind__artwork__image_id__thumbnail_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hero_id: string;
+                kind: string;
+                image_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

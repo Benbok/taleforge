@@ -53,3 +53,24 @@ export function saveSceneHeaderCollapsed(value: boolean): void {
     // Storage is optional; the preference simply lasts for this render.
   }
 }
+const CHAT_FONT_FAMILY_KEY = "tf_chat_font_family";
+
+export type ChatFontFamily = "serif" | "sans";
+
+export function loadChatFontFamily(): ChatFontFamily {
+  try {
+    const v = localStorage.getItem(CHAT_FONT_FAMILY_KEY);
+    if (v === "serif" || v === "sans") return v;
+    return "serif";
+  } catch {
+    return "serif";
+  }
+}
+
+export function saveChatFontFamily(family: ChatFontFamily): void {
+  try {
+    localStorage.setItem(CHAT_FONT_FAMILY_KEY, family);
+  } catch {
+    // Storage is optional; the preference simply lasts for this render.
+  }
+}

@@ -102,6 +102,14 @@ class Settings:
     # Две модели на провайдера: основная пишет повествование, техническая — парсер, решение хода, сводки, эмоции
     llm_provider: str = "gemini"
     portrait_model: str = "gemini-3.1-flash-lite-image"
+    portrait_provider: str = "gemini"
+    portrait_comfyui_url: str = "http://127.0.0.1:8188"
+    portrait_comfyui_workflow: Path = ROOT / "content" / "workflows" / "portrait-realvisxl-api.json"
+    portrait_comfyui_timeout_sec: float = 600
+    portrait_translation_timeout_sec: float = 20
+    location_artwork_enabled: bool = False
+    equipment_artwork_enabled: bool = False
+    npc_portraits_enabled: bool = False
     decide_model: str = "technical"  # фаза решения хода (выбор инструментов и бросков): technical или main
     gemini_main_model: str = "gemini-2.5-flash"
     gemini_technical_model: str = "gemini-2.5-flash-lite"
@@ -121,6 +129,14 @@ class Settings:
         return cls(
             database_url=_env("DATABASE_URL", cls.database_url),
             portrait_model=_env("PORTRAIT_MODEL", cls.portrait_model),
+            portrait_provider=_env("PORTRAIT_PROVIDER", cls.portrait_provider),
+            portrait_comfyui_url=_env("PORTRAIT_COMFYUI_URL", cls.portrait_comfyui_url),
+            portrait_comfyui_workflow=Path(_env("PORTRAIT_COMFYUI_WORKFLOW", str(cls.portrait_comfyui_workflow))),
+            portrait_comfyui_timeout_sec=max(30, min(1800, float(_env("PORTRAIT_COMFYUI_TIMEOUT_SEC", "600")))),
+            portrait_translation_timeout_sec=max(1, min(60, float(_env("PORTRAIT_TRANSLATION_TIMEOUT_SEC", "20")))),
+            location_artwork_enabled=(_env("LOCATION_ARTWORK_ENABLED", "0") or "0").lower() in ("1", "true", "yes"),
+            equipment_artwork_enabled=(_env("EQUIPMENT_ARTWORK_ENABLED", "0") or "0").lower() in ("1", "true", "yes"),
+            npc_portraits_enabled=(_env("NPC_PORTRAITS_ENABLED", "0") or "0").lower() in ("1", "true", "yes"),
             redis_url=_env("REDIS_URL"),
             jwt_secret=secret,
             jwt_ttl_hours=int(_env("JWT_TTL_HOURS", str(cls.jwt_ttl_hours))),

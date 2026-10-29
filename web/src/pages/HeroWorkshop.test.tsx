@@ -20,6 +20,46 @@ const original = { id: 'lc1', name: 'Ива', revision: 1, level: '1', editable:
 const clients: QueryClient[] = [];
 const response = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
 
+it.each([false, true])('creates equipment images on the campaign hero page using inventory IDs (materialized=%s)', async (materialized) => {
+  const createUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:campaign-gear');
+  const revokeUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+  let generated = false;
+  const inventory = [
+    { ...equipment.weapon, id: 'en_bow' },
+    { ...equipment.armor, id: 'en_armor' },
+  ];
+  const hero = { ...original, id: 'ch1', seat_id: 'seat', status: 'approved',
+    equipment: materialized ? inventory : [equipment.weapon, equipment.armor], combat: { inventory } };
+  const requests: string[] = [];
+  vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+    if (url === '/api/campaigns/c') return response({ id: 'c', name: 'Стол', my_seat_id: 'seat', my_role: 'player' });
+    if (url === '/api/campaigns/c/characters') return response([hero]);
+    if (url === '/api/campaigns/c/characters/ch1') return response(hero);
+    if (url === '/api/me/characters') return response([]);
+    if (url === '/api/campaigns/c/characters/ch1/items/en_bow/artwork') {
+      if (init?.method === 'POST') { generated = true; requests.push(url); }
+      return response({ status: generated ? 'ready' : 'idle', enabled: true, can_generate: !generated,
+        can_regenerate: false, image_url: generated ? '/gear-original' : null,
+        thumbnail_url: generated ? '/gear-small' : null, error: null });
+    }
+    if (url === '/api/campaigns/c/characters/ch1/items/en_armor/artwork') {
+      return response({ status: 'ready', enabled: true, can_generate: false, can_regenerate: false,
+        image_url: '/armor-original', thumbnail_url: '/armor-small', error: null });
+    }
+    if (url === '/gear-small' || url === '/armor-small') return new Response(new Blob(['image']));
+    return response(null);
+  });
+  try {
+    open('/c/c/hero');
+    fireEvent.click(await screen.findByText('Посох травницы'));
+    fireEvent.click(screen.getByText('Стёганый жилет'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Создать изображение Посох травницы' }));
+    expect(await screen.findByRole('img', { name: 'Предмет «Посох травницы»' })).toBeTruthy();
+    expect(await screen.findByRole('img', { name: 'Предмет «Стёганый жилет»' })).toBeTruthy();
+    expect(requests).toEqual(['/api/campaigns/c/characters/ch1/items/en_bow/artwork']);
+  } finally { createUrl.mockRestore(); revokeUrl.mockRestore(); }
+});
+
 it('не показывает служебные инструкции как реплики мастера в сохранённой беседе', async () => {
   const draft = { id: 'hd1', revision: 2, status: 'questions', description,
     proposal: null, campaign_id: null, hero_id: null,

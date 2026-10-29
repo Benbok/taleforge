@@ -10,7 +10,7 @@ import { useGame } from '../stores/game';
 import ChatFeed from './ChatFeed';
 import CabinetLink from './CabinetLink';
 import Composer from './Composer';
-import { loadChatFontSize, saveChatFontSize, type ChatFontSize } from './scenePreferences';
+import { loadChatFontSize, saveChatFontSize, type ChatFontSize, loadChatFontFamily, saveChatFontFamily, type ChatFontFamily } from './scenePreferences';
 import ExplorationPanel, { type ExplorationState } from './ExplorationPanel';
 import LevelAllocation from './LevelAllocation';
 import UniversalCombatPanel, { type CombatView } from './UniversalCombatPanel';
@@ -18,6 +18,7 @@ import type { HeroSheet } from '../lib/types';
 import SessionControls from './SessionControls';
 import SoundControl from './SoundControl';
 import LearnedAbilitiesModal from './LearnedAbilitiesModal';
+import LocationArtwork from './LocationArtwork';
 
 /** Exploration uses the same authenticated socket, draft, voice and chat as the main table. */
 export default function UniversalAdventure({
@@ -42,6 +43,12 @@ export default function UniversalAdventure({
   const [isChatFullscreen, setIsChatFullscreen] = useState(false);
   const [isLocationExpanded, setIsLocationExpanded] = useState(false);
   const [chatFontSize, setChatFontSize] = useState<ChatFontSize>(loadChatFontSize);
+  const [chatFontFamily, setChatFontFamily] = useState<ChatFontFamily>(loadChatFontFamily);
+
+  const handleFontFamilyChange = (family: ChatFontFamily) => {
+    setChatFontFamily(family);
+    saveChatFontFamily(family);
+  };
   const locationText = scene?.location?.description ?? snapshot?.campaign.public_intro ?? '';
   const isLongLocation = locationText.length > 180 || locationText.split('\n').length > 3;
 
@@ -232,6 +239,7 @@ export default function UniversalAdventure({
               )}
             </div>
             <h2 className='font-heading text-lg font-bold text-ink'>{scene?.location?.name ?? 'Начало пути'}</h2>
+            {scene?.location && <LocationArtwork key={`${campaignId}:${scene.location.id}`} campaignId={campaignId} locationId={scene.location.id} name={scene.location.name} />}
             <div className={isLocationExpanded || !isLongLocation ? '' : 'line-clamp-3'}>
               <p className='whitespace-pre-wrap text-sm leading-relaxed text-ink-2'>{locationText}</p>
             </div>
@@ -274,8 +282,8 @@ export default function UniversalAdventure({
         <main
           className={
             isChatFullscreen
-              ? `fixed inset-0 z-40 flex flex-col bg-surface tf-chat-font-${chatFontSize}`
-              : `flex min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-surface tf-chat-font-${chatFontSize}`
+              ? `fixed inset-0 z-40 flex flex-col bg-surface tf-chat-font-${chatFontSize} tf-chat-family-${chatFontFamily}`
+              : `flex min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-surface tf-chat-font-${chatFontSize} tf-chat-family-${chatFontFamily}`
           }
         >
           {isChatFullscreen ? (
@@ -349,6 +357,26 @@ export default function UniversalAdventure({
                     A+
                   </button>
                 </div>
+                <div className='flex items-center gap-0.5 rounded-lg border border-line-soft bg-surface-2/60 p-0.5' role='group' aria-label='Стиль шрифта'>
+                  <button
+                    type='button'
+                    className={`rounded px-2 py-0.5 transition-colors ${chatFontFamily === 'serif' ? 'bg-accent/20 text-accent font-semibold' : 'text-muted hover:text-ink'} text-xs leading-none`}
+                    onClick={() => handleFontFamilyChange('serif')}
+                    title='Книжный стиль (Lora с засечками, полужирный)'
+                    aria-pressed={chatFontFamily === 'serif'}
+                  >
+                    Книга
+                  </button>
+                  <button
+                    type='button'
+                    className={`rounded px-2 py-0.5 transition-colors ${chatFontFamily === 'sans' ? 'bg-accent/20 text-accent font-semibold' : 'text-muted hover:text-ink'} text-xs leading-none`}
+                    onClick={() => handleFontFamilyChange('sans')}
+                    title='Экранный стиль (Inter без засечек, чёткий)'
+                    aria-pressed={chatFontFamily === 'sans'}
+                  >
+                    Экран
+                  </button>
+                </div>
                 <SoundControl />
                 <SessionControls campaignId={campaignId} compact />
                 <button
@@ -396,6 +424,26 @@ export default function UniversalAdventure({
                     aria-pressed={chatFontSize === 'large'}
                   >
                     A+
+                  </button>
+                </div>
+                <div className='flex items-center gap-0.5 rounded-lg border border-line-soft bg-surface-2/60 p-0.5' role='group' aria-label='Стиль шрифта'>
+                  <button
+                    type='button'
+                    className={`rounded px-1.5 py-0.5 transition-colors ${chatFontFamily === 'serif' ? 'bg-accent/20 text-accent font-semibold' : 'text-muted hover:text-ink'} text-[11px] leading-none`}
+                    onClick={() => handleFontFamilyChange('serif')}
+                    title='Книжный стиль (Lora с засечками, полужирный)'
+                    aria-pressed={chatFontFamily === 'serif'}
+                  >
+                    Книга
+                  </button>
+                  <button
+                    type='button'
+                    className={`rounded px-1.5 py-0.5 transition-colors ${chatFontFamily === 'sans' ? 'bg-accent/20 text-accent font-semibold' : 'text-muted hover:text-ink'} text-[11px] leading-none`}
+                    onClick={() => handleFontFamilyChange('sans')}
+                    title='Экранный стиль (Inter без засечек, чёткий)'
+                    aria-pressed={chatFontFamily === 'sans'}
+                  >
+                    Экран
                   </button>
                 </div>
                 <button

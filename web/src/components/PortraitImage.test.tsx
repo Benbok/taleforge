@@ -14,7 +14,7 @@ it('loads a protected player portrait with the session token and retains initial
   render(<Avatar name='Ива Лесная' role='player' occupant='human' presence={null} portraitUrl='/api/portraits/hp1' />);
   const image = await screen.findByRole('img', { name: 'Портрет: Ива Лесная' });
   expect(image.getAttribute('src')).toBe('blob:portrait');
-  expect(fetch).toHaveBeenCalledWith('/api/portraits/hp1', { headers: { Authorization: 'Bearer test-only' } });
+  expect(fetch).toHaveBeenCalledWith('/api/portraits/hp1', expect.objectContaining({ headers: { Authorization: 'Bearer test-only' } }));
   fireEvent.error(image);
   expect(screen.queryByRole('img')).toBeNull();
   expect(screen.getByText('ИЛ')).toBeTruthy();

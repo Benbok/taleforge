@@ -9,6 +9,7 @@ import { attack, sendQuick } from "./quick";
 import { signed } from "./hero";
 import { toast } from "../stores/toasts";
 import { computePopoverPosition } from "./popoverPosition";
+import NpcPortraits from './NpcPortraits';
 
 const SPEED_NAMES: Record<string, string> = {
   walk: "ходьба", fly: "полёт", swim: "плавание", climb: "лазание", burrow: "рытьё",
@@ -19,6 +20,7 @@ const SPEED_NAMES: Record<string, string> = {
 export default function EntityPopover() {
   const { id, label, anchor, close } = useInspector();
   const card = useGame((s) => (id ? s.cards[id] : undefined));
+  const campaignId = useGame(s => s.snapshot?.campaign.id);
   const insert = useDraft((s) => s.insert);
   const ref = useRef<HTMLDivElement>(null);
   const [, setWinSize] = useState({ w: 0, h: 0 });
@@ -35,8 +37,9 @@ export default function EntityPopover() {
   useEffect(() => {
     if (!id) return;
     const onResize = () => setWinSize({ w: window.innerWidth, h: window.innerHeight });
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
-    const onDown = (e: MouseEvent | TouchEvent) => ref.current && !ref.current.contains(e.target as Node) && close();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !document.querySelector('dialog[data-artwork-viewer][open]') && close();
+    const onDown = (e: MouseEvent | TouchEvent) => ref.current && !ref.current.contains(e.target as Node)
+      && !(e.target as Element).closest?.('dialog[data-artwork-viewer]') && close();
     window.addEventListener("resize", onResize);
     window.addEventListener("keydown", onKey);
     window.addEventListener("mousedown", onDown);
@@ -122,6 +125,8 @@ export default function EntityPopover() {
       )}
       {card && !card.error && !card.hero && (
         <div className="flex flex-col gap-2">
+          {campaignId && (card.type === 'npc' || card.type === 'creature') && <NpcPortraits campaignId={campaignId}
+            npcId={card.id} name={name} description={card.description ?? ''} />}
           {card.memory && <p className="text-xs text-muted">По памяти: сейчас этого не видно</p>}
           {card.kind_name && card.kind_name !== name && <p className="text-muted">{card.kind_name}</p>}
           {card.description && <p className="font-narration">{card.description}</p>}
