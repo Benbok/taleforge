@@ -224,6 +224,9 @@ def from_packs(chain) -> Catalog:
 async def campaign_catalog(session: AsyncSession, campaign: Campaign) -> CatalogView:
     chain = campaign.content_chain
     if not chain:
+        # универсальная кампания не опирается на пакет правил: без базового пакета каталог пуст
+        if await latest_version(session, BASE_PACK_ID) is None:
+            return Catalog({}).view(bool((campaign.settings or {}).get("allow_proposals")))
         chain = campaign.content_chain = await resolve_chain(session, None)
     cat = await load_catalog(session, chain)
     return cat.view(bool((campaign.settings or {}).get("allow_proposals")))

@@ -232,3 +232,25 @@ def test_status_card_shows_rules_without_hero_or_world_details(game_client, admi
         )
     )
     assert types == {"condition.frightened": "effect"}
+
+
+def test_campaign_catalog_without_ruleset_pack_is_empty(game_client, admin_g, settings):
+    """Универсальная кампания без пакета правил: каталог пуст, а не роняет карточки героя и карту."""
+    from sqlalchemy import delete
+
+    from app.content.catalog import campaign_catalog, clear_cache
+    from app.db.models import Campaign, ContentPack
+
+    c, _, _ = party(game_client, admin_g)
+
+    async def go(s):
+        camp = await s.get(Campaign, c["id"])
+        camp.content_chain = None
+        await s.execute(delete(ContentPack))
+        await s.commit()
+        clear_cache()
+        view = await campaign_catalog(s, camp)
+        assert view.find("class.fighter") is None
+        assert not camp.content_chain
+
+    run(settings, go)
