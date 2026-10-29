@@ -2,7 +2,7 @@
   "4": {
     "class_type": "CheckpointLoaderSimple",
     "inputs": {
-      "ckpt_name": "RealVisXL_V5.0_fp16.safetensors"
+      "ckpt_name": "DreamShaperXL_Turbo_v2_1.safetensors"
     }
   },
   "6": {
@@ -18,7 +18,7 @@
   "7": {
     "class_type": "CLIPTextEncode",
     "inputs": {
-      "text": "text, watermark, captions, labels, interface, collage, frame, portrait, close-up face, characters, people, blurry, distorted architecture, photograph, photorealistic, hyperrealistic, DSLR, glossy plastic, perspective, horizon, sky, side view, isometric, trees seen from the side, dull muddy colors, vignette, dark border",
+      "text": "text, watermark, captions, labels, interface, collage, frame, portrait, close-up face, characters, people, blurry, distorted architecture, photograph, photorealistic, hyperrealistic, DSLR, glossy plastic, perspective, horizon, sky, side view, isometric, trees seen from the side, dull muddy colors, vignette, dark border, 3/4 view, tilted camera, border, dark edges, frame",
       "clip": [
         "4",
         1
@@ -29,11 +29,11 @@
     "class_type": "KSampler",
     "inputs": {
       "seed": "{{seed}}",
-      "steps": 28,
-      "cfg": 5.0,
-      "sampler_name": "dpmpp_2m",
+      "steps": 8,
+      "cfg": 2.0,
+      "sampler_name": "dpmpp_sde",
       "scheduler": "karras",
-      "denoise": 0.75,
+      "denoise": 0.85,
       "model": [
         "4",
         0

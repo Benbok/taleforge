@@ -52,7 +52,9 @@ def test_init_image_is_uploaded_and_named_in_graph():
     assert paths.index("/upload/image") < paths.index("/prompt")
     graph = json.loads(next(r for r in calls if r.url.path == "/prompt").content)["prompt"]
     assert graph["10"]["inputs"]["image"] == "bd.png"
-    assert graph["3"]["inputs"]["denoise"] <= 0.75
+    assert 0.5 <= graph["3"]["inputs"]["denoise"] <= 0.9
+    assert graph["4"]["inputs"]["ckpt_name"].startswith("DreamShaperXL_Turbo")
+    assert graph["3"]["inputs"]["steps"] <= 12 and graph["3"]["inputs"]["cfg"] <= 3
 
 
 def test_upload_failure_never_submits_prompt():

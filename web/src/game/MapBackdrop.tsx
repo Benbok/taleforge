@@ -122,9 +122,16 @@ export function BackdropControls({ backdrop }: { backdrop: MapBackdropState }) {
   );
 }
 
-/** Картина на всю сетку области; клики остаются на слоях выше. */
+/** Картина на всю сетку области; клики остаются на слоях выше. Края обрезаются: у модели по краям тёмная каёмка. */
+export const BACKDROP_CROP = 0.04;
+
 export function BackdropLayer({ url, cols, rows }: { url: string; cols: number; rows: number }) {
   const src = useAuthedImage(url);
   if (!src) return null;
-  return <image data-map-backdrop="true" href={src} x={0} y={0} width={cols} height={rows} preserveAspectRatio="none" pointerEvents="none" />;
+  const inner = 1 - 2 * BACKDROP_CROP;
+  return (
+    <svg data-map-backdrop="true" x={0} y={0} width={cols} height={rows} viewBox={`${BACKDROP_CROP} ${BACKDROP_CROP} ${inner} ${inner}`} preserveAspectRatio="none" pointerEvents="none">
+      <image href={src} x={0} y={0} width={1} height={1} preserveAspectRatio="none" />
+    </svg>
+  );
 }

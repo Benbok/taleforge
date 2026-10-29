@@ -97,8 +97,9 @@ it("картина лежит под текущей областью, на вс�
   expect(images).toHaveLength(1);
   const image = images[0];
   expect(image.closest("[data-area-id]")?.getAttribute("data-area-id")).toBe("here");
-  expect(image.getAttribute("href")).toBe("blob:/img/1");
+  expect(image.querySelector("image")?.getAttribute("href")).toBe("blob:/img/1");
   expect([image.getAttribute("width"), image.getAttribute("height")]).toEqual(["4", "3"]);
+  expect(image.getAttribute("viewBox")).toBe("0.04 0.04 0.92 0.92");
   expect(image.getAttribute("preserveAspectRatio")).toBe("none");
   expect(image.getAttribute("pointer-events")).toBe("none");
   const surface = image.closest("[data-area-id]")!.querySelector("[data-sketch-surface]")!;
