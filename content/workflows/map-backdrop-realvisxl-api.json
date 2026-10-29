@@ -18,7 +18,7 @@
   "7": {
     "class_type": "CLIPTextEncode",
     "inputs": {
-      "text": "text, watermark, captions, labels, interface, collage, frame, portrait, close-up face, characters, people, blurry, distorted architecture, photograph, photorealistic, hyperrealistic, DSLR, glossy plastic",
+      "text": "text, watermark, captions, labels, interface, collage, frame, portrait, close-up face, characters, people, blurry, distorted architecture, photograph, photorealistic, hyperrealistic, DSLR, glossy plastic, perspective, horizon, sky, side view, isometric, trees seen from the side, dull muddy colors, vignette, dark border",
       "clip": [
         "4",
         1

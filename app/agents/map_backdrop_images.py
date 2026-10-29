@@ -5,9 +5,9 @@ from app.agents.technical_portrait_translation import TechnicalPortraitTranslato
 from app.config import ROOT
 
 MAP_BACKDROP_STYLE = (
-    "Top-down game map of the described place seen straight from above, painted fantasy environment, "
-    "modern stylized game art, readable ground, paths, walls and vegetation, soft evocative lighting. "
-    "Follow the layout of the supplied outline. "
+    "Orthographic top-down view straight from above, stylized game environment map, clean readable shapes, "
+    "painted fantasy game art with soft shading and rich saturated colors, ground, paths, walls and vegetation seen "
+    "from above, follow the layout of the supplied outline. "
     "Environment only, no characters, no lettering, no interface, no frame."
 )
 MAP_BACKDROP_TRANSLATION = (

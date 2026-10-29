@@ -47,7 +47,7 @@ export function LocationMapSvg({ map, liveSketch, tokens = [], activeLevel, idPr
           <g key={area.id} data-area-id={area.id} data-area-status={area.status} opacity={area.status === "prepared" ? .22 : area.status === "remembered" ? .45 : 1} transform={`translate(${area.offset[0]} ${area.offset[1]})`}>
             {backdrop?.areaId === area.id && <BackdropLayer url={backdrop.url} cols={area.sketch.cols} rows={area.sketch.rows} />}
             <SketchSurface
-              floorOpacity={backdrop?.areaId === area.id ? .18 : 1}
+              floorOpacity={backdrop?.areaId === area.id ? .05 : 1}
               sketch={isCurrent ? liveSketch ?? area.sketch : area.sketch}
               areaId={area.id}
               idPrefix={`${idPrefix}-${area.id}`}
