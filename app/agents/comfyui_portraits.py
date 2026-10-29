@@ -46,8 +46,9 @@ class ComfyUIPortraitGenerator:
             "workflow",
         )
         self.model = f"comfyui/{checkpoint}"
+        self.needs_init_image = "{{init_image}}" in json.dumps(self.workflow)
 
-    async def generate(self, description: dict) -> ImageReply:
+    async def generate(self, description: dict, *, init_image: bytes | None = None) -> ImageReply:
         # Art direction leads; observed appearance follows before the composition instructions.
         details = ", ".join(str(description.get(k) or "") for k in ("appearance", "identity", "personality"))
         style = self.style or (
@@ -56,12 +57,15 @@ class ComfyUIPortraitGenerator:
             "restrained background, detailed illustrated game art, no text."
         )
         seed = secrets.randbits(63)
+        if bool(init_image) != self.needs_init_image:
+            raise PortraitError("provider_error")
+        image_name = f"taleforge-{secrets.token_hex(8)}.png"
 
         def substitute(value):
             if value == "{{seed}}":
                 return seed
             if isinstance(value, str):
-                return value.replace("{{prompt}}", prompt)
+                return value.replace("{{prompt}}", prompt).replace("{{init_image}}", image_name)
             if isinstance(value, dict):
                 return {k: substitute(v) for k, v in value.items()}
             if isinstance(value, list):
@@ -74,6 +78,14 @@ class ComfyUIPortraitGenerator:
             try:
                 async with asyncio.timeout(self.timeout_seconds):
                     prompt = f"{FANTASY_ART_DIRECTION}{details}. {style}"
+                    if init_image:
+                        upload = await client.post(
+                            "upload/image",
+                            files={"image": (image_name, init_image, "image/png")},
+                            data={"overwrite": "true", "type": "input"},
+                        )
+                        upload.raise_for_status()
+                        image_name = upload.json()["name"]
                     response = await client.post("prompt", json={"prompt": substitute(self.workflow)})
                     response.raise_for_status()
                     prompt_id = response.json()["prompt_id"]
