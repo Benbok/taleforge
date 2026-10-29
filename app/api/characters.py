@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -17,7 +19,7 @@ from app.core import library as lib
 from app.core.campaigns import AccessDenied, Conflict, Viewer, get_viewer
 from app.core.universal.state import game_card_of
 from app.core.views import CharacterView
-from app.db.models import Character
+from app.db.models import Character, Message
 from app.gateway.events import envelope
 from app.rules.universal.contracts import UniversalGameCard
 from app.rules.universal.items import GameItemAction
@@ -49,6 +51,38 @@ async def universal_item_action(
 
     await publish_game_state(session, request.app.state.bus, viewer.campaign)
     return card
+
+
+class InvestmentDecision(BaseModel):
+    accept: bool
+
+
+class InvestmentAnswer(BaseModel):
+    status: Literal["accepted", "declined", "closed"]
+
+
+@router.post("/investments/{mid}", response_model=InvestmentAnswer)
+async def answer_investment(
+    campaign_id: str,
+    mid: str,
+    body: InvestmentDecision,
+    user: UserDep,
+    session: SessionDep,
+    request: Request,
+    as_seat: str | None = None,
+):
+    """The hero's player answers the open offer to invest energy in a failed check; the first answer wins."""
+    from app.core.universal.investment import submit_decision
+
+    viewer = await get_viewer(session, user, campaign_id, as_seat)
+    card = await session.get(Message, "invest_" + mid)
+    if card is None or card.campaign_id != campaign_id or card.kind != "investment":
+        return InvestmentAnswer(status="closed")
+    if viewer.seat is None or viewer.seat.id != card.data["seat_id"]:
+        raise AccessDenied("Решить может только игрок этого героя")
+    if card.data["status"] != "offered" or not submit_decision(request.app.state.master, campaign_id, mid, body.accept):
+        return InvestmentAnswer(status="closed")
+    return InvestmentAnswer(status="accepted" if body.accept else "declined")
 
 
 @router.post("/characters/{character_id}/allocate-points", response_model=UniversalGameCard)

@@ -1514,6 +1514,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaign_id}/investments/{mid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Answer Investment
+         * @description The hero's player answers the open offer to invest energy in a failed check; the first answer wins.
+         */
+        post: operations["answer_investment_api_campaigns__campaign_id__investments__mid__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaign_id}/invites": {
         parameters: {
             query?: never;
@@ -4820,6 +4840,19 @@ export interface components {
             /** Id */
             id: string;
         };
+        /** InvestmentAnswer */
+        InvestmentAnswer: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "accepted" | "declined" | "closed";
+        };
+        /** InvestmentDecision */
+        InvestmentDecision: {
+            /** Accept */
+            accept: boolean;
+        };
         /** InviteCreateIn */
         InviteCreateIn: {
             /**
@@ -7770,6 +7803,8 @@ export type IntroOut = components['schemas']['IntroOut'];
 export type IntroRequest = components['schemas']['IntroRequest'];
 export type IntroTextRequest = components['schemas']['IntroTextRequest'];
 export type IntroVoiceOut = components['schemas']['IntroVoiceOut'];
+export type InvestmentAnswer = components['schemas']['InvestmentAnswer'];
+export type InvestmentDecision = components['schemas']['InvestmentDecision'];
 export type InviteCreateIn = components['schemas']['InviteCreateIn'];
 export type InviteOut = components['schemas']['InviteOut'];
 export type InvitePreviewOut = components['schemas']['InvitePreviewOut'];
@@ -11093,6 +11128,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GenerationStatusOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_investment_api_campaigns__campaign_id__investments__mid__post: {
+        parameters: {
+            query?: {
+                as_seat?: string | null;
+            };
+            header?: never;
+            path: {
+                campaign_id: string;
+                mid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvestmentDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvestmentAnswer"];
                 };
             };
             /** @description Validation Error */

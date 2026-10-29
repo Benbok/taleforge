@@ -5753,6 +5753,37 @@
     "title": "IntroVoiceOut",
     "type": "object"
    },
+   "InvestmentAnswer": {
+    "properties": {
+     "status": {
+      "enum": [
+       "accepted",
+       "declined",
+       "closed"
+      ],
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "status"
+    ],
+    "title": "InvestmentAnswer",
+    "type": "object"
+   },
+   "InvestmentDecision": {
+    "properties": {
+     "accept": {
+      "title": "Accept",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "accept"
+    ],
+    "title": "InvestmentDecision",
+    "type": "object"
+   },
    "InviteCreateIn": {
     "properties": {
      "expires_in_hours": {
@@ -19040,6 +19071,89 @@
     "summary": "Generation Status",
     "tags": [
      "generation"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/investments/{mid}": {
+   "post": {
+    "description": "The hero's player answers the open offer to invest energy in a failed check; the first answer wins.",
+    "operationId": "answer_investment_api_campaigns__campaign_id__investments__mid__post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "mid",
+      "required": true,
+      "schema": {
+       "title": "Mid",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "as_seat",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "As Seat"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/InvestmentDecision"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/InvestmentAnswer"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Answer Investment",
+    "tags": [
+     "characters"
     ]
    }
   },
