@@ -108,6 +108,7 @@ class Settings:
     portrait_comfyui_timeout_sec: float = 600
     portrait_translation_timeout_sec: float = 20
     location_artwork_enabled: bool = False
+    map_backdrop_enabled: bool = False
     equipment_artwork_enabled: bool = False
     npc_portraits_enabled: bool = False
     decide_model: str = "technical"  # фаза решения хода (выбор инструментов и бросков): technical или main
@@ -135,6 +136,7 @@ class Settings:
             portrait_comfyui_timeout_sec=max(30, min(1800, float(_env("PORTRAIT_COMFYUI_TIMEOUT_SEC", "600")))),
             portrait_translation_timeout_sec=max(1, min(60, float(_env("PORTRAIT_TRANSLATION_TIMEOUT_SEC", "20")))),
             location_artwork_enabled=(_env("LOCATION_ARTWORK_ENABLED", "0") or "0").lower() in ("1", "true", "yes"),
+            map_backdrop_enabled=(_env("MAP_BACKDROP_ENABLED", "0") or "0").lower() in ("1", "true", "yes"),
             equipment_artwork_enabled=(_env("EQUIPMENT_ARTWORK_ENABLED", "0") or "0").lower() in ("1", "true", "yes"),
             npc_portraits_enabled=(_env("NPC_PORTRAITS_ENABLED", "0") or "0").lower() in ("1", "true", "yes"),
             redis_url=_env("REDIS_URL"),
