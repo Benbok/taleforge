@@ -7,6 +7,7 @@ import yaml
 
 from app.core.layout import geometry
 from app.core.layout.contracts import Blueprint
+from app.core.layout.presets import PRESETS
 from app.core.layout.provider import DeterministicLayoutProvider
 from app.core.layout.spatial import Mandate, default_spatial, intent_candidates, obligations
 
@@ -17,7 +18,11 @@ for path in sorted((Path(__file__).parents[1] / "content").rglob("*.yaml")):
         RECORDS.extend(data["items"])
 
 
-@pytest.mark.parametrize("record", RECORDS, ids=lambda r: r["id"])
+# Draft story locations of the retired Echo pack have no preset: their generic plan carries no scenery to place.
+PRESET_RECORDS = [r for r in RECORDS if r["id"] in PRESETS]
+
+
+@pytest.mark.parametrize("record", PRESET_RECORDS, ids=lambda r: r["id"])
 def test_base_templates_have_populated_reachable_maps(record):
     sp = default_spatial(record["name"], record.get("tags", []), template_id=record["id"])
     assert len(sp.parts) >= 3

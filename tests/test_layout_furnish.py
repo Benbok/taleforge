@@ -1,13 +1,8 @@
 # ruff: noqa: F811
 """Обстановка участка на его геометрии (спецификация 2026-10-12, §3.4): связанные детали, проходы свободны."""
 
-from app.core import positions as grid
 from app.core import reach, sketch
 from app.core.layout import furnish
-from app.db.models import Entity
-from tests.game import run
-from tests.test_layout_passages import _built
-from tests.test_map import _ok, _play
 from tests.test_world_generation import _fast_retry, _generated, _prepare, _row  # noqa: F401 — фикстура
 
 FIELD = {"shape": "room", "cols": 6, "rows": 5, "party": [0, 2], "walls": [], "features": [],
@@ -33,34 +28,6 @@ def test_crowded_area_leaves_objects_unplaced():
     # 3×1, герой в клетке 0: первый объект встаёт в клетку 2,
     # для второго оставшаяся клетка не проходит проверку досягаемости
     assert unplaced == ["en_b"] and [f["entity_id"] for f in sk["features"]] == ["en_a"]
-
-
-def test_generated_furnishing_is_bound_to_area_cells(client, admin, settings):
-    cid, _h, _hid, _v, _t, ids = _built(client, admin, settings)
-
-    async def resolve(ctx):
-        ctx.campaign.settings = {**(ctx.campaign.settings or {}), "scene_generation": True}
-        out = await _ok(
-            ctx, "resolve_location", {"location_id": ids["chapel"], "profile_id": "scene_profile.warehouse"}
-        )
-        return out["operation_ref"]
-
-    ref = _play(settings, cid, resolve)
-    assert _prepare(settings, cid, ref) == "ready"
-    made = _generated(settings, ref)
-    chapel = run(settings, lambda s: s.get(Entity, ids["chapel"]))
-    linked = {f["entity_id"] for f in chapel.state["sketch"]["features"] if f.get("entity_id")}
-    notes = _row(settings, ref).result_manifest["notes"]
-    assert made and {e.id for e in made} == linked | {n.split(":", 1)[1] for n in notes if n.startswith("unplaced:")}
-    assert reach.reach_errors(chapel.state["sketch"]) == []
-
-    moved = sorted(linked)[0]
-
-    async def carry(ctx):
-        ctx.world.entities[moved].location_id = ids["nave"]
-        return [f.get("entity_id") for f in (grid._sketch(ctx.world, ids["chapel"]) or {}).get("features") or []]
-
-    assert moved not in _play(settings, cid, carry)  # перенесённый объект не оставляет блокирующий рисунок
 
 
 def test_existing_reach_error_does_not_block_new_objects():

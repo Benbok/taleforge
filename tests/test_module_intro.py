@@ -11,13 +11,11 @@ from fastapi.testclient import TestClient
 
 from app.agents import module_intro
 from app.agents.llm import ScriptedLLM
-from app.db.models import Message
 from app.main import create_app
 from tests.conftest import login
 from tests.game import QueueDice, add_hero, import_base, ok
 from tests.test_adventure import publish_sample
 from tests.test_api import invite, make_campaign, register
-from tests.test_master import rows
 
 STORY = "Скелеты бродят по кладбищу Давоса.\n\nПеред вами — ворота склепа."
 
@@ -66,30 +64,3 @@ def test_campaign_without_saved_intro_writes_its_own(settings, tmp_path):
         client.portal.call(client.app.state.master.wait_idle, None)
         assert len(llm.intro_requests) == 1
         assert module_intro.load(settings.media_dir, mid)["saved"] == {}
-
-
-def test_saved_intro_replaces_one_prepared_by_an_older_campaign(settings, tmp_path):
-    """Кампания создана до сохранения: при первом старте играет уже сохранённое вступление, голосом кампании."""
-    settings, client, llm, spoken, tts = _app(settings, tmp_path)
-    with client:
-        client.app.state.tts.engines["gemini"]._transport = httpx.MockTransport(tts)
-        admin = _login(client)
-        mid = publish_sample(settings)
-        master = client.app.state.master
-        idle = lambda: client.portal.call(master.wait_idle, None)  # noqa: E731
-        llm.replies.append({"text": STORY, "campaign_intro": True})
-        c = party(client, admin, 0, start=False, module_id=mid)
-        idle()  # кампания заготовила своё вступление
-        url = f"/api/admin/modules/{mid}/intro"
-        mine = "Туман над склепом. Перед вами — ворота."
-        ok(client.post(f"{url}/draft", json={"text": mine, "voice": "Kore"}, headers=admin))
-        idle()
-        ok(client.post(f"{url}/save", headers=admin))
-        ok(client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin))
-        idle()
-        msgs = rows(settings, Message, Message.campaign_id == c["id"])
-        assert not any("Скелеты бродят" in m.content for m in msgs)
-        intro = next(m for m in msgs if "Туман над склепом" in m.content)
-        # голос админа (Kore) не голос кампании (по умолчанию): текст озвучен заново для кампании
-        saved = module_intro.load(settings.media_dir, mid)["saved"]["noble"]["voices"]
-        assert intro.data["voices"] and intro.data["voices"] != saved

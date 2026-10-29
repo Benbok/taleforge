@@ -69,9 +69,11 @@ class Orchestrator:
             if await self.prepare(maker, campaign_id, dep) not in ("ready", "blocked"):
                 return "pending"
         async with self.coordination.generation_lock(campaign_id):
+            stopped = "pending"
             for _ in range(MAX_STEPS):
                 got = await storage.claim(maker, campaign_id, ref)
                 if got in ("later", "busy", "leased"):
+                    stopped = got  # someone else holds the phase: that is why we did not finish it
                     await asyncio.sleep(storage.RETRY_AFTER.total_seconds())
                     continue
                 if isinstance(got, str):
@@ -79,7 +81,8 @@ class Orchestrator:
                 status = await self._run(maker, got)
                 if status != "unprepared":
                     return status
-            return "pending"
+                stopped = "pending"
+            return stopped
 
     async def _plan(self, maker, claim: storage.Claim) -> Draft:
         """План и детерминированное предложение из резерва; снимок места для модели, если она включена."""

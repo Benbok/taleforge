@@ -3,12 +3,9 @@
 import dataclasses
 import hashlib
 import math
-import sqlite3
 
 import pytest
 import yaml
-from alembic import command
-from alembic.config import Config
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
@@ -136,33 +133,3 @@ def test_theme_metadata_and_hash(tmp_path):
     assert track["gain_db"] == 0
     assert track["url"].startswith("/api/menu-music/file?v=")
     assert hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def test_menu_music_migration_is_reversible_for_existing_user(tmp_path, monkeypatch):
-    root = __import__("pathlib").Path(__file__).resolve().parents[1]
-    config = Config(str(root / "alembic.ini"))
-    config.set_main_option("script_location", str(root / "alembic"))
-    db_path = tmp_path / "menu_music_migration.db"
-    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path}")
-    command.upgrade(config, "0022")
-    with sqlite3.connect(db_path) as db:
-        db.execute(
-            "INSERT INTO users (id, name, password_hash, platform_role, created_at) "
-            "VALUES ('u_old', 'old', 'hash', 'player', '2026-01-01 00:00:00')"
-        )
-        db.commit()
-    command.upgrade(config, "0023")
-    with sqlite3.connect(db_path) as db:
-        row = db.execute("SELECT menu_music_enabled, menu_music_volume FROM users WHERE id = 'u_old'").fetchone()
-        assert row == (1, 0.2)
-    command.downgrade(config, "0022")
-    with sqlite3.connect(db_path) as db:
-        assert {row[1] for row in db.execute("PRAGMA table_info(users)")} >= {
-            "id",
-            "name",
-            "password_hash",
-            "platform_role",
-            "created_at",
-        }
-        assert "menu_music_enabled" not in {row[1] for row in db.execute("PRAGMA table_info(users)")}
-    command.upgrade(config, "0023")

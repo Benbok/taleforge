@@ -372,49 +372,6 @@ def test_worker_failure_limits_and_cleans_unpublished_files(settings, client, ad
     run(settings, go)
 
 
-def test_sfx_migration_upgrade_and_downgrade(monkeypatch, tmp_path):
-    import sqlite3
-    from pathlib import Path
-
-    from alembic import command
-    from alembic.config import Config
-
-    root = Path(__file__).resolve().parents[1]
-    config = Config(str(root / "alembic.ini"))
-    config.set_main_option("script_location", str(root / "alembic"))
-    db_path = tmp_path / "migration.db"
-    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path}")
-    command.upgrade(config, "0018")
-    command.upgrade(config, "0019")
-    with sqlite3.connect(db_path) as db:
-        assert db.execute("SELECT lease_until FROM sfx_lock WHERE id=1").fetchone() == (0,)
-        indexes = {row[1] for row in db.execute("PRAGMA index_list(sfx_jobs)")}
-        assert "uq_sfx_jobs_active_sound" in indexes
-    command.downgrade(config, "0018")
-    with sqlite3.connect(db_path) as db:
-        assert not db.execute("SELECT name FROM sqlite_master WHERE name LIKE 'sfx_%'").fetchall()
-        assert db.execute("SELECT version_num FROM alembic_version").fetchone() == ("0018",)
-
-
-def test_sfx_migration_allows_multiple_playbacks_per_turn(monkeypatch, tmp_path):
-    import sqlite3
-    from pathlib import Path
-
-    from alembic import command
-    from alembic.config import Config
-
-    root = Path(__file__).resolve().parents[1]
-    config = Config(str(root / "alembic.ini"))
-    config.set_main_option("script_location", str(root / "alembic"))
-    db_path = tmp_path / "multiple-playbacks.db"
-    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path}")
-    command.upgrade(config, "0019")
-    command.upgrade(config, "0027")
-    with sqlite3.connect(db_path) as db:
-        constraints = db.execute("SELECT sql FROM sqlite_master WHERE name = 'sfx_playbacks'").fetchone()[0]
-        assert "UNIQUE (campaign_id, turn_id)" not in constraints
-
-
 def test_single_worker_lease_and_bounded_recovery(settings, client, admin, tmp_path):
     import time
 

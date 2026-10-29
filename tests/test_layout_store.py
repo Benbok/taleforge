@@ -1,47 +1,9 @@
 """Фазы комплекса в механизме подготовки (спецификация 2026-10-12, §8): CHECK, миграция и идемпотентный резерв."""
 
-import sqlite3
-from pathlib import Path
-
-from alembic import command
-from alembic.config import Config
-
 from app.core.layout import store
 from tests.game import import_base, party, quiet
 from tests.layout_pilot import pilot_intent
 from tests.test_map import _ok, _play
-
-
-def test_sqlite_alembic_layout_phases_upgrade_and_downgrade(monkeypatch, tmp_path):
-    root = Path(__file__).resolve().parents[1]
-    config = Config(str(root / "alembic.ini"))
-    config.set_main_option("script_location", str(root / "alembic"))
-    db_path = tmp_path / "phases.db"
-    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path}")
-
-    def table_sql() -> str:
-        with sqlite3.connect(db_path) as db:
-            return db.execute("SELECT sql FROM sqlite_master WHERE name = 'world_generation_states'").fetchone()[0]
-
-    command.upgrade(config, "0023")
-    assert "location_layout" not in table_sql()
-    command.upgrade(config, "0024")
-    assert "location_layout" in table_sql() and "location_geometry" in table_sql()
-    with sqlite3.connect(db_path) as db:  # внешние ключи в sqlite3 по умолчанию выключены
-        cols = db.execute("PRAGMA table_info(world_generation_states)").fetchall()
-        row = {}
-        for _cid, name, ctype, notnull, default, _pk in cols:
-            if notnull and default is None:
-                row[name] = 0 if ctype.upper().startswith(("INT", "BOOL")) else "{}" if "JSON" in ctype.upper() else "x"
-        row.update(id="a" * 32, phase="location_layout", status="unprepared")
-        db.execute(
-            f"INSERT INTO world_generation_states ({', '.join(row)}) VALUES ({', '.join('?' * len(row))})",
-            list(row.values()),
-        )
-    command.downgrade(config, "0023")
-    with sqlite3.connect(db_path) as db:
-        assert db.execute("SELECT COUNT(*) FROM world_generation_states").fetchone()[0] == 0
-    assert "location_layout" not in table_sql() and "container_contents" in table_sql()
 
 
 def test_reserve_layout_is_idempotent(client, admin, settings):

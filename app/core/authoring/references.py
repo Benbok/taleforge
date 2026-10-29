@@ -58,6 +58,15 @@ def remap(value: Any, ids: dict[str, str]) -> Any:
     return value
 
 
+def _without_bindings(value: Any) -> Any:
+    """Plot anchor binding rows belong to the source workspace; a new game binds its own, so the id is not exported."""
+    if isinstance(value, list):
+        return [_without_bindings(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _without_bindings(v) for k, v in value.items() if k != "binding_id"}
+    return value
+
+
 def _blueprint(raw: dict, refs: RefMap) -> dict:
     """Blueprint external ends point at Entity ids through ``place_id``; internal areas use area refs."""
 
@@ -111,7 +120,7 @@ def adapt_state(state: dict, refs: RefMap) -> dict:
                 for x in value or []
             ]
         elif key in {"content_reservation", "object_slots"}:
-            out[key] = remap(value, {**refs.entities, **refs.generations})
+            out[key] = _without_bindings(remap(value, {**refs.entities, **refs.generations}))
         elif key == "world_object":
             wo = dict(value)
             if wo.get("container_id"):

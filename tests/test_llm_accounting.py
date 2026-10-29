@@ -1,13 +1,9 @@
 """Учёт вызовов модели по фазам подготовки (спецификация 2026-10-12, §8): строка фазы и токены рассуждений."""
 
 import asyncio
-import sqlite3
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from alembic import command
-from alembic.config import Config
 
 from app.agents import llm as llm_mod
 from app.agents.llm import LLMReply, ScriptedLLM
@@ -112,25 +108,6 @@ def test_director_keeps_reported_cost_without_repricing(monkeypatch, cost, known
     assert reports[0].cost == cost
 
 
-def test_llm_call_migration_upgrade_and_downgrade(monkeypatch, tmp_path):
-    root = Path(__file__).resolve().parents[1]
-    config = Config(str(root / "alembic.ini"))
-    config.set_main_option("script_location", str(root / "alembic"))
-    db_path = tmp_path / "calls.db"
-    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path}")
-
-    def columns() -> set[str]:
-        with sqlite3.connect(db_path) as db:
-            return {r[1] for r in db.execute("PRAGMA table_info(llm_calls)").fetchall()}
-
-    command.upgrade(config, "0025")
-    assert "generation_id" not in columns()
-    command.upgrade(config, "0026")
-    assert {"generation_id", "tokens_reasoning"} <= columns()
-    command.downgrade(config, "0025")
-    assert "generation_id" not in columns() and "tokens_reasoning" not in columns()
-
-
 def test_scene_generation_call_is_tied_to_its_phase(client, admin, settings):
     cid = _campaign(client, admin, settings)
     _room_id, ref = _room(settings, cid)
@@ -223,24 +200,3 @@ def test_provider_usage_and_price_coverage(monkeypatch, stream, price):
     )
     assert (reply.tokens_in, reply.tokens_cached, reply.tokens_out, reply.reasoning_tokens) == (100, 80, 40, 25)
     assert reply.cost_known is (price in (0.0, 0.01))
-
-
-def test_usage_coverage_migration_preserves_historical_unknown(monkeypatch, tmp_path):
-    root = Path(__file__).resolve().parents[1]
-    config = Config(str(root / "alembic.ini"))
-    config.set_main_option("script_location", str(root / "alembic"))
-    db_path = tmp_path / "coverage.db"
-    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path}")
-    command.upgrade(config, "0030")
-    with sqlite3.connect(db_path) as db:
-        db.execute(
-            "INSERT INTO llm_calls "
-            "(id,purpose,model,tokens_in,tokens_out,tokens_reasoning,cost,latency_ms,created_at) "
-            "VALUES ('old','decide','m',100,40,25,0,1,CURRENT_TIMESTAMP)"
-        )
-    command.upgrade(config, "0031")
-    with sqlite3.connect(db_path) as db:
-        assert db.execute("SELECT tokens_cached,cost_known,diagnostics FROM llm_calls").fetchone() == (None, None, None)
-    command.downgrade(config, "0030")
-    with sqlite3.connect(db_path) as db:
-        assert "cost_known" not in {r[1] for r in db.execute("PRAGMA table_info(llm_calls)")}

@@ -1,7 +1,6 @@
 """Recover either historical meaning of revision 0031 without losing rows."""
 
 import asyncio
-import sqlite3
 import warnings
 from pathlib import Path
 
@@ -26,39 +25,6 @@ def test_migration_history_has_one_unambiguous_head():
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         assert len(ScriptDirectory.from_config(config()).get_heads()) == 1
-
-
-@pytest.mark.parametrize("usage_present", [False, True])
-@pytest.mark.parametrize("stamped", [False, True])
-def test_upgrade_repairs_ambiguous_0031(monkeypatch, tmp_path, usage_present, stamped):
-    path = tmp_path / "author-migrations.db"
-    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{path}")
-    cfg = config()
-    command.upgrade(cfg, "0030")
-    with sqlite3.connect(path) as db:
-        db.execute(
-            "INSERT INTO llm_calls (id, purpose, model, tokens_in, tokens_out, cost, latency_ms, created_at) "
-            "VALUES ('retained', 'test', 'fixture', 7, 3, 0.25, 1, '2026-10-18')"
-        )
-        if usage_present:
-            db.execute("ALTER TABLE llm_calls ADD COLUMN tokens_cached INTEGER")
-            db.execute("ALTER TABLE llm_calls ADD COLUMN cost_known BOOLEAN")
-            db.execute("ALTER TABLE llm_calls ADD COLUMN diagnostics JSON")
-            db.execute("UPDATE llm_calls SET tokens_cached=4, cost_known=1, diagnostics='{}'")
-        if stamped:
-            db.execute("UPDATE alembic_version SET version_num='0031'")
-    command.upgrade(cfg, "head")
-    with sqlite3.connect(path) as db:
-        assert db.execute("SELECT tokens_in, cost FROM llm_calls WHERE id='retained'").fetchone() == (7, 0.25)
-        assert {"tokens_cached", "cost_known", "diagnostics"} <= {
-            row[1] for row in db.execute("PRAGMA table_info(llm_calls)")
-        }
-        if usage_present:
-            assert db.execute("SELECT tokens_cached FROM llm_calls").fetchone() == (4,)
-    command.downgrade(cfg, "0030")
-    command.upgrade(cfg, "head")
-    with sqlite3.connect(path) as db:
-        assert db.execute("SELECT count(*) FROM llm_calls").fetchone() == (1,)
 
 
 @pytest.mark.parametrize("usage_present", [False, True])
@@ -136,51 +102,3 @@ def test_postgres_fresh_migration_chain(monkeypatch, database_url):
     asyncio.run(reset())
     command.upgrade(config(), "head")
     command.check(config())
-
-
-def test_foundation_preserves_existing_game_and_children(monkeypatch, tmp_path):
-    path = tmp_path / "existing-game.db"
-    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{path}")
-    cfg = config()
-    command.upgrade(cfg, "0033")
-    with sqlite3.connect(path) as db:
-        db.execute("PRAGMA foreign_keys=ON")
-        db.execute(
-            "INSERT INTO users (id, name, password_hash, platform_role, created_at) "
-            "VALUES ('owner', 'Owner', 'unused', 'admin', '2026-10-18')"
-        )
-        db.execute(
-            "INSERT INTO campaigns (id, owner_id, name, status, ruleset_id, ruleset_version, "
-            "public_intro, difficulty, party_size_recommended, settings, brief, last_seq, content_chain, "
-            "created_at, updated_at) VALUES ('game', 'owner', 'Old game', 'active', 'dnd5e', '1', "
-            "'Keep intro', 'normal', 4, '{}', '{}', 12, '[]', '2026-10-18', '2026-10-18')"
-        )
-        db.execute("INSERT INTO campaign_secrets VALUES ('game', '{}', '{\"kept\":true}')")
-    command.upgrade(cfg, "0034")
-    with sqlite3.connect(path) as db:
-        assert db.execute("SELECT purpose, status, last_seq, public_intro FROM campaigns").fetchone() == (
-            "game",
-            "active",
-            12,
-            "Keep intro",
-        )
-        assert db.execute("SELECT plot FROM campaign_secrets").fetchone() == ('{"kept":true}',)
-        assert db.execute("PRAGMA foreign_key_check").fetchall() == []
-    command.downgrade(cfg, "0033")
-    with sqlite3.connect(path) as db:
-        assert db.execute("SELECT plot FROM campaign_secrets").fetchone() == ('{"kept":true}',)
-
-
-def test_geography_tables_upgrade_and_downgrade_keep_existing_rows(monkeypatch, tmp_path):
-    path = tmp_path / "geography.db"
-    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{path}")
-    cfg = config()
-    command.upgrade(cfg, "0034")
-    command.upgrade(cfg, "0035")
-    with sqlite3.connect(path) as db:
-        tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        assert {"geography_nodes", "geography_links"} <= tables
-    command.downgrade(cfg, "0034")
-    with sqlite3.connect(path) as db:
-        tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        assert "geography_nodes" not in tables and "author_projects" in tables

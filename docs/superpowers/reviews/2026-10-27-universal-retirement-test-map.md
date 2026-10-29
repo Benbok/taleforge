@@ -332,3 +332,17 @@ These tests drove the retired tool-call master turn (resolve_attack, set_scene_m
 | `tests/test_worlds.py::test_card_texts_come_from_world_pack` | no universal equivalent (legacy world packs) |
 | `tests/test_worlds.py::test_echo_spells_flavor_and_renames` | no universal equivalent (legacy world packs) |
 | `tests/test_worlds.py::test_threshold_gives_second_race_and_caste` | no universal equivalent (legacy world packs) |
+
+## Removed after the single-chain migration reset and the pack retirement
+
+Tests that were red before the worlds catalog work and that cover code or revisions which no longer exist.
+
+| Retired test | Why |
+| --- | --- |
+| `tests/test_authoring_migrations.py` (`test_foundation_preserves_existing_game_and_children`, `test_geography_tables_upgrade_and_downgrade_keep_existing_rows`, `test_upgrade_repairs_ambiguous_0031`) | The chain is one universal initial migration (0001-0009); revisions 0030-0031 are gone. Boot and upgrade are covered by test_universal_boot.py / test_universal_upgrade.py |
+| `tests/test_layout_store.py::test_sqlite_alembic_layout_phases_upgrade_and_downgrade`, `tests/test_map_migrations.py::test_location_map_migrations_match_metadata`, `tests/test_map_memory.py::test_map_memory_sqlite_upgrade_downgrade`, `tests/test_narrative_migrations.py::test_sqlite_alembic_narrative_foundation_upgrade_and_downgrade`, `tests/test_world_objects.py::test_sqlite_alembic_world_objects_upgrade_and_downgrade`, `tests/test_sfx.py::test_sfx_migration_*`, `tests/test_menu_music.py::test_menu_music_migration_is_reversible_for_existing_user`, `tests/test_llm_accounting.py::test_llm_call_migration_upgrade_and_downgrade`, `tests/test_llm_accounting.py::test_usage_coverage_migration_preserves_historical_unknown` | Each upgraded to a revision of the retired chain (0014-0026) |
+| `tests/test_profile.py::test_library_hero_copied_into_campaign` | The 12-class `/api/me/character-options` builder is retired; copying a library hero is covered by the universal hero tests |
+| `tests/test_module_intro.py::test_saved_intro_replaces_one_prepared_by_an_older_campaign` | Pack-module campaign intro; no universal equivalent (the session greeting is covered in test_universal_lifecycle.py) |
+| `tests/test_layout_furnish.py::test_generated_furnishing_is_bound_to_area_cells` | Furnishing from a pack scene profile through `resolve_location`; the universal master does not use that tool path |
+
+`tests/test_layout_quality.py` now checks the map quality of templates that have a preset. The draft story locations of the retired Echo pack have none.
