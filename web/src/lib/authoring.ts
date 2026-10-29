@@ -40,15 +40,16 @@ export type CreationDialogue = { project_id: string; source_revision: number; st
 export type StudioDraft = Partial<Record<keyof StudioFields, string>>;
 export type StudioView = { project_id: string; draft_revision: number; fields: StudioFields; review?: CreationDialogue | null };
 const DRAFTABLE = ["premise", "world", "laws", "inhabitants", "powers", "history", "start", "style", "public_text"] as const;
-/** A proposal fills only the fields the author left empty; secrets and the title are never offered. */
-export const mergeDraft = (fields: StudioFields, proposal: StudioDraft): StudioFields => {
+/** A proposal fills the fields the author left empty (all of them when ``replace``); secrets and the title are never offered. */
+export const mergeDraft = (fields: StudioFields, proposal: StudioDraft, replace = false): StudioFields => {
   const next = { ...fields };
   for (const key of DRAFTABLE) {
     const text = proposal[key];
-    if (typeof text === "string" && text.trim() && !fields[key].trim()) next[key] = text;
+    if (typeof text === "string" && text.trim() && (replace || !fields[key].trim())) next[key] = text;
   }
   return next;
 };
+export const hasDraftableText = (fields: StudioFields): boolean => DRAFTABLE.some((key) => fields[key].trim());
 export const emptyStudio = (title: string): StudioFields => ({ title, premise: "", world: "", laws: "", inhabitants: "", powers: "", history: "", start: "", style: "", difficulty: "normal", excluded_themes: [], public_text: "", secret_text: "" });
 
 export type View = "summary" | "full";

@@ -93,3 +93,37 @@ it('keeps the extra fields in a collapsed section that opens by itself when they
  expect(extra.open).toBe(false);
  expect(screen.getByText('Дополнительно')).toBeTruthy();
 });
+
+function filledStudio() {
+ return mockApi(c => {
+  if (c.url.endsWith('/studio') && c.method !== 'POST') return {body:{project_id:'ap_1',draft_revision:3,fields,review:null}};
+  if (c.url.endsWith('?view=summary')) return {body:{project:{id:'ap_1',title:fields.title,draft_revision:3},preparation:{stages:[]},published:[]}};
+  if (c.url.endsWith('/studio/draft')) return {body:{premise:'НОВЫЙ ЗАМЫСЕЛ',world:'',laws:'',inhabitants:'',powers:'Как действует магия',history:'',start:'',style:'',public_text:''}};
+  return undefined;
+ });
+}
+
+it('regenerates over the filled fields only after the author confirms, and saves nothing', async () => {
+ const mock = filledStudio();
+ vi.spyOn(window, 'confirm').mockReturnValue(true);
+ renderWithClient(<UniversalWorldStudio projectId='ap_1' />);
+ await screen.findByDisplayValue(fields.premise);
+ fireEvent.change(screen.getByLabelText('Идея мира'),{target:{value:'Властелин колец'}});
+ fireEvent.click(screen.getByRole('button',{name:'Перегенерировать с заменой'}));
+ await screen.findByDisplayValue('НОВЫЙ ЗАМЫСЕЛ');
+ expect((screen.getByLabelText('Силы и возможности') as HTMLTextAreaElement).value).toBe('Как действует магия');
+ expect((screen.getByLabelText('Законы мира') as HTMLTextAreaElement).value).toBe(fields.laws); // not offered: stays
+ expect(mock.calls.some(c=>c.method==='PUT')).toBe(false);
+ expect(screen.getByRole('button',{name:'Сохранить мир'}).hasAttribute('disabled')).toBe(false);
+});
+
+it('does not regenerate when the author declines the confirmation', async () => {
+ const mock = filledStudio();
+ vi.spyOn(window, 'confirm').mockReturnValue(false);
+ renderWithClient(<UniversalWorldStudio projectId='ap_1' />);
+ await screen.findByDisplayValue(fields.premise);
+ fireEvent.change(screen.getByLabelText('Идея мира'),{target:{value:'Властелин колец'}});
+ fireEvent.click(screen.getByRole('button',{name:'Перегенерировать с заменой'}));
+ expect(mock.calls.some(c=>c.url.endsWith('/studio/draft'))).toBe(false);
+ expect((screen.getByLabelText('Замысел') as HTMLTextAreaElement).value).toBe(fields.premise);
+});

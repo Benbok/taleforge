@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ApiError } from "../lib/api";
-import { authoring, authorKeys, mergeDraft, newRequestKey, type StudioFields, type StudioView } from "../lib/authoring";
+import { authoring, authorKeys, hasDraftableText, mergeDraft, newRequestKey, type StudioFields, type StudioView } from "../lib/authoring";
 
 interface FieldMeta {
   key: keyof StudioFields;
@@ -163,10 +163,10 @@ export default function UniversalWorldStudio({ projectId }: { projectId: string 
     },
   });
 
-  // A proposal only: it fills the fields the author left empty and saves nothing.
+  // A proposal only: it fills the empty fields (all of them when replacing) and saves nothing.
   const draft = useMutation({
-    mutationFn: () => authoring.draftStudio(projectId, idea.trim()),
-    onSuccess: (proposal) => setFields((old) => (old ? mergeDraft(old, proposal) : old)),
+    mutationFn: (_replace: boolean) => authoring.draftStudio(projectId, idea.trim()),
+    onSuccess: (proposal, replace) => setFields((old) => (old ? mergeDraft(old, proposal, replace) : old)),
   });
 
   const accept = useMutation({
@@ -358,10 +358,24 @@ export default function UniversalWorldStudio({ projectId }: { projectId: string 
                   type="button"
                   className="btn btn-outline-copper self-start font-mono text-xs"
                   disabled={busy || !idea.trim()}
-                  onClick={() => draft.mutate()}
+                  onClick={() => draft.mutate(false)}
                 >
                   {draft.isPending ? "Мастер пишет черновик…" : "Заполнить из идеи"}
                 </button>
+                {hasDraftableText(fields) && (
+                  <button
+                    type="button"
+                    className="btn btn-outline-copper self-start font-mono text-xs"
+                    disabled={busy || !idea.trim()}
+                    onClick={() => {
+                      if (window.confirm("Заменить уже написанные поля новым черновиком? Правка останется несохранённой, пока вы не нажмёте «Сохранить мир».")) {
+                        draft.mutate(true);
+                      }
+                    }}
+                  >
+                    Перегенерировать с заменой
+                  </button>
+                )}
               </div>
 
               {SECTION_1.map((meta) => renderFieldBlock(meta, fields, update))}
