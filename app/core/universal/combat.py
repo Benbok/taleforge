@@ -239,6 +239,8 @@ async def run_exchange(ctx, action, choose_reply=None, request_key=None):
                     ctx,
                     actor_id=exchange.enemy_actor_id,
                     npc_reply=True,
+                    preroll=None,  # the hero's stored roll and investment never carry over to the enemy's reply
+                    invest=False,
                     defer_step=True,
                     parent_source_id=exchange.source_key,
                     exchange_id=exchange.id,

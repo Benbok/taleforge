@@ -25,6 +25,7 @@ def public_outcome(result, reason):
     if getattr(result, "schema_version", None) == 2:
         outcome["changes"] = [c.model_dump(mode="json") for c in result.changes if not c.private]
         outcome["reason"] = result.description
+        outcome["invested"] = any(check.invested for check in result.checks)  # the hero paid energy to succeed
     if not result.success:
         outcome["failure"] = ActionFailure(
             category="roll_failed",

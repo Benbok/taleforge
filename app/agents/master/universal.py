@@ -12,6 +12,7 @@ from app.agents.llm import decide_model_for, model_for
 from app.agents.master.action_admission import obtain_prepared_action
 from app.agents.master.action_results import mark_source, prepared_outcome, public_outcome
 from app.agents.master.helpers import _batches
+from app.agents.master.investment import decide_investment
 from app.agents.master.universal_narration import recent_history
 from app.core.campaigns import Viewer, master_seat
 from app.core.chat import active_session
@@ -407,13 +408,20 @@ async def run_universal_turn(service, cid, place=None):
             trace["scene"] = public_scene
             outcome = prepared_outcome(compiled)
             if compiled.proposal is not None:
+                preroll, invest = None, False
+                if not already_applied:
+                    preroll, invest = await decide_investment(
+                        service, c, game.id, tid, trace, compiled, mid, sh, resources, seat.id
+                    )
                 async with service.maker() as s:
                     await service._status(cid, "rolling")
                     enemy_card = None
                     if getattr(compiled, "schema_version", None) == 2:
                         from app.core.universal.combat import enemy_source_key, run_exchange
 
-                        ctx = ResolutionContext(s, cid, **scope, dice=service.dice_factory())
+                        ctx = ResolutionContext(
+                            s, cid, **scope, dice=service.dice_factory(), preroll=preroll, invest=invest
+                        )
                         results = await run_exchange(ctx, compiled.proposal, request_key=mid)
                         result = results[0]
                     else:

@@ -57,6 +57,12 @@ async def make_offer(session, campaign_id, session_id, turn_id, action, sheet, r
     terms = evaluate_offer(action, sheet, resources, rolls)
     if terms is None:
         return None
+    deadline = int(time.time()) + INVEST_TIMEOUT_SECONDS
+    existing = await session.get(Message, "invest_" + action.source_message_id)
+    if existing is not None:  # the turn restarted while the card was open: the same card, a fresh deadline
+        existing.data = {**existing.data, "status": "offered", "deadline_ts": deadline}
+        await session.flush()
+        return existing
     message = Message(
         id="invest_" + action.source_message_id,
         campaign_id=campaign_id,
@@ -71,7 +77,7 @@ async def make_offer(session, campaign_id, session_id, turn_id, action, sheet, r
             actor_id=action.actor_id,
             seat_id=seat_id,
             status="offered",
-            deadline_ts=int(time.time()) + INVEST_TIMEOUT_SECONDS,
+            deadline_ts=deadline,
             **{key: getattr(terms, key) for key in terms.__dataclass_fields__},
         ),
     )
