@@ -155,6 +155,7 @@ class CheckProof(ClosedModel):
     kind: Literal["check", "attack", "resistance"] = "check"
     critical: bool = False
     critical_failure: bool = False
+    invested: int = Field(default=0, ge=0, strict=True)
 
 
 class CheckNarration(ClosedModel):
@@ -248,8 +249,11 @@ def resolve_resistance(
     )
 
 
-def resolve_check(dice, attribute: int, trained: bool, difficulty: int, edge: str = "normal") -> ActionOutcome:
+def resolve_check(
+    dice, attribute: int, trained: bool, difficulty: int, edge: str = "normal", bonus: int = 0
+) -> ActionOutcome:
     score = _integer(attribute, 1)
+    _integer(bonus, 0)
     _integer(difficulty)
     if type(trained) is not bool or edge not in {"normal", "advantage", "disadvantage"}:
         raise ValueError("invalid check parameters")
@@ -257,7 +261,7 @@ def resolve_check(dice, attribute: int, trained: bool, difficulty: int, edge: st
     if edge != "normal":
         rolls.append(dice.d20())
     natural = min(rolls) if edge == "disadvantage" else max(rolls)
-    total = natural + (score - 10) // 2 + (2 if trained else 0)
+    total = natural + (score - 10) // 2 + (2 if trained else 0) + bonus
     return ActionOutcome(
         success=natural == 20 or (natural != 1 and total >= difficulty),
         natural=natural,
