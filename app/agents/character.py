@@ -17,7 +17,6 @@ from typing import Any
 from sqlalchemy import select
 
 from app.agents.llm import LLMError, model_for, parser_model_for
-from app.content.catalog import campaign_catalog
 from app.core import persona
 from app.core.campaigns import Conflict, default_model_profile, master_seat
 from app.core.llm_diagnostics import reply_metrics
@@ -123,9 +122,7 @@ async def hero_basics(s, c: Campaign, ch: Character) -> str:
 
 
 async def world_basics(s, c: Campaign) -> str:
-    cat = await campaign_catalog(s, c)
-    pack = getattr(cat, "pack_name", None) or ""
-    parts = [f"Кампания «{c.name}»." + (f" Мир: {pack}." if pack else "")]
+    parts = [f"Кампания «{c.name}»."]
     if c.public_intro:
         parts.append(c.public_intro)
     return " ".join(parts)

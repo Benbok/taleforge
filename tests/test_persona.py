@@ -142,3 +142,26 @@ def test_marked_moment_starts_chronicle(game_client, monkeypatch):
     game_client.portal.call(watch)  # отметка работает и в первом наблюдении
     game_client.portal.call(master.wait_idle, "c2")
     assert reasons == ["предательство: Марта сдала отряд страже"]
+
+
+def test_master_try_works_without_ruleset_pack(game_client, admin_g, settings, llm):
+    """Универсальная кампания не опирается на пакет правил: «Проверить» не требует каталога."""
+    from sqlalchemy import delete
+
+    from app.content.catalog import clear_cache
+    from app.db.models import Campaign, ContentPack
+    from tests.test_master import run
+
+    c, _, _ = party(game_client, admin_g)
+
+    async def drop(s):
+        (await s.get(Campaign, c["id"])).content_chain = None
+        await s.execute(delete(ContentPack))
+        await s.commit()
+
+    run(settings, drop)
+    clear_cache()
+    llm.replies += [{"text": "Серое утро."}, {"text": "Стражник хмурится."}, {"text": "Вы теряете время."}]
+    url = f"/api/campaigns/{c['id']}/master-character/test"
+    out = ok(game_client.post(url, json={"persona": {"text": "Суровый"}}, headers=admin_g))
+    assert len(out["scenes"]) == 3
