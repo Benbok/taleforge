@@ -11,6 +11,12 @@ MAP_BACKDROP_STYLE = (
     "bold clean shapes, vibrant colors, soft shadows. "
     "Environment only, no characters, no lettering, no interface, no frame."
 )
+# With a control outline the model must know which side of the lines is the road (it cannot tell by itself).
+MAP_BACKDROP_CONTROL_STYLE = (
+    "(wide brown dirt roads:1.4), (green grass meadow:1.2), "
+    "The white outlines mark the road network: the ground inside the outlines is bare brown dirt road, "
+    "and everything outside the outlines is green grass meadow. "
+)
 MAP_BACKDROP_TRANSLATION = (
     "Translate the supplied public location name and description into a concise English prompt for a top-down "
     "game map of that place, at most 80 words. Preserve its terrain, materials, vegetation, buildings and lighting, "
@@ -27,6 +33,7 @@ def create_map_backdrop_generator(settings):
         ROOT / "content" / "workflows" / "map-backdrop-realvisxl-api.json",
         timeout_seconds=settings.portrait_comfyui_timeout_sec,
         style=MAP_BACKDROP_STYLE,
+        control_style=MAP_BACKDROP_CONTROL_STYLE,
     )
 
 

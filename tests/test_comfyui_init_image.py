@@ -116,3 +116,17 @@ def test_control_image_for_a_workflow_without_controlnet_is_rejected():
     with pytest.raises(PortraitError):
         asyncio.run(generator(LOCATION_WORKFLOW, calls).generate({"appearance": "x"}, control_image=PNG))
     assert not calls
+
+
+def test_control_style_is_added_to_the_prompt_only_when_a_control_image_is_given():
+    def prompt_of(calls):
+        graph = json.loads(next(r for r in calls if r.url.path == "/prompt").content)["prompt"]
+        return graph["6"]["inputs"]["text"]
+
+    with_control, without = [], []
+    kw = dict(workflow=MAP_WORKFLOW, poll_interval=0, control_style="ROADS-SENTENCE. ")
+    asyncio.run(ComfyUIPortraitGenerator(transport=httpx.MockTransport(responder(with_control)), **kw).generate(
+        {"appearance": "yard"}, init_image=PNG, control_image=PNG))
+    asyncio.run(ComfyUIPortraitGenerator(transport=httpx.MockTransport(responder(without)), **kw).generate(
+        {"appearance": "yard"}, init_image=PNG))
+    assert "ROADS-SENTENCE" in prompt_of(with_control) and "ROADS-SENTENCE" not in prompt_of(without)

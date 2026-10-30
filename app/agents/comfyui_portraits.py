@@ -33,12 +33,14 @@ class ComfyUIPortraitGenerator:
         transport=None,
         poll_interval=1.0,
         style=None,
+        control_style="",
     ):
         self.base_url = base_url.rstrip("/")
         self.timeout_seconds = timeout_seconds
         self.transport = transport
         self.poll_interval = poll_interval
         self.style = style
+        self.control_style = control_style  # prepended to the style when a control image guides the layout
         self.workflow = json.loads(Path(workflow).read_text(encoding="utf-8"))
         self.output_nodes = [k for k, v in self.workflow.items() if v.get("class_type") == "SaveImage"]
         if not self.output_nodes or "{{prompt}}" not in json.dumps(self.workflow):
@@ -90,7 +92,7 @@ class ComfyUIPortraitGenerator:
         async with httpx.AsyncClient(base_url=self.base_url + "/", timeout=30, transport=self.transport) as client:
             try:
                 async with asyncio.timeout(self.timeout_seconds):
-                    prompt = f"{FANTASY_ART_DIRECTION}{details}. {style}"
+                    prompt = f"{FANTASY_ART_DIRECTION}{details}. {self.control_style if controlled else ''}{style}"
                     if init_image:
                         upload = await client.post(
                             "upload/image",
