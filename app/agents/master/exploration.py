@@ -11,7 +11,7 @@ from sqlalchemy import select
 from app.agents.llm import repair_json
 from app.agents.master.prompting.messages import decide_messages
 from app.agents.master.prompting.modules import ALL_SYSTEM
-from app.agents.master.prompting.slicers import requested_lore
+from app.agents.master.prompting.slicers import requested_lore, review_context, slice_narration_context
 from app.core.campaigns import AccessDenied
 from app.core.universal.contracts import ResolutionContext
 from app.core.universal.interpretation import compile_exploration, is_plain_action
@@ -78,6 +78,8 @@ PLAIN_OUTCOMES = CheckNarration(
 
 SYSTEM = ALL_SYSTEM  # Compatibility for consumers inspecting the full prompt.
 REVIEW = (
+    "В world_rules.lore_index дан указатель законов мира, в world_rules.lore — выбранные подробности. "
+    "Не выдумывай запретов из отсутствия полного блока: оценивай доступный текст и указатель. "
     "Проверяй цель перемещения: «иду в туннель/комнату/лес» — смена локации с destination_id из known_exits, "
     "а не шаг к устью. within_scene допустимо для явного подхода внутри места. Не подтверждай подмену входа "
     "успешным движением на месте. "
@@ -312,14 +314,7 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                         {
                             "role": "user",
                             "content": json.dumps(
-                                {
-                                    "source": context["source"],
-                                    "intent": raw,
-                                    "evidence": context.get("established_evidence", ""),
-                                    "scene": context["scene"],
-                                    "known_exits": context.get("known_exits", []),
-                                    "world_rules": context.get("world_rules", {}),
-                                },
+                                review_context(context, raw, trace.get("requested_lore", {}).get(mid, [])),
                                 ensure_ascii=False,
                             ),
                         },
@@ -438,7 +433,9 @@ async def reviewed_narration(
     state = trace.setdefault(state_key, {"attempts": 0})
     from app.agents.master.universal_narration import SYSTEM as NARRATION_SYSTEM
 
-    public = context if context is not None else dict(outcomes=facts, scene=scene, recent_history=history)
+    public = slice_narration_context(
+        context if context is not None else dict(outcomes=facts, scene=scene, recent_history=history)
+    )
     while state["attempts"] < 2:
         state["attempts"] += 1
         await store(service, tid, trace)

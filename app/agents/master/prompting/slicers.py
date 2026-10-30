@@ -63,3 +63,25 @@ def slice_context(context: dict, source: str, extra_blocks=()) -> dict:
     if "history" in result:
         result["history"] = [line[:400] if isinstance(line, str) else line for line in result["history"][-6:]]
     return result
+
+
+def review_context(context: dict, raw_intent: dict, extra_blocks=()) -> dict:
+    sliced = slice_context(context, context["source"], extra_blocks)
+    return {
+        "source": context["source"],
+        "intent": raw_intent,
+        "evidence": sliced.get("established_evidence", ""),
+        "scene": sliced["scene"],
+        "known_exits": sliced.get("known_exits", []),
+        "world_rules": sliced["world_rules"],
+        "objects": sliced.get("objects", []),
+    }
+
+
+def slice_narration_context(public: dict) -> dict:
+    """Called only after audience filtering. Never add private lore to narration."""
+    result = deepcopy(public)
+    result["recent_history"] = [
+        line[:400] if isinstance(line, str) else line for line in result.get("recent_history", [])[-6:]
+    ]
+    return result

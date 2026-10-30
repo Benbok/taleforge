@@ -4,6 +4,7 @@ from copy import deepcopy
 
 from sqlalchemy import select
 
+from app.agents.master.prompting.slicers import slice_narration_context
 from app.agents.master.universal_narration import recent_history
 from app.core.knowledge import Index, Section
 from app.core.universal.visibility import shared_observations, visible_entity
@@ -96,9 +97,11 @@ async def public_context(session, campaign, upto_seq, audience, scene, outcomes)
     ]
     query = " ".join([str(safe_scene), str(facts)])
     memory = Index(sections).search(query, 6, visible=("common",))
-    return dict(
-        outcomes=facts,
-        scene=safe_scene,
-        recent_history=await recent_history(session, campaign, upto_seq, audience, safe_scene),
-        knowledge=[dict(subject_id=s.title, text=s.body) for s in memory],
+    return slice_narration_context(
+        dict(
+            outcomes=facts,
+            scene=safe_scene,
+            recent_history=await recent_history(session, campaign, upto_seq, audience, safe_scene),
+            knowledge=[dict(subject_id=s.title, text=s.body) for s in memory],
+        )
     )
