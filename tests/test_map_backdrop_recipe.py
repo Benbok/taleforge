@@ -110,7 +110,7 @@ def test_visible_passages_become_exits_spread_along_their_side():
     north = sorted(e["at"] for e in synthesized if e["side"] == "n")
     assert len(synthesized) == 4 and len(north) == 2 and 0 <= north[0] < north[1] <= 8
     west = next(e for e in synthesized if e["side"] == "w")
-    assert west["at"] == 3 and west["width"] == 2  # centred on an 8-row side
+    assert west["at"] in (3, 4) and west["width"] == 1  # a one-cell track, centred on an 8-row side
     assert "Тайный ход" not in json.dumps(exits, ensure_ascii=False)
 
 

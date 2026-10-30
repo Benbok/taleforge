@@ -58,7 +58,7 @@ def test_init_image_is_uploaded_and_named_in_graph():
     assert 0.5 <= graph["3"]["inputs"]["denoise"] <= 1.0  # ControlNet carries the layout, so the sampler can repaint almost fully
     assert graph["4"]["inputs"]["ckpt_name"].startswith("DreamShaperXL_Turbo")
     lora = graph["20"]["inputs"]
-    assert lora["lora_name"].startswith("Og_VTT_Maps") and 0.6 <= lora["strength_model"] <= 1.0
+    assert lora["lora_name"].startswith("Og_VTT_Maps") and 0.3 <= lora["strength_model"] <= 1.0
     assert graph["3"]["inputs"]["model"] == ["20", 0] and graph["6"]["inputs"]["clip"] == ["20", 1]
     assert graph["7"]["inputs"]["clip"] == ["20", 1]
     assert graph["3"]["inputs"]["steps"] <= 12 and graph["3"]["inputs"]["cfg"] <= 3

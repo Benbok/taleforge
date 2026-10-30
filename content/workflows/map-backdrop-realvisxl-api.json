@@ -106,8 +106,8 @@
         1
       ],
       "lora_name": "Og_VTT_MapsTerrain_Patches-000012.safetensors",
-      "strength_model": 0.9,
-      "strength_clip": 0.9
+      "strength_model": 0.5,
+      "strength_clip": 0.5
     }
   },
   "30": {
@@ -141,7 +141,7 @@
         "30",
         0
       ],
-      "strength": 0.8,
+      "strength": 0.7,
       "start_percent": 0.0,
       "end_percent": 1.0
     }

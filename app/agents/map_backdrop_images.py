@@ -11,11 +11,10 @@ MAP_BACKDROP_STYLE = (
     "bold clean shapes, vibrant colors, soft shadows. "
     "Environment only, no characters, no lettering, no interface, no frame."
 )
-# With a control outline the model must know which side of the lines is the road (it cannot tell by itself).
+# With a control outline the model must know which side of the lines is the track (it cannot tell by itself).
 MAP_BACKDROP_CONTROL_STYLE = (
-    "(wide brown dirt roads:1.4), (green grass meadow:1.2), "
-    "The white outlines mark the road network: the ground inside the outlines is bare brown dirt road, "
-    "and everything outside the outlines is green grass meadow. "
+    "Natural landscape seen from above: (varied terrain:1.2), grass, fields, trees, bushes, fences and props from the "
+    "description, (narrow dirt track:1.3) following the white outlines. "
 )
 MAP_BACKDROP_TRANSLATION = (
     "Translate the supplied public location name and description into a concise English prompt for a top-down "

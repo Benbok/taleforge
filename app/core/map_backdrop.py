@@ -38,14 +38,14 @@ async def visible_passages(session, viewer) -> list[dict]:
 
 
 def _spread(passages, cols, rows, taken):
-    """Exits on one side share it evenly (what the orientation map draws); width two cells."""
+    """Exits on one side share it evenly (what the orientation map draws); a track one cell wide."""
     result = []
     for side in "nesw":
         group = [p for p in passages if p["side"] == side and p["name"] not in taken]
         length = cols if side in "ns" else rows
         for i, passage in enumerate(group):
-            at = min(max(round((i + 1) * length / (len(group) + 1) - 1), 0), max(length - 2, 0))
-            result.append({"name": passage["name"], "side": side, "at": at, "kind": "passage", "state": None, "width": 2})
+            at = min(max(int((i + 1) * length / (len(group) + 1)), 0), length - 1)
+            result.append({"name": passage["name"], "side": side, "at": at, "kind": "passage", "state": None, "width": 1})
     return result
 
 
