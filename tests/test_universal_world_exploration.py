@@ -246,3 +246,10 @@ def test_the_world_prompt_tells_which_passage_state_is_a_story_barrier():
 
     prompt = world.PLAN_SYSTEM
     assert "closed" in prompt and "locked" in prompt and "blocked" in prompt
+
+
+def test_the_world_prompts_keep_a_sound_from_becoming_a_hostile_creature():
+    from app.agents.master import world
+
+    assert "звук" in world.PLAN_SYSTEM and "hostile" in world.PLAN_SYSTEM
+    assert "звук" in world.REVIEW_SYSTEM and "враждеб" in world.REVIEW_SYSTEM
