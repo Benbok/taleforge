@@ -238,3 +238,11 @@ def test_unresolved_crossing_does_not_fall_back_to_a_successful_free_note(tmp_pa
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_the_world_prompt_tells_which_passage_state_is_a_story_barrier():
+    """A closed door is walked through, so only locked or blocked may carry a story barrier."""
+    from app.agents.master import world
+
+    prompt = world.PLAN_SYSTEM
+    assert "closed" in prompt and "locked" in prompt and "blocked" in prompt
