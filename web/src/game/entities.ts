@@ -53,10 +53,7 @@ export function cardActions(type: EntityType | undefined, name: string, targetId
         action("Осмотреть", `Присматриваюсь к: ${name}`, "inspect"),
       ];
     case "item":
-      return [
-        action("Подобрать", `Подбираю: ${name}`, "pick_up"),
-        action("Осмотреть", `Осматриваю: ${name}`, "inspect"),
-      ];
+      return [{ label: "Взаимодействовать", text: `${name} — ` }];
     case "location":
       return [
         action("Идти туда", `Иду: ${name}`, "move"),
