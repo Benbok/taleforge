@@ -37,9 +37,9 @@ from app.api import hero_creation as hero_creation_api
 from app.api import library_equipment_artwork as library_equipment_artwork_api
 from app.api import location_artwork as location_artwork_api
 from app.api import map_backdrop as map_backdrop_api
-from app.api import object_icons as object_icons_api
 from app.api import modules as modules_api
 from app.api import npc_portraits as npc_portraits_api
+from app.api import object_icons as object_icons_api
 from app.api import portraits as portraits_api
 from app.api import sfx as sfx_api
 from app.api.errors import validation_handler

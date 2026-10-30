@@ -23,8 +23,9 @@ PROMPT = (
 
 
 class TechnicalPortraitTranslator:
-    def __init__(self, llm, settings, *, prompt=PROMPT, purpose="hero_portrait_translation"):
+    def __init__(self, llm, settings, *, prompt=PROMPT, purpose="hero_portrait_translation", compose=None):
         self.llm = llm
+        self.compose = compose  # optional: model reply -> final prompt; ValueError marks an invalid reply
         self.prompt, self.purpose = prompt, purpose
         self.model = parser_model_for(
             settings.llm_provider, getattr(settings, f"{settings.llm_provider}_technical_model")
@@ -81,6 +82,8 @@ class TechnicalPortraitTranslator:
                     thinking=False,
                 )
             english = reply.text.strip()
+            if self.compose and not reply_audit_error(reply, require_text=True):
+                english = self.compose(english)
             if (
                 reply_audit_error(reply, require_text=True)
                 or reply.tool_calls

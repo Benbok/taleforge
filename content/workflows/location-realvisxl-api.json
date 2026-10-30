@@ -18,7 +18,7 @@
   "7": {
     "class_type": "CLIPTextEncode",
     "inputs": {
-      "text": "text, watermark, captions, interface, collage, frame, portrait, close-up face, blurry, distorted architecture, photograph, photorealistic, hyperrealistic, DSLR, studio photo, 3d render, glossy plastic",
+      "text": "text, watermark, captions, interface, frame, collage, people, characters, humans, photograph, 3d render, top-down view, aerial view, blurry, distorted perspective, glossy plastic",
       "clip": [
         "4",
         1
@@ -28,8 +28,8 @@
   "5": {
     "class_type": "EmptyLatentImage",
     "inputs": {
-      "width": 1152,
-      "height": 768,
+      "width": 768,
+      "height": 512,
       "batch_size": 1
     }
   },
@@ -37,8 +37,8 @@
     "class_type": "KSampler",
     "inputs": {
       "seed": "{{seed}}",
-      "steps": 30,
-      "cfg": 5.0,
+      "steps": 25,
+      "cfg": 6.0,
       "sampler_name": "dpmpp_2m",
       "scheduler": "karras",
       "denoise": 1.0,

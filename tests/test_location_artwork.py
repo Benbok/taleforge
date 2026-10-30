@@ -186,7 +186,7 @@ def test_location_translation_has_environment_prompt_and_separate_accounting(cli
     llm = ScriptedLLM(
         [
             LLMReply(
-                text="Ancient oaks surround a quiet forest clearing.",
+                text='{"place": "forest clearing", "landmarks": ["ancient oaks", "mossy stones"], "side": "", "light": "soft morning", "exits": []}',
                 tokens_in=50,
                 tokens_out=12,
                 cost=0.001,
@@ -207,7 +207,7 @@ def test_location_translation_has_environment_prompt_and_separate_accounting(cli
     assert audit.cost == 0.001 and audit.cost_known and audit.error is None
 
 
-def test_landscape_workflow_uses_wide_composition_without_character_crop():
+def test_landscape_workflow_uses_eye_level_composition_without_character_crop():
     import httpx
 
     from app.agents.location_images import create_location_generator
@@ -216,9 +216,9 @@ def test_landscape_workflow_uses_wide_composition_without_character_crop():
     def respond(request):
         if request.url.path == "/prompt":
             graph = json.loads(request.content)["prompt"]
-            assert graph["5"]["inputs"]["width"] == 1152 and graph["5"]["inputs"]["height"] == 768
+            assert graph["5"]["inputs"]["width"] == 768 and graph["5"]["inputs"]["height"] == 512
             text = graph["6"]["inputs"]["text"]
-            assert "Wide atmospheric" in text and "head and shoulders" not in text
+            assert "eye-level view" in text and "head and shoulders" not in text
             return httpx.Response(200, json={"prompt_id": "job"})
         if request.url.path == "/history/job":
             return httpx.Response(
@@ -236,6 +236,24 @@ def test_landscape_workflow_uses_wide_composition_without_character_crop():
     generator.transport = httpx.MockTransport(respond)
     reply = asyncio.run(generator.generate({"appearance": "Ancient oak forest"}))
     assert reply.data == PNG
+
+
+def test_location_prompt_is_composed_from_model_json_with_fixed_weights():
+    import pytest
+
+    from app.agents.location_images import compose_location_prompt
+
+    reply = (
+        '```json\n{"place": "tavern yard", "landmarks": ["hitching rail (oak)", "rain barrel", "dark horse", "extra"],'
+        ' "side": "low fence on the right", "light": "evening", "exits": ["low door"]}\n```'
+    )
+    assert compose_location_prompt(reply) == (
+        "tavern yard, (evening, dim low light:1.3), (hitching rail oak:1.3), (rain barrel:1.2), dark horse, "
+        "low fence on the right, low door"
+    )
+    for bad in ("no json at all", '{"place": "", "landmarks": ["x"]}', '{"place": "yard", "landmarks": []}'):
+        with pytest.raises(ValueError):
+            compose_location_prompt(bad)
 
 
 def test_location_artwork_migration_preserves_existing_rooms(tmp_path):

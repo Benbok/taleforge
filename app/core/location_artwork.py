@@ -136,7 +136,15 @@ async def generate(session, viewer, location, request_key, regenerate, generator
     reply = None
     started = time.monotonic()
     try:
-        prepared = await translator.translate(session, source, viewer.campaign.id) if translator else source
+        # Known exits go to the prompt only; the cache digest stays the public description alone.
+        from app.core.map_backdrop import visible_passages
+
+        passages = await visible_passages(session, viewer)
+        described = source
+        if passages:
+            names = "; ".join(f"«{p['name']}»" for p in passages)
+            described = {**source, "appearance": f"{source['appearance']}\n\nВыходы из места: {names}."}
+        prepared = await translator.translate(session, described, viewer.campaign.id) if translator else described
         async with asyncio.timeout(seconds + 10):
             reply = await generator.generate(prepared)
         validate_image(reply.data, reply.mime)

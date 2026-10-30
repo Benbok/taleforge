@@ -124,15 +124,15 @@ function ArtworkCard({ endpoint, name }: { endpoint: string; name: string }) {
           disabled={pending}
           onClick={() => void generate()}
           aria-label={`Создать изображение ${name}`}
-          className='group relative flex h-28 w-28 sm:h-32 sm:w-32 shrink-0 flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-line-soft bg-surface-2/30 p-2 text-center transition-all hover:border-accent/60 hover:bg-surface-2/60 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-60 disabled:cursor-not-allowed shadow-2xs'
+          className='btn btn-outline-copper group relative flex h-28 w-28 sm:h-32 sm:w-32 shrink-0 flex-col items-center justify-center gap-1.5 p-2 text-center transition-all hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-60 disabled:cursor-not-allowed shadow-2xs'
         >
           <span
-            className='flex h-8 w-8 items-center justify-center rounded-lg border border-line-soft bg-surface text-accent/80 transition-transform duration-200 group-hover:scale-110 group-hover:border-accent/40 group-hover:text-accent shadow-2xs'
+            className='flex h-8 w-8 items-center justify-center rounded-lg border border-accent/40 bg-surface text-accent transition-transform duration-200 group-hover:scale-110 shadow-2xs'
             aria-hidden='true'
           >
             {pending ? <span className='animate-spin text-sm'>↻</span> : <span className='text-sm'>✨</span>}
           </span>
-          <span className='text-[11px] font-medium leading-tight text-ink-2 group-hover:text-accent'>
+          <span className='text-[11px] font-semibold leading-tight text-ink group-hover:text-accent'>
             {pending ? 'Создаётся изображение…' : 'Создать изображение'}
           </span>
         </button>
@@ -143,7 +143,7 @@ function ArtworkCard({ endpoint, name }: { endpoint: string; name: string }) {
           disabled={pending}
           onClick={() => void generate(true)}
           aria-label={`Пересоздать изображение ${name}`}
-          className='group/btn inline-flex w-28 sm:w-32 items-center justify-center gap-1.5 rounded-lg border border-line-soft bg-surface-2/60 px-2 py-1 text-[11px] font-medium text-ink-2 transition-all hover:border-accent/40 hover:bg-surface-2 hover:text-accent focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-60 disabled:cursor-not-allowed shadow-2xs'
+          className='btn btn-outline-copper group/btn inline-flex w-28 sm:w-32 items-center justify-center gap-1.5 py-1 px-2 text-[11px] font-semibold text-ink transition-all hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-60 disabled:cursor-not-allowed shadow-2xs'
         >
           <span className={`text-xs ${pending ? 'animate-spin' : 'transition-transform group-hover/btn:rotate-180'}`} aria-hidden='true'>
             ↻

@@ -17,7 +17,6 @@ from app.core.sketch import check, floor_cells
 from app.core.universal.clock import lock_campaign
 from app.db.models import Campaign, Character, Entity, Scene
 
-
 INDOOR_NAME_WORDS = (
     "конюшн", "хлев", "сарай", "амбар", "погреб", "подвал", "кухн", "кладов", "чердак", "склеп",
     "мастерск", "кузниц", "спальн", "кабинет", "изб",

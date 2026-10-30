@@ -139,37 +139,70 @@ export default function LocationArtwork({ campaignId, locationId, name }: {
           type="button"
           disabled={pending}
           onClick={() => void generate(false)}
-          className="btn-ghost w-full py-2 text-xs"
+          aria-label="Создать иллюстрацию"
+          className="btn btn-outline-copper group flex w-full items-center justify-center gap-2 py-2 text-xs font-semibold text-ink transition-all hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-60 disabled:cursor-not-allowed shadow-2xs"
         >
-          {pending ? "Создаётся иллюстрация…" : "Создать иллюстрацию"}
+          <span className={pending ? "animate-spin text-sm" : "text-sm text-accent"}>
+            {pending ? "↻" : "✨"}
+          </span>
+          <span>{pending ? "Создаётся иллюстрация…" : "Создать иллюстрацию"}</span>
         </button>
       )}
 
       {artwork.can_generate && artwork.image_url && artwork.stale && (
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => void generate(true)}
-          className="btn-ghost w-full py-2 text-xs text-muted hover:text-ink"
-        >
-          {pending ? "Обновляется иллюстрация…" : "Обновить иллюстрацию для нового описания"}
-        </button>
+        <div className="flex items-center justify-start">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => void generate(true)}
+            aria-label={`Обновить иллюстрацию ${name}`}
+            className="btn btn-outline-copper group/btn inline-flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold text-ink transition-all hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-60 disabled:cursor-not-allowed shadow-2xs"
+          >
+            <span
+              className={`text-xs ${pending ? 'animate-spin' : 'transition-transform group-hover/btn:rotate-180'}`}
+              aria-hidden="true"
+            >
+              ↻
+            </span>
+            <span>{pending ? "Обновляется иллюстрация…" : "Обновить для нового описания"}</span>
+          </button>
+        </div>
+      )}
+
+      {artwork.can_generate && artwork.image_url && !artwork.stale && (
+        <div className="flex items-center justify-start">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => void generate(true)}
+            aria-label={`Пересоздать иллюстрацию ${name}`}
+            className="btn btn-outline-copper group/btn inline-flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold text-ink transition-all hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-60 disabled:cursor-not-allowed shadow-2xs"
+          >
+            <span
+              className={`text-xs ${pending ? 'animate-spin' : 'transition-transform group-hover/btn:rotate-180'}`}
+              aria-hidden="true"
+            >
+              ↻
+            </span>
+            <span>{pending ? "Создаётся замена…" : "Пересоздать"}</span>
+          </button>
+        </div>
       )}
 
       {pending && (
-        <p role="status" className="text-center text-[11px] text-muted">
+        <p role="status" className="text-center sm:text-left text-[11px] text-muted">
           Художник пишет картину… Можно продолжать игру.
         </p>
       )}
 
       {(error || artwork.error) && (
-        <p role="alert" className="text-center text-[11px] text-bad">
+        <p role="alert" className="text-center sm:text-left text-[11px] text-bad">
           {error || artwork.error}
         </p>
       )}
 
       {loadError && !error && !artwork.error && (
-        <div role="alert" className="text-center text-[11px] text-muted">
+        <div role="alert" className="text-center sm:text-left text-[11px] text-muted">
           <span>{loadError}</span>
           <button
             type="button"
