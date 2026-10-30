@@ -14,12 +14,15 @@ LOCATION_WORKFLOW = ROOT / "content" / "workflows" / "location-realvisxl-api.jso
 
 
 def responder(calls, *, upload_status=200):
+    uploads = []
+
     def respond(request):
         calls.append(request)
         if request.url.path == "/upload/image":
             if upload_status != 200:
                 return httpx.Response(upload_status)
-            return httpx.Response(200, json={"name": "bd.png", "subfolder": "", "type": "input"})
+            uploads.append(request)
+            return httpx.Response(200, json={"name": f"up{len(uploads)}.png", "subfolder": "", "type": "input"})
         if request.url.path == "/prompt":
             return httpx.Response(200, json={"prompt_id": "job1"})
         if request.url.path == "/history/job1":
@@ -48,11 +51,11 @@ def test_init_image_is_uploaded_and_named_in_graph():
     reply = asyncio.run(generator(MAP_WORKFLOW, calls).generate({"appearance": "yard"}, init_image=PNG))
     assert reply.data == PNG
     paths = [r.url.path for r in calls]
-    assert paths.count("/upload/image") == 1 and paths.count("/prompt") == 1
+    assert paths.count("/upload/image") == 2 and paths.count("/prompt") == 1  # outline + a neutral control image
     assert paths.index("/upload/image") < paths.index("/prompt")
     graph = json.loads(next(r for r in calls if r.url.path == "/prompt").content)["prompt"]
-    assert graph["10"]["inputs"]["image"] == "bd.png"
-    assert 0.5 <= graph["3"]["inputs"]["denoise"] <= 0.9
+    assert graph["10"]["inputs"]["image"] == "up1.png"
+    assert 0.5 <= graph["3"]["inputs"]["denoise"] <= 1.0  # ControlNet carries the layout, so the sampler can repaint almost fully
     assert graph["4"]["inputs"]["ckpt_name"].startswith("DreamShaperXL_Turbo")
     lora = graph["20"]["inputs"]
     assert lora["lora_name"].startswith("Og_VTT_Maps") and 0.6 <= lora["strength_model"] <= 1.0
@@ -88,3 +91,28 @@ def test_existing_workflow_still_works_without_image():
     reply = asyncio.run(generator(LOCATION_WORKFLOW, calls).generate({"appearance": "x"}))
     assert reply.data == PNG
     assert not any(r.url.path == "/upload/image" for r in calls)
+
+
+def test_control_image_is_uploaded_second_and_wired_into_controlnet():
+    calls = []
+    asyncio.run(generator(MAP_WORKFLOW, calls).generate({"appearance": "x"}, init_image=PNG, control_image=PNG))
+    assert [r.url.path for r in calls].count("/upload/image") == 2
+    graph = json.loads(next(r for r in calls if r.url.path == "/prompt").content)["prompt"]
+    assert graph["10"]["inputs"]["image"] == "up1.png" and graph["30"]["inputs"]["image"] == "up2.png"
+    assert graph["32"]["inputs"]["strength"] > 0
+    assert graph["3"]["inputs"]["positive"] == ["32", 0] and graph["3"]["inputs"]["negative"] == ["32", 1]
+    assert graph["31"]["inputs"]["control_net_name"].startswith("controlnet-scribble-sdxl")
+
+
+def test_missing_control_image_switches_the_controlnet_off():
+    calls = []
+    asyncio.run(generator(MAP_WORKFLOW, calls).generate({"appearance": "x"}, init_image=PNG))
+    graph = json.loads(next(r for r in calls if r.url.path == "/prompt").content)["prompt"]
+    assert graph["32"]["inputs"]["strength"] == 0.0 and graph["30"]["inputs"]["image"].startswith("up")
+
+
+def test_control_image_for_a_workflow_without_controlnet_is_rejected():
+    calls = []
+    with pytest.raises(PortraitError):
+        asyncio.run(generator(LOCATION_WORKFLOW, calls).generate({"appearance": "x"}, control_image=PNG))
+    assert not calls

@@ -40,9 +40,10 @@ class FakeGenerator:
     def __init__(self):
         self.calls, self.inits, self.fail = 0, [], False
 
-    async def generate(self, description, *, init_image=None):
+    async def generate(self, description, *, init_image=None, control_image=None):
         self.calls += 1
         self.inits.append(init_image)
+        self.controls = getattr(self, "controls", []) + [control_image]
         if self.fail:
             raise PortraitError("comfyui_unavailable")
         return ImageReply(PNG, "image/png", self.model, cost_known=True)
@@ -182,10 +183,10 @@ def test_source_changing_midway_is_not_published(world):
     recipe, translator = make_recipe(), FakeTranslator()
 
     class Moving(FakeGenerator):
-        async def generate(self, description, *, init_image=None):
+        async def generate(self, description, *, init_image=None, control_image=None):
             self.subject.description = "Другое описание."
             await self.session.flush()
-            return await super().generate(description, init_image=init_image)
+            return await super().generate(description, init_image=init_image, control_image=control_image)
 
     generator = Moving()
 
@@ -284,3 +285,16 @@ def test_async_source_with_session_is_awaited_and_its_digest_decides_staleness(w
 
     ready, after = run(go)
     assert ready["stale"] is False and after["stale"] is True and after["image_url"] == ready["image_url"]
+
+
+def test_control_image_is_passed_to_the_generator_only_when_the_recipe_has_one(world):
+    _, _, run, tmp = world
+    with_control = make_recipe(control_image=lambda src: b"ctrl-" + src["identity"].encode())
+    plain, generator, translator = make_recipe(), FakeGenerator(), FakeTranslator()
+
+    async def go(session, viewer, subject):
+        await service.generate(session, viewer, with_control, subject, "a", False, generator, translator, tmp)
+        await service.generate(session, viewer, plain, subject, "b", True, generator, translator, tmp)
+
+    run(go)
+    assert generator.controls == ["ctrl-Двор".encode(), None]

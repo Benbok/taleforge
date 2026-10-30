@@ -53,11 +53,12 @@ def backdrop_world(client, root, tmp_path):
     class Generator:
         model = "comfyui/test"
         timeout_seconds = 600
-        calls, fail, inits = 0, False, []
+        calls, fail, inits, controls = 0, False, [], []
 
-        async def generate(self, description, *, init_image=None):
+        async def generate(self, description, *, init_image=None, control_image=None):
             self.calls += 1
             self.inits.append(init_image)
+            self.controls.append(control_image)
             if self.fail:
                 raise PortraitError("comfyui_unavailable")
             return ImageReply(PNG, "image/png", self.model, cost_known=True)
@@ -71,7 +72,7 @@ def backdrop_world(client, root, tmp_path):
             return {**description, "appearance": "Tavern yard."}
 
     generator, translator = Generator(), Translator()
-    generator.inits, translator.payloads = [], []
+    generator.inits, generator.controls, translator.payloads = [], [], []
     client.app.state.map_backdrop_generator = generator
     client.app.state.map_backdrop_translator = translator
     client.app.state.map_backdrop_media_dir = tmp_path
@@ -201,3 +202,4 @@ def test_known_exits_reach_the_translator_and_the_init_image(client, root, backd
     assert client.post(url, headers=root, json={"request_key": "exits", "regenerate": True}).status_code == 200
     assert "Пролаз в изгороди" in translator.payloads[1]["appearance"] and "слева" in translator.payloads[1]["appearance"]
     assert generator.inits[1] != plain_init
+    assert generator.controls[0] and generator.controls[1] and generator.controls[1] != generator.controls[0]  # the stored road alone, then road + exits

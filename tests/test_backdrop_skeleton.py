@@ -3,7 +3,7 @@ import io
 import pytest
 from PIL import Image
 
-from app.core.universal.backdrop_skeleton import public_sketch, render_skeleton, skeleton_size
+from app.core.universal.backdrop_skeleton import public_sketch, render_control, render_skeleton, skeleton_size
 
 
 def sketch(**over):
@@ -82,3 +82,23 @@ def test_passage_exits_get_a_path_towards_the_centre():
     assert plain.getpixel(point) != with_path.getpixel(point)
     corner = (int(cell_w * 8.5), int(cell_h * 0.5))
     assert plain.getpixel(corner) == with_path.getpixel(corner)
+
+
+def test_control_image_is_the_contour_of_the_road_network():
+    exits = [{"name": "Колея", "side": "w", "at": 3, "kind": "passage", "width": 2}]
+    public = public_sketch(sketch(edges=[], terrain=[], exits=exits))
+    first = render_control(public)
+    assert first == render_control(public)
+    image = decode(first)
+    assert image.size == skeleton_size(10, 8)
+    cell_w, cell_h = 768 / 10, 640 / 8
+    inside = image.getpixel((int(cell_w * 2), int(cell_h * 4)))  # middle of the band: not a contour pixel
+    top_edge = image.getpixel((int(cell_w * 2), int(cell_h * 3)))  # on the band's upper edge
+    far = image.getpixel((int(cell_w * 8), int(cell_h * 7)))
+    assert inside == (0, 0, 0) and far == (0, 0, 0) and top_edge == (255, 255, 255)
+
+
+def test_stored_roads_and_streams_are_part_of_the_control_image_and_nothing_means_none():
+    only_terrain = public_sketch(sketch(edges=[], exits=[], terrain=[{"kind": "stream", "cells": [[4, 0, 4, 7]]}]))
+    assert render_control(only_terrain) is not None
+    assert render_control(public_sketch(sketch(edges=[], terrain=[], exits=[]))) is None

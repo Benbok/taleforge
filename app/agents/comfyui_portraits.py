@@ -1,6 +1,7 @@
 """Local ComfyUI adapter: one submission, bounded polling and download, no cloud fallback."""
 
 import asyncio
+import base64
 import json
 import secrets
 from pathlib import Path
@@ -14,6 +15,11 @@ DEFAULT_WORKFLOW = ROOT / "content" / "workflows" / "portrait-realvisxl-api.json
 FANTASY_ART_DIRECTION = (
     "Hand-painted fantasy illustration, stylized painterly shapes, visible brush strokes, "
     "atmospheric light, rich muted colors. "
+)
+
+
+_BLACK_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC"
 )
 
 
@@ -47,8 +53,11 @@ class ComfyUIPortraitGenerator:
         )
         self.model = f"comfyui/{checkpoint}"
         self.needs_init_image = "{{init_image}}" in json.dumps(self.workflow)
+        self.needs_control_image = "{{control_image}}" in json.dumps(self.workflow)
 
-    async def generate(self, description: dict, *, init_image: bytes | None = None) -> ImageReply:
+    async def generate(
+        self, description: dict, *, init_image: bytes | None = None, control_image: bytes | None = None
+    ) -> ImageReply:
         # Art direction leads; observed appearance follows before the composition instructions.
         details = ", ".join(str(description.get(k) or "") for k in ("appearance", "identity", "personality"))
         style = self.style or (
@@ -57,15 +66,19 @@ class ComfyUIPortraitGenerator:
             "restrained background, detailed illustrated game art, no text."
         )
         seed = secrets.randbits(63)
-        if bool(init_image) != self.needs_init_image:
+        if bool(init_image) != self.needs_init_image or (control_image and not self.needs_control_image):
             raise PortraitError("provider_error")
         image_name = f"taleforge-{secrets.token_hex(8)}.png"
+        control_name = f"taleforge-ctrl-{secrets.token_hex(8)}.png"
+        controlled = bool(control_image)
+        if self.needs_control_image and not controlled:
+            control_image = _BLACK_PNG  # ControlNet is switched off below; the workflow still needs an image to load
 
         def substitute(value):
             if value == "{{seed}}":
                 return seed
             if isinstance(value, str):
-                return value.replace("{{prompt}}", prompt).replace("{{init_image}}", image_name)
+                return value.replace("{{prompt}}", prompt).replace("{{init_image}}", image_name).replace("{{control_image}}", control_name)
             if isinstance(value, dict):
                 return {k: substitute(v) for k, v in value.items()}
             if isinstance(value, list):
@@ -86,7 +99,20 @@ class ComfyUIPortraitGenerator:
                         )
                         upload.raise_for_status()
                         image_name = upload.json()["name"]
-                    response = await client.post("prompt", json={"prompt": substitute(self.workflow)})
+                    if control_image:
+                        upload = await client.post(
+                            "upload/image",
+                            files={"image": (control_name, control_image, "image/png")},
+                            data={"overwrite": "true", "type": "input"},
+                        )
+                        upload.raise_for_status()
+                        control_name = upload.json()["name"]
+                    graph = substitute(self.workflow)
+                    if self.needs_control_image and not controlled:
+                        for node in graph.values():
+                            if node.get("class_type") == "ControlNetApplyAdvanced":
+                                node["inputs"]["strength"] = 0.0
+                    response = await client.post("prompt", json={"prompt": graph})
                     response.raise_for_status()
                     prompt_id = response.json()["prompt_id"]
                     while True:

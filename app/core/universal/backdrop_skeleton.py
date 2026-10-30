@@ -3,7 +3,7 @@
 import io
 from copy import deepcopy
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 LONG_SIDE = 768
 MIN_SIDE = 384
@@ -95,4 +95,33 @@ def render_skeleton(public: dict) -> bytes:
         draw.rectangle(box, fill=EXIT)
     out = io.BytesIO()
     image.save(out, format="PNG")
+    return out.getvalue()
+
+
+CONTROL_LINE = 7  # contour thickness in pixels
+
+
+def render_control(public: dict) -> bytes | None:
+    """Scribble for ControlNet: white contour of the road network (passage paths, stored roads and streams) on black.
+
+    Two parallel edges tell the model "a road runs between", which a single thin line does not. None if there is nothing to draw."""
+    cols, rows = public["cols"], public["rows"]
+    width, height = skeleton_size(cols, rows)
+    sx, sy = width / cols, height / rows
+    mask = Image.new("L", (width, height), 0)
+    draw = ImageDraw.Draw(mask)
+    rects = []
+    for exit in public.get("exits") or []:
+        if exit.get("kind") == "passage":
+            rects += _passage_path(exit, cols, rows, (cols // 2, rows // 2))
+    for terrain in public.get("terrain") or []:
+        if terrain["kind"] in ("road", "path", "stream"):
+            rects += list(_rects(terrain["cells"]))
+    if not rects:
+        return None
+    for x0, y0, x1, y1 in rects:
+        draw.rectangle([x0 * sx, y0 * sy, (x1 + 1) * sx - 1, (y1 + 1) * sy - 1], fill=255)
+    edge = ImageChops.difference(mask.filter(ImageFilter.MaxFilter(CONTROL_LINE)), mask.filter(ImageFilter.MinFilter(CONTROL_LINE)))
+    out = io.BytesIO()
+    edge.point(lambda v: 255 if v else 0).convert("RGB").save(out, format="PNG")
     return out.getvalue()

@@ -2,7 +2,7 @@
 
 from app.core.artwork.recipe import ArtworkRecipe
 from app.core.campaigns import NotFound, is_admin
-from app.core.universal.backdrop_skeleton import public_sketch, render_skeleton
+from app.core.universal.backdrop_skeleton import public_sketch, render_control, render_skeleton
 from app.core.universal.places import public_location_name
 from app.core.universal.scene import universal_scene
 from app.db.models import Entity
@@ -106,6 +106,7 @@ RECIPE = ArtworkRecipe(
     permitted=lambda viewer: is_admin(viewer.user),
     blocker=blocker,
     init_image=lambda src: render_skeleton(src["sketch"]) if src["sketch"] and not src["complex"] else None,
+    control_image=lambda src: render_control(src["sketch"]) if src["sketch"] and not src["complex"] else None,
     prompt_source=prompt_source,
     url=lambda campaign_id, location_id, image_id: f"/api/campaigns/{campaign_id}/locations/{location_id}/map-backdrop/{image_id}",
     denied="подложку создаёт администратор",

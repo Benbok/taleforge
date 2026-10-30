@@ -139,10 +139,12 @@ async def generate(
         prepared = await translator.translate(session, description, cid) if translator else description
         init = recipe.init_image(source)
         async with asyncio.timeout(seconds + 10):
+            control = recipe.control_image(source) if recipe.control_image else None
+            extra = {} if control is None else {"control_image": control}
             if init is None:
-                reply = await generator.generate(prepared)
+                reply = await generator.generate(prepared, **extra)
             else:
-                reply = await generator.generate(prepared, init_image=init)
+                reply = await generator.generate(prepared, init_image=init, **extra)
         validate_image(reply.data, reply.mime)
         await session.refresh(subject)
         if digest(await _source(session, viewer, recipe, subject)) != job.source_digest:
