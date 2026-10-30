@@ -61,6 +61,17 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
     if review.verdict != "pass":
         raise ValueError(review.message or "Намерение требует уточнения")
     source = public_context["source_text"]
+    if public_context.get("world_development"):
+        exits = {exit["id"] for exit in public_context.get("known_exits", [])}
+        for op in intent.effects:
+            if op.kind != "move":
+                continue
+            if not op.object_id and op.travel_scope is None:
+                raise ValueError(
+                    "Укажи travel_scope: between_locations для перехода или within_scene для подхода внутри места"
+                )
+            if op.destination_id and op.destination_id not in exits:
+                raise ValueError("destination_id отсутствует в known_exits; выбери известный выход из known_exits")
     ids = {r.id for r in intent.requirements}
     if len(ids) != len(intent.requirements) or set(review.covered_requirements) != ids:
         raise ValueError("Проверка не покрыла требования")
@@ -80,7 +91,10 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
         raise ValueError("Неизвестное требование")
     evidence = public_context.get("evidence", "")
     if any(i.evidence_quote not in evidence for i in intent.introductions):
-        raise ValueError("Предмет или наблюдатель не подтверждён известной обстановкой")
+        raise ValueError(
+            "Предмет или наблюдатель не подтверждён известной обстановкой; "
+            "возьми дословную evidence_quote из established_evidence или убери introduction"
+        )
     targets = intent.targets or [ctx.actor_id]
     if intent.introductions:
         from app.core.universal.perception import observer_id

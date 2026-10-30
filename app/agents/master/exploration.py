@@ -78,7 +78,7 @@ SYSTEM = (
     "Перемещение между локациями — move с travel_scope=between_locations и destination_id из known_exits. "
     "Фраза «иду в туннель/лес/комнату» означает вход в другое место, а не подход к его устью. "
     "Не подменяй переход успешным движением на месте. travel_scope=within_scene — только явный подход/шаг "
-    "внутри текущего места. Если нужного выхода нет в known_exits, не выдумывай ID. "
+    "внутри текущего места. "
     "Для перехода в известное соседнее место используй move с destination_id из known_exits. "
     "Клетки не нужны. Закрытая (closed) дверь — обычная: вход в неё это move с её destination_id, "
     "дверь открывается сама; "
@@ -101,7 +101,7 @@ SYSTEM = (
     "pretend — притворяется; unclear — сомневаешься (при сомнении всегда unclear). "
     "Не записывай магическую просьбу как обычную: при ordinary независимая проверка смысла не запускается. "
     "Выдели все существенные требования с точными цитатами source и сопоставь их effects.required_by. "
-    "quote — только дословный фрагмент поля source, то есть слов игрока в этом ходе. Рассказ мастера и history — "
+    "Рассказ мастера и history — "
     "лишь контекст: не цитируй их и не принимай их вопросы к игроку за его слова. "
     "Каждое требование имеет свой уникальный короткий id (req_1, req_2…), не id героя или объекта. "
     "Превращение героя в иную форму — change_form: в label назови форму, в appearance опиши облик и что эта форма "
@@ -189,7 +189,7 @@ SYSTEM = (
     "После действия отвечает не более одного врага. "
     "Новый observer допускается только по существующим evidence; awareness=watching_actor сохраняет прямого свидетеля, "
     "awareness=unknown требует основания, что наблюдатель ещё не заметил героя. "
-    "Сложность1..40 фиксируется до броска. Натуральные20/1 — критические исходы. "
+    "Натуральные20/1 — критические исходы. "
     "Модель не назначает конечную цену или готовый результат: их вычисляет сервер."
 )
 REVIEW = (
@@ -468,6 +468,8 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                         source_message_id=mid,
                         source_text=context["source"],
                         evidence=context.get("established_evidence", ""),
+                        world_development=context.get("world_development", False),
+                        known_exits=context.get("known_exits", []),
                     ),
                 )
             result = PreparedExploration(proposal=action)
