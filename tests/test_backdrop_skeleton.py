@@ -71,3 +71,14 @@ def test_mask_marks_non_floor_dark():
     image = decode(render_skeleton(public_sketch(sketch(mask=mask, walls=[], edges=[], terrain=[], exits=[]))))
     cell = 768 / 10
     assert image.getpixel((int(cell * 5.5), int(cell * 0.5))) != image.getpixel((int(cell * 5.5), int(cell * 3.5)))
+
+
+def test_passage_exits_get_a_path_towards_the_centre():
+    exits = [{"name": "Колея", "side": "w", "at": 5, "kind": "passage", "width": 2}]
+    plain = decode(render_skeleton(public_sketch(sketch(edges=[], terrain=[], exits=[], party=[5, 4]))))
+    with_path = decode(render_skeleton(public_sketch(sketch(edges=[], terrain=[], exits=exits))))
+    cell_w, cell_h = 768 / 10, 640 / 8
+    point = (int(cell_w * 2.5), int(cell_h * 5.5))  # between the west edge and the centre, on the exit's row
+    assert plain.getpixel(point) != with_path.getpixel(point)
+    corner = (int(cell_w * 8.5), int(cell_h * 0.5))
+    assert plain.getpixel(corner) == with_path.getpixel(corner)

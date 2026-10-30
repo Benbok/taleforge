@@ -39,7 +39,7 @@ def viewer(role=None):
 
 
 def test_source_excludes_hidden_exit_features_and_secrets():
-    source = backdrop.RECIPE.source(viewer(), area())
+    source = backdrop.source(viewer(), area())
     prompt = backdrop.RECIPE.prompt_source(source)
     assert "SECRET" not in json.dumps(source, ensure_ascii=False) and "Тайный ход" not in json.dumps(source)
     assert set(prompt) == {"identity", "appearance", "personality"}
@@ -61,21 +61,21 @@ def test_admin_is_permitted(role):
 
 def test_blocker_needs_description_and_sketch():
     recipe = backdrop.RECIPE
-    assert recipe.blocker(recipe.source(viewer(), area())) is None
+    assert recipe.blocker(backdrop.source(viewer(), area())) is None
     no_description = area()
     no_description.description = " "
-    assert "описания" in recipe.blocker(recipe.source(viewer(), no_description))
+    assert "описания" in recipe.blocker(backdrop.source(viewer(), no_description))
     no_sketch = area(sketch=None)
-    assert "схему" in recipe.blocker(recipe.source(viewer(), no_sketch))
+    assert "схему" in recipe.blocker(backdrop.source(viewer(), no_sketch))
 
 
 def test_digest_changes_when_hidden_exit_becomes_visible():
     revealed = sketch()
     revealed["exits"][1]["hidden"] = False
-    before = service.digest(backdrop.RECIPE.source(viewer(), area()))
-    assert service.digest(backdrop.RECIPE.source(viewer(), area(sketch=revealed))) != before
+    before = service.digest(backdrop.source(viewer(), area()))
+    assert service.digest(backdrop.source(viewer(), area(sketch=revealed))) != before
     moved_party = sketch(party=[6, 6])
-    assert service.digest(backdrop.RECIPE.source(viewer(), area(sketch=moved_party))) == before
+    assert service.digest(backdrop.source(viewer(), area(sketch=moved_party))) == before
 
 
 def test_url_points_to_map_backdrop_route():
@@ -91,6 +91,38 @@ def test_config_flag_defaults_off(monkeypatch):
 
 def test_blueprint_backed_area_is_blocked_because_passage_state_lives_on_the_root():
     complex_area = area(sketch=sketch(blueprint={"root_id": "root"}))
-    source = backdrop.RECIPE.source(viewer(), complex_area)
+    source = backdrop.source(viewer(), complex_area)
     assert "комплекс" in backdrop.RECIPE.blocker(source)
     assert backdrop.RECIPE.init_image(source) is None
+
+
+PASSAGES = [
+    {"name": "Дворовые ворота", "side": "n"},
+    {"name": "Старая тропа", "side": "n"},
+    {"name": "Пролаз в изгороди", "side": "w"},
+    {"name": "Колея на восток", "side": "e"},
+]
+
+
+def test_visible_passages_become_exits_spread_along_their_side():
+    exits = backdrop.source(viewer(), area(), PASSAGES)["sketch"]["exits"]
+    synthesized = [e for e in exits if e["kind"] == "passage"]
+    north = sorted(e["at"] for e in synthesized if e["side"] == "n")
+    assert len(synthesized) == 4 and len(north) == 2 and 0 <= north[0] < north[1] <= 8
+    west = next(e for e in synthesized if e["side"] == "w")
+    assert west["at"] == 3 and west["width"] == 2  # centred on an 8-row side
+    assert "Тайный ход" not in json.dumps(exits, ensure_ascii=False)
+
+
+def test_prompt_lists_exits_by_picture_edge_and_digest_follows_them():
+    source = backdrop.source(viewer(), area(), PASSAGES)
+    appearance = backdrop.RECIPE.prompt_source(source)["appearance"]
+    assert appearance.startswith("Двор таверны.")
+    assert "слева" in appearance and "Пролаз в изгороди" in appearance and "сверху" in appearance
+    assert "SECRET" not in appearance
+    assert service.digest(source) != service.digest(backdrop.source(viewer(), area(), PASSAGES[:2]))
+    assert backdrop.RECIPE.prompt_source(backdrop.source(viewer(), area()))["appearance"] == "Двор таверны."
+
+
+def test_side_of_bearing_matches_the_client_rules():
+    assert [backdrop.side_of(b) for b in ("ne", "w", "sw", "n", None, "s")] == ["e", "w", "w", "n", "n", "s"]

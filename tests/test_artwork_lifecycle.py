@@ -265,3 +265,22 @@ def test_read_image_rejects_foreign_subject_and_campaign(world):
             await service.read_image(session, viewer, recipe, subject, "missing", tmp)
 
     run(go)
+
+
+def test_async_source_with_session_is_awaited_and_its_digest_decides_staleness(world):
+    _, _, run, tmp = world
+    extra = {"value": 1}
+
+    async def source(viewer, subject, session):
+        assert session is not None
+        return {"identity": subject.name, "appearance": subject.description, "personality": "", "extra": extra["value"]}
+
+    recipe, generator, translator = make_recipe(source=source, source_needs_session=True), FakeGenerator(), FakeTranslator()
+
+    async def go(session, viewer, subject):
+        ready = await service.generate(session, viewer, recipe, subject, "a", False, generator, translator, tmp)
+        extra["value"] = 2
+        return ready, await service.status(session, viewer, recipe, subject, True)
+
+    ready, after = run(go)
+    assert ready["stale"] is False and after["stale"] is True and after["image_url"] == ready["image_url"]

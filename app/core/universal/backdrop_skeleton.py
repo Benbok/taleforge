@@ -34,6 +34,18 @@ def _rects(cells):
         yield x0, y0, x1, y1
 
 
+def _passage_path(exit, cols, rows, centre):
+    """Cell rectangles of a path from an exit on the grid edge to the grid centre, so the picture connects them."""
+    at, span = exit["at"], max(1, exit.get("width") or 1)
+    cx, cy = centre
+    side = exit["side"]
+    if side in ("w", "e"):
+        x0, x1 = (0, cx) if side == "w" else (cx, cols - 1)
+        return [(x0, at, x1, at + span - 1), (cx, min(at, cy), cx + span - 1, max(at, cy))]
+    y0, y1 = (0, cy) if side == "n" else (cy, rows - 1)
+    return [(at, y0, at + span - 1, y1), (min(at, cx), cy, max(at, cx), cy + span - 1)]
+
+
 def render_skeleton(public: dict) -> bytes:
     cols, rows = public["cols"], public["rows"]
     width, height = skeleton_size(cols, rows)
@@ -51,6 +63,11 @@ def render_skeleton(public: dict) -> bytes:
     for terrain in public.get("terrain") or []:
         for rect in _rects(terrain["cells"]):
             fill(*rect, TERRAIN.get(terrain["kind"], FLOOR))
+    centre = (cols // 2, rows // 2)
+    for exit in public.get("exits") or []:
+        if exit.get("kind") == "passage":
+            for rect in _passage_path(exit, cols, rows, centre):
+                fill(*rect, TERRAIN["path"])
     for x, y in public.get("walls") or []:
         fill(x, y, x, y, WALL)
     for edge in public.get("edges") or []:
@@ -66,6 +83,8 @@ def render_skeleton(public: dict) -> bytes:
         }[side]
         draw.rectangle(box, fill=WALL)
     for exit in public.get("exits") or []:
+        if exit.get("kind") == "passage":
+            continue  # a path leads to it; a bright bar would bleed into the picture
         at, span = exit["at"], max(1, exit.get("width") or 1)
         box = {
             "n": [at * sx, 0, (at + span) * sx, sy * 0.45],

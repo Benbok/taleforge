@@ -184,3 +184,20 @@ def test_party_moving_away_does_not_leak_files_of_previous_area(client, root, ba
 
     db(client, move)
     assert client.get(image, headers=root).status_code == 404
+
+
+def test_known_exits_reach_the_translator_and_the_init_image(client, root, backdrop_world, monkeypatch):
+    from app.core import map_backdrop
+
+    _, url, generator, translator = backdrop_world
+    assert client.post(url, headers=root, json={"request_key": "plain"}).status_code == 200
+    plain_init = generator.inits[0]
+
+    async def passages(session, viewer):
+        return [{"name": "Пролаз в изгороди", "side": "w"}, {"name": "Колея на восток", "side": "e"}]
+
+    monkeypatch.setattr(map_backdrop, "visible_passages", passages)
+    assert client.get(url, headers=root).json()["stale"] is True
+    assert client.post(url, headers=root, json={"request_key": "exits", "regenerate": True}).status_code == 200
+    assert "Пролаз в изгороди" in translator.payloads[1]["appearance"] and "слева" in translator.payloads[1]["appearance"]
+    assert generator.inits[1] != plain_init

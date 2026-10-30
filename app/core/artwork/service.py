@@ -2,6 +2,7 @@
 
 import asyncio
 import hashlib
+import inspect
 import json
 import time
 from datetime import timedelta
@@ -22,6 +23,11 @@ class ArtworkPending(Conflict):
 
 def digest(source) -> str:
     return hashlib.sha256(json.dumps(source, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+
+
+async def _source(session, viewer, recipe, subject) -> dict:
+    value = recipe.source(viewer, subject, session) if recipe.source_needs_session else recipe.source(viewer, subject)
+    return await value if inspect.isawaitable(value) else value
 
 
 async def _rows(session, viewer, recipe, subject):
@@ -45,7 +51,7 @@ async def status(session, viewer, recipe: ArtworkRecipe, subject, enabled) -> di
     state = latest.status if latest else "idle"
     if latest and state == "pending" and as_utc(latest.lease_until) < now():
         state = "failed"
-    source = recipe.source(viewer, subject)
+    source = await _source(session, viewer, recipe, subject)
     return {
         "status": state,
         "image_url": recipe.url(viewer.campaign.id, subject.id, ready.id) if ready else None,
@@ -63,7 +69,7 @@ async def generate(
         raise AccessDenied(recipe.denied)
     if generator is None:
         raise Conflict(f"генерация ({recipe.noun}) не настроена")
-    source = recipe.source(viewer, subject)
+    source = await _source(session, viewer, recipe, subject)
     if reason := recipe.blocker(source):
         raise Conflict(reason)
     cid, sid = viewer.campaign.id, subject.id
@@ -139,7 +145,7 @@ async def generate(
                 reply = await generator.generate(prepared, init_image=init)
         validate_image(reply.data, reply.mime)
         await session.refresh(subject)
-        if digest(recipe.source(viewer, subject)) != job.source_digest:
+        if digest(await _source(session, viewer, recipe, subject)) != job.source_digest:
             raise PortraitError("stale_source")
         await asyncio.to_thread(path.parent.mkdir, parents=True, exist_ok=True)
         await asyncio.to_thread(path.write_bytes, reply.data)

@@ -33,7 +33,7 @@
       "cfg": 2.0,
       "sampler_name": "dpmpp_sde",
       "scheduler": "karras",
-      "denoise": 0.85,
+      "denoise": 0.7,
       "model": [
         "20",
         0
