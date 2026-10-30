@@ -13,11 +13,19 @@ from app.rules.universal.profiles import resolve_check
 
 
 async def established_evidence(session, campaign_id, actor_id):
+    """What the world has already said about the hero's place; the server checks every quotation against it."""
+    parts = await evidence_parts(session, campaign_id, actor_id)
+    return "\n".join([text for text in [parts["place"], *parts["narrations"]] if text])
+
+
+async def evidence_parts(session, campaign_id, actor_id) -> dict:
+    """The same evidence in pieces: the place description and the narrations of this place, newest first."""
     actor = await session.get(Character, actor_id)
     if actor is None or actor.campaign_id != campaign_id:
         raise AccessDenied("Неверная область героя")
     location = await session.get(Entity, actor.location_id) if actor.location_id else None
-    parts = [location.description] if location and location.campaign_id == campaign_id else []
+    place = location.description if location and location.campaign_id == campaign_id else ""
+    narrations = []
     for message in await session.scalars(
         select(Message)
         .where(Message.campaign_id == campaign_id, Message.kind == "narration")
@@ -29,10 +37,10 @@ async def established_evidence(session, campaign_id, actor_id):
             continue
         if message.visible_to is not None and (actor.seat_id not in message.visible_to or data.get("scope") != "party"):
             continue
-        place = data.get("location_id") or (data.get("location_ref") or {}).get("id")
-        if actor.location_id is not None and place == actor.location_id:
-            parts.append(message.content)
-    return "\n".join(parts)
+        place_id = data.get("location_id") or (data.get("location_ref") or {}).get("id")
+        if actor.location_id is not None and place_id == actor.location_id:
+            narrations.append(message.content)
+    return {"place": place or "", "narrations": narrations}
 
 
 def observer_id(campaign_id, location_id, spec):

@@ -31,9 +31,10 @@ async def build_decide_context(session, campaign, hero, seat, msg_text, *, upto_
     known = list(await s.scalars(select(HeroAbility).where(HeroAbility.character_id == hero.id)))
     history = await recent_history(s, c, upto_seq, audience, public_scene)
     from app.core.universal.objects import visible_objects
-    from app.core.universal.perception import actor_constraints, established_evidence
+    from app.core.universal.perception import actor_constraints, evidence_parts
 
-    evidence = await established_evidence(s, cid, hero.id)
+    parts = await evidence_parts(s, cid, hero.id)
+    evidence = "\n".join(text for text in [parts["place"], *parts["narrations"]] if text)
     objects = await visible_objects(s, cid, hero.id)
     constraints = await actor_constraints(s, cid, hero.id)
     from app.core.universal.effects import active_effects
@@ -64,6 +65,7 @@ async def build_decide_context(session, campaign, hero, seat, msg_text, *, upto_
         history=history,
         source=msg_text,
         established_evidence=evidence,
+        evidence_parts=parts,
         objects=objects,
         inventory=inventory,
         known_exits=known_exits,

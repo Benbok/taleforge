@@ -58,7 +58,7 @@ async def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("campaign_id")
     parser.add_argument("source")
-    parser.add_argument("name", choices=["shire", "station"])
+    parser.add_argument("name", choices=["shire", "station", "long"])
     args = parser.parse_args()
     engine = make_engine(settings.database_url)
     try:

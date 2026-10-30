@@ -90,4 +90,21 @@ CASES = (
     ),
     EvalCase("station_observe", "station", "Осматриваюсь.", Expect({"observe"}, resolution="automatic")),
     EvalCase("station_wait", "station", "Жду минуту.", Expect({"wait"}, resolution="automatic")),
+    # The long game: twenty narrations of evidence and a campaign summary, as in a session of dozens of turns.
+    EvalCase("long_inn", "long", "Иду к постоялому двору.", Expect({"move"}, "en_9e68635719537689352550e6")),
+    EvalCase("long_goat_path", "long", "Сворачиваю на козью тропку.", Expect({"move"}, "en_6b3f4fb27cdc4d778d0ba837")),
+    EvalCase("long_observe", "long", "Осматриваюсь вокруг.", Expect({"observe"}, resolution="automatic")),
+    EvalCase("long_wait", "long", "Жду, пока гонец отдышится.", Expect({"wait"}, resolution="automatic")),
+    EvalCase(
+        "long_recall_promise",
+        "long",
+        "Вспоминаю, что я обещал гонцу.",
+        Expect(forbid_kinds={"move"}, resolution="automatic", forbid_introductions=True),
+    ),
+    EvalCase(
+        "long_recall_letter",
+        "long",
+        "Вспоминаю, что мы знаем о письме.",
+        Expect(forbid_kinds={"move"}, resolution="automatic", forbid_introductions=True),
+    ),
 )

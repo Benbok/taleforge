@@ -34,6 +34,7 @@ def test_build_decide_context_has_the_same_keys_as_before(tmp_path, monkeypatch)
                     "history",
                     "source",
                     "established_evidence",
+                    "evidence_parts",
                     "objects",
                     "inventory",
                     "known_exits",

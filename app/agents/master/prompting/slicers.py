@@ -1,5 +1,6 @@
 """Trim only model inputs. Authoritative context stays whole for server validation."""
 
+import re
 from copy import deepcopy
 from dataclasses import asdict
 
@@ -18,6 +19,46 @@ def requested_lore(raw, context: dict) -> list[str]:
         return []
     known = {block.id for block in lore_blocks(context)}
     return list(dict.fromkeys(key for key in requested[:4] if isinstance(key, str) and key in known))
+
+
+EVIDENCE_BUDGET = 4000
+RECENT_NARRATIONS = 2
+
+
+def _headline(text: str) -> str:
+    """The start of a narration, verbatim, so that a quotation taken from it is still found on the server."""
+    first = re.split(r"(?<=[.!?])\s", text.strip(), maxsplit=1)[0]
+    return first if len(first) <= 120 else first[:120].rsplit(" ", 1)[0]
+
+
+def bounded_evidence(parts: dict, source: str, budget: int = EVIDENCE_BUDGET) -> str:
+    """Recent narrations in full, older ones as headlines, unless the player's words point at them.
+
+    The server validates quotations against the whole evidence; this text is only what the model reads.
+    """
+    narrations = parts.get("narrations") or []  # newest first
+    words = stems(source)
+    head = (parts.get("place") or "")[:1200]
+    recent = [text[:1500] for text in narrations[:RECENT_NARRATIONS]][::-1]
+    room = budget - len(head) - sum(len(text) + 1 for text in recent)
+    older = list(enumerate(narrations[RECENT_NARRATIONS:]))  # index grows with age
+    chosen: dict[int, str] = {}
+    for index, text in older:  # what the player points at, whole paragraphs, the newest first
+        matched = [p[:700] for p in text.split("\n\n") if words and stems(p) & words]
+        if matched and room > 0:
+            line = "\n\n".join(matched)
+            if len(line) + 1 <= room:
+                chosen[index] = line
+                room -= len(line) + 1
+    for index, text in older:  # the rest by their first sentence
+        if index in chosen:
+            continue
+        line = _headline(text)
+        if line and len(line) + 1 <= room:
+            chosen[index] = line
+            room -= len(line) + 1
+    ordered = [chosen[index] for index in sorted(chosen, reverse=True)]  # oldest first
+    return "\n".join(text for text in [head, *ordered, *recent] if text)
 
 
 def slice_context(context: dict, source: str, extra_blocks=()) -> dict:
@@ -45,7 +86,10 @@ def slice_context(context: dict, source: str, extra_blocks=()) -> dict:
     entities = (context.get("scene") or {}).get("entities") or []
     relevant = words | stems(" ".join(entity.get("name", "") for entity in entities))
     evidence = context.get("established_evidence") or ""
-    if "established_evidence" in result:
+    parts = result.pop("evidence_parts", None)
+    if parts is not None:
+        result["established_evidence"] = bounded_evidence(parts, source)
+    elif "established_evidence" in result:
         result["established_evidence"] = "\n\n".join(
             paragraph for paragraph in evidence.split("\n\n") if stems(paragraph) & relevant
         )
