@@ -111,7 +111,12 @@ def generation_options(src) -> dict:
     """Prompt style for what the control outline means: room walls, building roofs, or only tracks (the default)."""
     sketch = src["sketch"] or {}
     if sketch.get("environment") == "indoor":
-        return {"control_style": images.MAP_BACKDROP_INTERIOR_STYLE}
+        return {
+            "control_style": images.MAP_BACKDROP_INTERIOR_STYLE,
+            "style": images.MAP_BACKDROP_INTERIOR_BASE_STYLE,
+            "lora_strength": 0.0,
+            "negative_suffix": images.MAP_BACKDROP_INTERIOR_NEGATIVE,
+        }
     if any(e.get("kind") == "entrance" for e in sketch.get("exits", [])):
         return {"control_style": images.MAP_BACKDROP_BUILDINGS_STYLE}
     return {}

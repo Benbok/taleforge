@@ -149,7 +149,10 @@ def test_generation_options_pick_the_control_style_by_kind_of_place():
     from app.agents import map_backdrop_images as images
 
     indoor = area(sketch=sketch(environment="indoor", shape="room"))
-    assert backdrop.RECIPE.options(backdrop.source(viewer(), indoor))["control_style"] == images.MAP_BACKDROP_INTERIOR_STYLE
+    options = backdrop.RECIPE.options(backdrop.source(viewer(), indoor))
+    assert options["control_style"] == images.MAP_BACKDROP_INTERIOR_STYLE
+    assert options["style"] == images.MAP_BACKDROP_INTERIOR_BASE_STYLE and "bushes" not in options["style"]
+    assert options["lora_strength"] == 0.0 and "grass" in options["negative_suffix"] and "perspective" in options["negative_suffix"]
     with_building = backdrop.source(viewer(), area(), [{"name": "Дверь постоялого двора", "side": "n"}])
-    assert backdrop.RECIPE.options(with_building)["control_style"] == images.MAP_BACKDROP_BUILDINGS_STYLE
+    assert backdrop.RECIPE.options(with_building) == {"control_style": images.MAP_BACKDROP_BUILDINGS_STYLE}
     assert backdrop.RECIPE.options(backdrop.source(viewer(), area(), [{"name": "Колея", "side": "e"}])) == {}

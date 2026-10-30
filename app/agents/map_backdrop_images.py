@@ -18,8 +18,20 @@ MAP_BACKDROP_CONTROL_STYLE = (
 )
 # Control outline of a room: its walls. Of a yard with buildings: closed rectangles are roofs, long outlines are tracks.
 MAP_BACKDROP_INTERIOR_STYLE = (
-    "(top-down interior of a room:1.3), (wooden plank floor:1.2) inside the white outline, thick stone and log walls "
-    "along the outline, furniture and props seen from above, warm lantern light. "
+    "(flat orthographic floor plan seen from directly above:1.5), (no perspective:1.3), wooden plank floor filling the "
+    "whole picture edge to edge, thin dark walls only along the white outline seen from above, furniture and props "
+    "seen from directly above, evenly lit. "
+)
+# The base style names outdoor things (paths, hedges, bushes); an interior gets its own.
+MAP_BACKDROP_INTERIOR_BASE_STYLE = (
+    "Aerial view looking straight down, flat orthographic top view, stylized painted game map of a room, floor, walls, "
+    "furniture and props seen from directly above, bold clean shapes, vibrant colors, soft shadows. "
+    "Environment only, no characters, no lettering, no interface, no frame."
+)
+# The terrain LoRA pulls interiors outdoors (grass, gardens), so interiors run without it and forbid outdoor things.
+MAP_BACKDROP_INTERIOR_NEGATIVE = (
+    ", (perspective:1.4), isometric, 3/4 view, wall faces, side view, ceiling, beams, vignette, dark corners, "
+    "rounded corners, frame, grass, plants, bushes, trees, outdoor, garden, stones on the ground, soil, sky"
 )
 MAP_BACKDROP_BUILDINGS_STYLE = (
     "Outdoor scene seen from above: each white rectangle with a center line is a building with a (gabled thatched or "

@@ -139,3 +139,27 @@ def test_control_style_can_be_overridden_per_call():
     asyncio.run(gen.generate({"appearance": "x"}, init_image=PNG, control_image=PNG, control_style="OVERRIDE-STYLE. "))
     prompt = json.loads(next(r for r in calls if r.url.path == "/prompt").content)["prompt"]["6"]["inputs"]["text"]
     assert "OVERRIDE-STYLE" in prompt and "DEFAULT-STYLE" not in prompt
+
+
+def test_lora_strength_and_negative_suffix_can_be_set_per_call():
+    calls = []
+    gen = ComfyUIPortraitGenerator(workflow=MAP_WORKFLOW, poll_interval=0, transport=httpx.MockTransport(responder(calls)))
+    asyncio.run(gen.generate({"appearance": "hall"}, init_image=PNG, control_image=PNG, lora_strength=0.0,
+                             negative_suffix=", grass, outdoor"))
+    graph = json.loads(next(r for r in calls if r.url.path == "/prompt").content)["prompt"]
+    assert graph["20"]["inputs"]["strength_model"] == 0.0 and graph["20"]["inputs"]["strength_clip"] == 0.0
+    assert graph["7"]["inputs"]["text"].endswith(", grass, outdoor") and "grass" not in graph["6"]["inputs"]["text"]
+    plain = []
+    gen2 = ComfyUIPortraitGenerator(workflow=MAP_WORKFLOW, poll_interval=0, transport=httpx.MockTransport(responder(plain)))
+    asyncio.run(gen2.generate({"appearance": "yard"}, init_image=PNG, control_image=PNG))
+    default = json.loads(next(r for r in plain if r.url.path == "/prompt").content)["prompt"]
+    assert default["20"]["inputs"]["strength_model"] > 0 and not default["7"]["inputs"]["text"].endswith("outdoor")
+
+
+def test_base_style_can_be_replaced_per_call():
+    calls = []
+    gen = ComfyUIPortraitGenerator(workflow=MAP_WORKFLOW, poll_interval=0, style="OUTDOOR-BASE.",
+                                   transport=httpx.MockTransport(responder(calls)))
+    asyncio.run(gen.generate({"appearance": "hall"}, init_image=PNG, control_image=PNG, style="INDOOR-BASE."))
+    prompt = json.loads(next(r for r in calls if r.url.path == "/prompt").content)["prompt"]["6"]["inputs"]["text"]
+    assert "INDOOR-BASE." in prompt and "OUTDOOR-BASE." not in prompt

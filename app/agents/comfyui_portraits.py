@@ -64,10 +64,13 @@ class ComfyUIPortraitGenerator:
         init_image: bytes | None = None,
         control_image: bytes | None = None,
         control_style: str | None = None,
+        lora_strength: float | None = None,
+        negative_suffix: str = "",
+        style: str | None = None,
     ) -> ImageReply:
         # Art direction leads; observed appearance follows before the composition instructions.
         details = ", ".join(str(description.get(k) or "") for k in ("appearance", "identity", "personality"))
-        style = self.style or (
+        style = style or self.style or (
             "Painted fantasy character portrait, head and shoulders, centered face, "
             "room around head for circular crop, expressive eyes, soft cinematic lighting, "
             "restrained background, detailed illustrated game art, no text."
@@ -115,6 +118,14 @@ class ComfyUIPortraitGenerator:
                         upload.raise_for_status()
                         control_name = upload.json()["name"]
                     graph = substitute(self.workflow)
+                    for node_id, node in graph.items():
+                        if lora_strength is not None and node.get("class_type") == "LoraLoader":
+                            node["inputs"]["strength_model"] = node["inputs"]["strength_clip"] = lora_strength
+                        negative = node.get("class_type") == "CLIPTextEncode" and "{{prompt}}" not in str(
+                            self.workflow[node_id]["inputs"].get("text")
+                        )
+                        if negative and negative_suffix:
+                            node["inputs"]["text"] += negative_suffix
                     if self.needs_control_image and not controlled:
                         for node in graph.values():
                             if node.get("class_type") == "ControlNetApplyAdvanced":
