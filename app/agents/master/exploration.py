@@ -9,6 +9,7 @@ from pydantic import Field
 from sqlalchemy import select
 
 from app.agents.llm import repair_json
+from app.agents.master.prompting.messages import decide_messages
 from app.core.campaigns import AccessDenied
 from app.core.universal.contracts import ResolutionContext
 from app.core.universal.interpretation import compile_exploration, is_plain_action
@@ -22,7 +23,6 @@ from app.rules.universal.exploration import (
     IntentV2,
     RequirementV2,
     clean_model_intent,
-    exploration_capabilities,
 )
 from app.rules.universal.failures import ActionFailure, ActionModelError, action_failure
 from app.rules.universal.profiles import CheckNarration
@@ -349,20 +349,7 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
             try:
                 reply = await ask(
                     "exploration_decide",
-                    [
-                        {"role": "system", "content": SYSTEM},
-                        {
-                            "role": "user",
-                            "content": json.dumps(
-                                {
-                                    **context,
-                                    "capabilities": exploration_capabilities(),
-                                    "repair": (hint or last_failure.message) if attempts[mid] > 1 else None,
-                                },
-                                ensure_ascii=False,
-                            ),
-                        },
-                    ],
+                    decide_messages(context, (hint or last_failure.message) if attempts[mid] > 1 else None),
                 )
                 try:
                     raw = clean_model_intent(json.loads(reply))
