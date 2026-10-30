@@ -16,6 +16,16 @@ MAP_BACKDROP_CONTROL_STYLE = (
     "Natural landscape seen from above: (varied terrain:1.2), grass, fields, trees, bushes, fences and props from the "
     "description, (narrow dirt track:1.3) following the white outlines. "
 )
+# Control outline of a room: its walls. Of a yard with buildings: closed rectangles are roofs, long outlines are tracks.
+MAP_BACKDROP_INTERIOR_STYLE = (
+    "(top-down interior of a room:1.3), (wooden plank floor:1.2) inside the white outline, thick stone and log walls "
+    "along the outline, furniture and props seen from above, warm lantern light. "
+)
+MAP_BACKDROP_BUILDINGS_STYLE = (
+    "Outdoor scene seen from above: each white rectangle with a center line is a building with a (gabled thatched or "
+    "shingled roof:1.3) seen from above, the long white outlines are narrow dirt tracks, (grass and trees:1.2) "
+    "everywhere else. "
+)
 MAP_BACKDROP_TRANSLATION = (
     "Translate the supplied public location name and description into a concise English prompt for a top-down "
     "game map of that place, at most 80 words. Preserve its terrain, materials, vegetation, buildings and lighting, "

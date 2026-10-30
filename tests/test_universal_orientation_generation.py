@@ -296,3 +296,15 @@ def test_travel_into_a_place_with_a_long_prepared_description_keeps_a_bounded_kn
         await engine.dispose()
 
     asyncio.run(run())
+
+
+@pytest.mark.parametrize(
+    ("name", "shape"),
+    [("Полутёмная конюшня с двумя стойлами", "room"), ("Земляной погреб под рощей", "room"), ("Кухня и кладовая трактира", "room"),
+     ("Придорожная канава", "open"), ("Козья тропа в роще", "open")],
+)
+def test_cosmetic_sketch_treats_buildings_and_cellars_as_rooms(name, shape):
+    from app.core.universal.orientation_generation import build_sketch
+
+    location = Entity(id="loc1", campaign_id="c", kind="location", name=name, description="")
+    assert build_sketch("c", location, {"loc1": location})["shape"] == shape

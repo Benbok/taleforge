@@ -102,3 +102,30 @@ def test_stored_roads_and_streams_are_part_of_the_control_image_and_nothing_mean
     only_terrain = public_sketch(sketch(edges=[], exits=[], terrain=[{"kind": "stream", "cells": [[4, 0, 4, 7]]}]))
     assert render_control(only_terrain) is not None
     assert render_control(public_sketch(sketch(edges=[], terrain=[], exits=[]))) is None
+
+
+def pixel(image, cx, cy, cols=14, rows=12):
+    width, height = image.size
+    return image.getpixel((int(width * cx / cols), int(height * cy / rows)))
+
+
+def test_entrance_exit_is_a_building_outline_not_a_track():
+    exits = [{"name": "Дверь постоялого двора", "side": "n", "at": 4, "kind": "entrance", "width": 1}]
+    image = decode(render_control(public_sketch(sketch(cols=14, rows=12, edges=[], terrain=[], exits=exits))))
+    assert pixel(image, 4, 4) == (255, 255, 255)  # lower edge of the roof, x 2..6, y 0..4
+    assert pixel(image, 2, 2) == (255, 255, 255)  # its left edge
+    assert pixel(image, 4, 2) == (255, 255, 255)  # the ridge line along the roof's long axis
+    assert pixel(image, 3, 1) == (0, 0, 0) and pixel(image, 3, 3) == (0, 0, 0)  # and nothing else inside the roof
+    assert pixel(image, 4, 8) == (0, 0, 0) and pixel(image, 11, 6) == (0, 0, 0)  # and no track to the centre
+
+
+def test_indoor_area_is_a_room_outline_and_a_wooden_floor():
+    room = sketch(cols=7, rows=8, shape="room", environment="indoor", edges=[], terrain=[], exits=[])
+    public = public_sketch(room)
+    control = decode(render_control(public))
+    assert pixel(control, 3.5, 0.6, 7, 8) == (255, 255, 255) and pixel(control, 0.6, 4, 7, 8) == (255, 255, 255)
+    assert pixel(control, 3.5, 4, 7, 8) == (0, 0, 0) and pixel(control, 0.1, 0.1, 7, 8) == (0, 0, 0)
+    outdoor = decode(render_skeleton(public_sketch(sketch(cols=7, rows=8, edges=[], terrain=[], exits=[]))))
+    indoor = decode(render_skeleton(public))
+    centre = (indoor.width // 2, indoor.height // 2)
+    assert indoor.getpixel(centre) != outdoor.getpixel(centre)

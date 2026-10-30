@@ -18,5 +18,6 @@ class ArtworkRecipe:
     prompt_source: Callable[[dict], dict]  # {"identity","appearance","personality"} sent to translator/generator
     url: Callable[[str, str, str], str]  # (campaign_id, subject_id, image_id) -> file URL
     control_image: Callable[[dict], bytes | None] | None = None  # optional ControlNet input derived from the source
+    options: Callable[[dict], dict] | None = None  # extra keyword arguments for generator.generate, from the source
     source_needs_session: bool = False  # source(viewer, subject, session) is async and reads the database
     denied: str = "Создавать картинку может только администратор"

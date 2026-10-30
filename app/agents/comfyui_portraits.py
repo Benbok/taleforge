@@ -58,7 +58,12 @@ class ComfyUIPortraitGenerator:
         self.needs_control_image = "{{control_image}}" in json.dumps(self.workflow)
 
     async def generate(
-        self, description: dict, *, init_image: bytes | None = None, control_image: bytes | None = None
+        self,
+        description: dict,
+        *,
+        init_image: bytes | None = None,
+        control_image: bytes | None = None,
+        control_style: str | None = None,
     ) -> ImageReply:
         # Art direction leads; observed appearance follows before the composition instructions.
         details = ", ".join(str(description.get(k) or "") for k in ("appearance", "identity", "personality"))
@@ -92,7 +97,7 @@ class ComfyUIPortraitGenerator:
         async with httpx.AsyncClient(base_url=self.base_url + "/", timeout=30, transport=self.transport) as client:
             try:
                 async with asyncio.timeout(self.timeout_seconds):
-                    prompt = f"{FANTASY_ART_DIRECTION}{details}. {self.control_style if controlled else ''}{style}"
+                    prompt = f"{FANTASY_ART_DIRECTION}{details}. {(self.control_style if control_style is None else control_style) if controlled else ''}{style}"
                     if init_image:
                         upload = await client.post(
                             "upload/image",

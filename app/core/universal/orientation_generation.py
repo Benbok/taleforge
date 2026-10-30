@@ -18,11 +18,20 @@ from app.core.universal.clock import lock_campaign
 from app.db.models import Campaign, Character, Entity, Scene
 
 
+INDOOR_NAME_WORDS = (
+    "конюшн", "хлев", "сарай", "амбар", "погреб", "подвал", "кухн", "кладов", "чердак", "склеп",
+    "мастерск", "кузниц", "спальн", "кабинет", "изб",
+)
+
+
 def build_sketch(campaign_id, location, entities):
     # A coarse outline is presentation, never an asserted measurement or obstacle.
     text = (location.name + " " + location.description).casefold()
     shape = "cave" if any(w in text for w in ("пещер", "ущель", "провал", "cave", "gorge")) else "open"
     if any(w in text for w in ("комнат", "зал", "таверн", "room", "hall", "tavern")):
+        shape = "rect"
+    # Only the name: a description of the yard mentions "в конюшне" without the yard being a stable.
+    if any(w in location.name.casefold() for w in INDOOR_NAME_WORDS):
         shape = "rect"
     intent = LayoutIntent(
         entry="here",

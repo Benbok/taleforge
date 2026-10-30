@@ -126,3 +126,30 @@ def test_prompt_lists_exits_by_picture_edge_and_digest_follows_them():
 
 def test_side_of_bearing_matches_the_client_rules():
     assert [backdrop.side_of(b) for b in ("ne", "w", "sw", "n", None, "s")] == ["e", "w", "w", "n", "n", "s"]
+
+
+@pytest.mark.parametrize(
+    ("name", "kind"),
+    [("Дверь постоялого двора", "entrance"), ("Проём конюшни → Полутёмная конюшня", "entrance"), ("Люк в погреб", "entrance"),
+     ("Спуск к канаве у дороги", "passage"), ("Дворовые ворота", "passage"), ("Колея на восток", "passage")],
+)
+def test_passage_kind_tells_building_entrances_from_tracks(name, kind):
+    assert backdrop.passage_kind(name) == kind
+
+
+def test_entrances_keep_their_kind_in_the_source_and_the_prompt_lists_them():
+    passages = [{"name": "Дверь постоялого двора", "side": "n"}, {"name": "Колея на восток", "side": "e"}]
+    source = backdrop.source(viewer(), area(), passages)
+    kinds = {e["name"]: e["kind"] for e in source["sketch"]["exits"] if e["kind"] in ("passage", "entrance")}
+    assert kinds == {"Дверь постоялого двора": "entrance", "Колея на восток": "passage"}
+    assert "Дверь постоялого двора" in backdrop.RECIPE.prompt_source(source)["appearance"]
+
+
+def test_generation_options_pick_the_control_style_by_kind_of_place():
+    from app.agents import map_backdrop_images as images
+
+    indoor = area(sketch=sketch(environment="indoor", shape="room"))
+    assert backdrop.RECIPE.options(backdrop.source(viewer(), indoor))["control_style"] == images.MAP_BACKDROP_INTERIOR_STYLE
+    with_building = backdrop.source(viewer(), area(), [{"name": "Дверь постоялого двора", "side": "n"}])
+    assert backdrop.RECIPE.options(with_building)["control_style"] == images.MAP_BACKDROP_BUILDINGS_STYLE
+    assert backdrop.RECIPE.options(backdrop.source(viewer(), area(), [{"name": "Колея", "side": "e"}])) == {}

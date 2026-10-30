@@ -298,3 +298,21 @@ def test_control_image_is_passed_to_the_generator_only_when_the_recipe_has_one(w
 
     run(go)
     assert generator.controls == ["ctrl-Двор".encode(), None]
+
+
+def test_recipe_options_are_passed_to_the_generator(world):
+    _, _, run, tmp = world
+    recipe = make_recipe(options=lambda src: {"control_style": "STYLE-" + src["identity"]})
+
+    class Capturing(FakeGenerator):
+        async def generate(self, description, *, init_image=None, control_image=None, **options):
+            self.options = options
+            return await super().generate(description, init_image=init_image, control_image=control_image)
+
+    generator = Capturing()
+
+    async def go(session, viewer, subject):
+        await service.generate(session, viewer, recipe, subject, "a", False, generator, FakeTranslator(), tmp)
+
+    run(go)
+    assert generator.options == {"control_style": "STYLE-Двор"}

@@ -141,6 +141,8 @@ async def generate(
         async with asyncio.timeout(seconds + 10):
             control = recipe.control_image(source) if recipe.control_image else None
             extra = {} if control is None else {"control_image": control}
+            if recipe.options:
+                extra.update(recipe.options(source))
             if init is None:
                 reply = await generator.generate(prepared, **extra)
             else:

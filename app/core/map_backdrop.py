@@ -1,5 +1,8 @@
 """Painted top-down backdrop under the orientation map: public outline in, shared per-area picture out."""
 
+import re
+
+from app.agents import map_backdrop_images as images
 from app.core.artwork.recipe import ArtworkRecipe
 from app.core.campaigns import NotFound, is_admin
 from app.core.universal.backdrop_skeleton import public_sketch, render_control, render_skeleton
@@ -37,6 +40,14 @@ async def visible_passages(session, viewer) -> list[dict]:
     return [{"name": name, "side": side} for name, side in sorted(found.items(), key=lambda item: (item[1], item[0]))]
 
 
+ENTRANCE_WORDS = re.compile(r"двер|вход|проём|проем|люк|погреб|подвал|лестниц|чердак")
+
+
+def passage_kind(name: str) -> str:
+    """A door, an opening or a hatch leads into a building (its roof is drawn); everything else is a track."""
+    return "entrance" if ENTRANCE_WORDS.search(name.casefold()) else "passage"
+
+
 def _spread(passages, cols, rows, taken):
     """Exits on one side share it evenly (what the orientation map draws); a track one cell wide."""
     result = []
@@ -45,7 +56,7 @@ def _spread(passages, cols, rows, taken):
         length = cols if side in "ns" else rows
         for i, passage in enumerate(group):
             at = min(max(int((i + 1) * length / (len(group) + 1)), 0), length - 1)
-            result.append({"name": passage["name"], "side": side, "at": at, "kind": "passage", "state": None, "width": 1})
+            result.append({"name": passage["name"], "side": side, "at": at, "kind": passage_kind(passage["name"]), "state": None, "width": 1})
     return result
 
 
@@ -85,7 +96,7 @@ EDGES = {"w": "слева", "e": "справа", "n": "сверху", "s": "сн
 def prompt_source(src) -> dict:
     """Description plus the exits by picture edge, so the painted paths and gaps leave where the map's exits are."""
     appearance = src["appearance"]
-    exits = [e for e in (src["sketch"] or {}).get("exits", []) if e.get("kind") == "passage"]
+    exits = [e for e in (src["sketch"] or {}).get("exits", []) if e.get("kind") in ("passage", "entrance")]
     if exits:
         listed = "; ".join(
             f"{EDGES[side]} — " + ", ".join(f"«{e['name']}»" for e in exits if e["side"] == side)
@@ -94,6 +105,16 @@ def prompt_source(src) -> dict:
         )
         appearance = f"{appearance}\n\nВыходы из места (стороны картины): {listed}."
     return {"identity": src["identity"], "appearance": appearance, "personality": src["personality"]}
+
+
+def generation_options(src) -> dict:
+    """Prompt style for what the control outline means: room walls, building roofs, or only tracks (the default)."""
+    sketch = src["sketch"] or {}
+    if sketch.get("environment") == "indoor":
+        return {"control_style": images.MAP_BACKDROP_INTERIOR_STYLE}
+    if any(e.get("kind") == "entrance" for e in sketch.get("exits", [])):
+        return {"control_style": images.MAP_BACKDROP_BUILDINGS_STYLE}
+    return {}
 
 
 RECIPE = ArtworkRecipe(
@@ -108,6 +129,7 @@ RECIPE = ArtworkRecipe(
     init_image=lambda src: render_skeleton(src["sketch"]) if src["sketch"] and not src["complex"] else None,
     control_image=lambda src: render_control(src["sketch"]) if src["sketch"] and not src["complex"] else None,
     prompt_source=prompt_source,
+    options=generation_options,
     url=lambda campaign_id, location_id, image_id: f"/api/campaigns/{campaign_id}/locations/{location_id}/map-backdrop/{image_id}",
     denied="подложку создаёт администратор",
 )

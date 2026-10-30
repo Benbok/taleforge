@@ -130,3 +130,12 @@ def test_control_style_is_added_to_the_prompt_only_when_a_control_image_is_given
     asyncio.run(ComfyUIPortraitGenerator(transport=httpx.MockTransport(responder(without)), **kw).generate(
         {"appearance": "yard"}, init_image=PNG))
     assert "ROADS-SENTENCE" in prompt_of(with_control) and "ROADS-SENTENCE" not in prompt_of(without)
+
+
+def test_control_style_can_be_overridden_per_call():
+    calls = []
+    gen = ComfyUIPortraitGenerator(workflow=MAP_WORKFLOW, poll_interval=0, control_style="DEFAULT-STYLE. ",
+                                   transport=httpx.MockTransport(responder(calls)))
+    asyncio.run(gen.generate({"appearance": "x"}, init_image=PNG, control_image=PNG, control_style="OVERRIDE-STYLE. "))
+    prompt = json.loads(next(r for r in calls if r.url.path == "/prompt").content)["prompt"]["6"]["inputs"]["text"]
+    assert "OVERRIDE-STYLE" in prompt and "DEFAULT-STYLE" not in prompt
