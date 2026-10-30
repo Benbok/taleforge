@@ -15,6 +15,7 @@ from app.agents.master.helpers import _batches
 from app.agents.master.investment import decide_investment
 from app.core.campaigns import Viewer, master_seat
 from app.core.chat import active_session
+from app.core.llm_diagnostics import message_sizes, reply_metrics
 from app.core.universal.action_intents import LegacyAdmission
 from app.core.universal.profiles import load_actor
 from app.core.universal.resolution import ResolutionContext, resolve_action
@@ -62,6 +63,20 @@ def world_rules(secret):
     """What the world says about itself, for deciding what is possible. Never the private notes."""
     studio = ((secret.setting or {}).get("studio") or {}) if secret else {}
     return {key: str(studio.get(key) or "") for key in ("laws", "powers", "world")}
+
+
+def _input_sizes(purpose, payload, options) -> dict | None:
+    """Sizes of what was sent, by part and never the content, so growth over a long game can be seen."""
+    try:
+        tools = options.get("tools") or []
+        if purpose == "exploration_decide":
+            from app.agents.master.prompting.messages import request_size
+
+            return {"request_size": request_size(payload, tools[0]["function"]["parameters"])}
+        return {"message_sizes": message_sizes(payload, tools)}
+    except Exception:  # noqa: BLE001 — diagnostics never break a turn
+        log.warning("Could not measure the %s input", purpose, exc_info=True)
+        return None
 
 
 async def _call(service, campaign, turn, purpose, payload, *, generation_id=None):
@@ -165,6 +180,8 @@ async def _call(service, campaign, turn, purpose, payload, *, generation_id=None
                 tokens_out=reply.tokens_out,
                 cost=reply.cost,
                 latency_ms=int((monotonic() - started) * 1000),
+                diagnostics=_input_sizes(purpose, payload, options),
+                **reply_metrics(reply),
             )
         )
         await s.commit()
