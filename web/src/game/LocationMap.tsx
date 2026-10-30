@@ -150,7 +150,7 @@ export function LocationMap({ map, m, activeLevel, idPrefix = "location-map", or
           </div>
         )}
         <div ref={z.box} {...z.pan} className="max-h-[50dvh] overflow-auto p-2">
-          <div style={{ width: `${z.zoom * 100}%`, minWidth: "100%" }}>
+          <div style={{ width: `${z.zoom * 100}%`, margin: "0 auto" }}>
             <LocationMapSvg map={map} liveSketch={orientationOnly ? current?.sketch : m?.sketch} tokens={m ? locationTokens(m) : []} activeLevel={level} idPrefix={idPrefix} showPassageLabels={orientationOnly} backdrop={backdrop} objectIcons={objectIcons}
               pickedExit={picked} pickedPassageRef={picked?.passage_ref}
               onCell={!orientationOnly && m && current ? (_, cell) => stepTo({ cell: planToMechanical(current, party, cell) }) : undefined}

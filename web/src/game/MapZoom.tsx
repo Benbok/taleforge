@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent } from "react";
 
-const MIN = 1;
+const MIN = 0.4; // меньше «вписанного» размера: карта уменьшается, чтобы увидеть её целиком
+const FIT = 1;
 const MAX = 4;
 const STEP = 1.25;
 const DRAG_PX = 4; // меньше — это нажатие на клетку, а не сдвиг карты
@@ -16,7 +17,7 @@ export function useMapZoom() {
     node.current = n;
     setEl(n);
   };
-  const [zoom, setZoom] = useState(MIN);
+  const [zoom, setZoom] = useState(FIT);
   const current = useRef(zoom);
   current.current = zoom;
   const anchor = useRef<{ ox: number; oy: number; fx: number; fy: number } | null>(null);
@@ -60,7 +61,7 @@ export function useMapZoom() {
     onPointerDown(e: PointerEvent<HTMLDivElement>) {
       const el = node.current;
       drag.current = null;
-      if (!el || e.pointerType !== "mouse" || e.button !== 0 || current.current <= MIN) return;
+      if (!el || e.pointerType !== "mouse" || e.button !== 0 || current.current <= FIT) return;
       drag.current = { x: e.clientX, y: e.clientY, left: el.scrollLeft, top: el.scrollTop, moved: false };
     },
     onPointerMove(e: PointerEvent<HTMLDivElement>) {
@@ -84,7 +85,7 @@ export function useMapZoom() {
     },
   };
 
-  return { zoom, box, pan, zoomIn: () => zoomTo(current.current * STEP), zoomOut: () => zoomTo(current.current / STEP), reset: () => zoomTo(MIN) };
+  return { zoom, box, pan, zoomIn: () => zoomTo(current.current * STEP), zoomOut: () => zoomTo(current.current / STEP), reset: () => zoomTo(FIT) };
 }
 
 /** Кнопки масштаба над схемой. */
@@ -101,7 +102,7 @@ export function ZoomBar({ z }: { z: ReturnType<typeof useMapZoom> }) {
       <button type="button" className={btn} onClick={z.zoomIn} disabled={z.zoom >= MAX} aria-label="Увеличить">
         +
       </button>
-      <button type="button" className={btn} onClick={z.reset} disabled={z.zoom === MIN}>
+      <button type="button" className={btn} onClick={z.reset} disabled={z.zoom === FIT}>
         Сброс
       </button>
       <span className="ml-1 hidden sm:inline">Ctrl + колесо — масштаб, мышью — сдвиг</span>

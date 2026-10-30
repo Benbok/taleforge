@@ -137,3 +137,13 @@ it("поверх картины предмет рисуется значком �
   expect(new Set(glyphs).size).toBe(3);  // дерево, сундук и безымянный объект выглядят по-разному
   expect(markers.map((m) => m.querySelector("title")?.textContent)).toEqual(["Старый дуб", "Сундук", "Камень"]);
 });
+
+it("при наведении на метку предмета показывается его название", () => {
+  const withObject: MapLocationPlan = { ...plan, areas: [{ ...plan.areas[0], sketch: { ...sketch, features: [{ id: "f1", name: "Бочка", kind: "object" as const, cells: [[1, 1, 1, 1]] }] } }, plan.areas[1]] };
+  const { container } = render(<LocationMapSvg map={withObject} idPrefix="h" backdrop={{ areaId: "here", url: "/img/1" }} />);
+  expect(container.querySelector("[data-marker-hint]")).toBeNull();
+  fireEvent.pointerEnter(container.querySelector("[data-feature-marker]")!);
+  expect(container.querySelector("[data-marker-hint]")?.textContent).toBe("Бочка");
+  fireEvent.pointerLeave(container.querySelector("[data-feature-marker]")!);
+  expect(container.querySelector("[data-marker-hint]")).toBeNull();
+});

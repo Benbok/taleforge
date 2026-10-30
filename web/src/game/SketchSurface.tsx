@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { exitSegments, surfaceGeometry } from "./locationGeometry";
 import type { MapKnownArea, Sketch, SketchExit } from "./map";
 import { MapFeature } from "./MapFeature";
@@ -35,6 +35,7 @@ export function terrainCells(rects: number[][]): [number, number][] {
 }
 
 export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, onFeature, pickedExit, pickedPassageRef, showPassageLabels=false, floorOpacity=1, overPicture=false, objectIcons, children }: SketchSurfaceProps) {
+  const [hint, setHint] = useState<number | null>(null);
   const area: MapKnownArea = { id: areaId, name: areaId, offset: [0, 0], level: 0, status: "here", revision: 0, sketch };
   const geometry = surfaceGeometry(area);
   const torchMounts = wallTorchMounts(sketch, geometry.floor, geometry.contours);
@@ -82,11 +83,12 @@ export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, on
         />
       ))}
       {overPicture
-        ? sketch.features.filter((f) => !f.hidden && f.kind === "object").map((feature, i) => {
+        ? sketch.features.map((feature, i) => ({ feature, i })).filter(({ feature: f }) => !f.hidden && f.kind === "object").map(({ feature, i }) => {
             const [cx, cy] = terrainCells(feature.cells)[0] ?? [0, 0];
             const visual = overlayVisual(feature);
-            return <g key={`marker-${i}`} data-feature-marker={feature.id ?? undefined} pointerEvents="none">
-              <circle cx={cx + .5} cy={cy + .5} r=".33" fill="rgba(8,12,14,.78)" stroke={visual.color} strokeWidth=".07" />
+            return <g key={`marker-${i}`} data-feature-marker={feature.id ?? undefined} onPointerEnter={() => setHint(i)} onPointerLeave={() => setHint((h) => h === i ? null : h)}>
+              <circle cx={cx + .5} cy={cy + .5} r=".4" fill="transparent" />
+              <circle cx={cx + .5} cy={cy + .5} r=".33" fill="rgba(8,12,14,.78)" stroke={visual.color} strokeWidth=".07" pointerEvents="none" />
               {feature.entity_id && objectIcons?.[feature.entity_id]
                 ? <ObjectIconImage url={objectIcons[feature.entity_id]} cx={cx + .5} cy={cy + .5} r={.3} />
                 : <MapGlyph name={visual.glyph} x={cx + .27} y={cy + .27} width={.46} height={.46} color={visual.color} />}
@@ -94,6 +96,17 @@ export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, on
             </g>;
           })
         : sketch.features.map((feature, i) => <MapFeature key={`feature-${i}`} feature={feature} idPrefix={`${idPrefix}-feature-${i}`} onFeature={onFeature} torchMounts={torchMounts.get(feature)} />)}
+      {overPicture && hint !== null && sketch.features[hint] && (() => {
+        const feature = sketch.features[hint];
+        const [cx, cy] = terrainCells(feature.cells)[0] ?? [0, 0];
+        const w = Math.min(feature.name.length * .22 + .5, sketch.cols);
+        const x = Math.min(Math.max(cx + .5 - w / 2, 0), sketch.cols - w);
+        const above = cy >= 1;
+        return <g data-marker-hint="true" pointerEvents="none">
+          <rect x={x} y={above ? cy - .6 : cy + 1.05} width={w} height=".55" rx=".12" fill="rgba(8,12,14,.92)" stroke="rgba(255,255,255,.35)" strokeWidth=".03" />
+          <text x={x + w / 2} y={above ? cy - .22 : cy + 1.43} textAnchor="middle" fontSize=".34" fill="#fff">{feature.name}</text>
+        </g>;
+      })()}
       {(sketch.edges ?? []).map((edge, i) => {
         const vertical = edge.side === "e" || edge.side === "w";
         const x = edge.side === "e" ? sketch.cols : 0;

@@ -55,7 +55,7 @@ export default function BookMap({ book, where }: { book: MapBook; where?: string
       </p>
       <ZoomBar z={z} />
       <div ref={z.box} {...z.pan} className={`max-h-[65dvh] overflow-auto rounded-md ${z.zoom > 1 ? "cursor-grab active:cursor-grabbing" : ""}`}>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: `${z.zoom * 100}%`, maxWidth: "none" }} className="select-none" role="img" aria-label={`Карта: ${book.name}`}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: `${z.zoom * 100}%`, maxWidth: "none" }} className="mx-auto block select-none" role="img" aria-label={`Карта: ${book.name}`}>
         <image href={src} x={0} y={0} width={W} height={H} />
         {here?.cells &&
           roomRects(book, here.cells, W, H).map((r, i) => (
