@@ -5,7 +5,14 @@ from app.db.models import Campaign, Character, Seat
 from tests.test_universal_resolution import setup
 
 
-def test_build_decide_context_has_the_same_keys_as_before(tmp_path):
+def test_build_decide_context_has_the_same_keys_as_before(tmp_path, monkeypatch):
+    async def history(session, campaign, upto_seq, audience, scene):
+        # PostgreSQL stores Message.seq as int32; an int64 sentinel cannot bind.
+        assert upto_seq == 0
+        return []
+
+    monkeypatch.setattr("app.agents.master.prompting.context.recent_history", history)
+
     async def run():
         engine, maker = await setup(tmp_path)
         try:

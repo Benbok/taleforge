@@ -3,6 +3,8 @@ import json
 from copy import deepcopy
 from types import SimpleNamespace
 
+import pytest
+
 from app.agents.llm import LLMReply, ScriptedLLM
 from app.agents.master.exploration import obtain_exploration_action
 from app.agents.master.prompting.slicers import requested_lore, slice_context
@@ -107,6 +109,55 @@ def test_need_lore_adds_the_requested_blocks_within_the_attempt_budget(tmp_path)
             assert second["world_rules"]["lore"][0]["id"] == "laws:1"
             assert trace["proposal_attempts"]["m"] == 2
             assert "need_lore" not in result.proposal.model_dump()
+        finally:
+            await engine.dispose()
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("recover", [False, True])
+def test_exhausted_lore_does_not_execute_a_fallback_on_recovery(tmp_path, recover):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        try:
+            async with maker() as session:
+                session.add(MasterTurn(id="t", campaign_id="c", status="running", trace={}))
+                await session.commit()
+                campaign = await session.get(Campaign, "c")
+            calls = []
+
+            async def ask(purpose, payload):
+                calls.append(payload)
+                return '{"need_lore": ["laws:1"]}'
+
+            trace = {"proposal_attempts": {"m": 2}, "requested_lore": {"m": ["laws:1"]}} if recover else {}
+            result = await obtain_exploration_action(
+                SimpleNamespace(maker=maker),
+                campaign,
+                "t",
+                "m",
+                trace,
+                context(),
+                {"user_id": "u", "seat_id": "seat", "actor_id": "hero", "allowed_target_ids": frozenset({"hero"})},
+                ask,
+            )
+            assert result.proposal is None
+            assert result.failure.code == "not_realised"
+            assert len(calls) == (0 if recover else 2)
+            assert trace["prepared"]["m"]["proposal"] is None
+            # Replaying the persisted terminal state must not acquire another budget or action.
+            replay = await obtain_exploration_action(
+                SimpleNamespace(maker=maker),
+                campaign,
+                "t",
+                "m",
+                trace,
+                context(),
+                {"user_id": "u", "seat_id": "seat", "actor_id": "hero", "allowed_target_ids": frozenset({"hero"})},
+                ask,
+            )
+            assert replay == result
+            assert len(calls) == (0 if recover else 2)
         finally:
             await engine.dispose()
 

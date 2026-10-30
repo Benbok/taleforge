@@ -79,7 +79,7 @@ PLAIN_OUTCOMES = CheckNarration(
 SYSTEM = ALL_SYSTEM  # Compatibility for consumers inspecting the full prompt.
 REVIEW = (
     "В world_rules.lore_index дан указатель законов мира, в world_rules.lore — выбранные подробности. "
-    "Не выдумывай запретов из отсутствия полного блока: оценивай доступный текст и указатель. "
+    "Нормативные laws, powers и world переданы полностью в блоках; оценивай допустимость по их тексту. "
     "Проверяй цель перемещения: «иду в туннель/комнату/лес» — смена локации с destination_id из known_exits, "
     "а не шаг к устью. within_scene допустимо для явного подхода внутри места. Не подтверждай подмену входа "
     "успешным движением на месте. "
@@ -221,7 +221,15 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
     reviews = trace.setdefault("intent_reviews", {})
     last_failure = ActionFailure.model_validate(failures[mid]) if mid in failures else not_realised_fact()
     raw = trace.get("admissions", {}).get(mid)
-    hint = None
+    pending_lore = trace.get("requested_lore", {}).get(mid, [])
+    if raw is None and pending_lore and attempts.get(mid, 0) >= 2:
+        # A reserved final retrieval slot is spent even if its call/persistence
+        # was interrupted. Recovery must not turn unresolved lore into a deed.
+        result = PreparedExploration(failure=not_realised_fact())
+        prepared[mid] = result.model_dump(mode="json")
+        await store(service, tid, trace)
+        return result
+    hint = "Запрошенные блоки лора добавлены; разбери исходные слова игрока." if pending_lore else None
     shortfall = None
     leaning = None  # what the model took the request for (magic on any attempt), so the floor matches it
     named = ""  # the last general name the model gave the ability
@@ -250,10 +258,11 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                 if requested:
                     saved = trace.setdefault("requested_lore", {}).setdefault(mid, [])
                     saved[:] = list(dict.fromkeys([*saved, *requested]))
-                    await store(service, tid, trace)
                     if attempts[mid] < 2:
                         # Fetching lore consumes the next existing slot; it never grants a third call.
                         raw = None
+                        hint = "Запрошенные блоки лора добавлены; разбери исходные слова игрока."
+                        await store(service, tid, trace)
                         continue
                     result = PreparedExploration(failure=not_realised_fact())
                     prepared[mid] = result.model_dump(mode="json")

@@ -66,7 +66,11 @@ def slice_context(context: dict, source: str, extra_blocks=()) -> dict:
 
 
 def review_context(context: dict, raw_intent: dict, extra_blocks=()) -> dict:
-    sliced = slice_context(context, context["source"], extra_blocks)
+    # Independent review must see the rules the first model might have overlooked.
+    # These fields are the authority for permission, including restrictions beyond
+    # an index summary or the lexical budget. Other lore still uses retrieval.
+    normative = [block.id for block in lore_blocks(context) if block.id.split(":", 1)[0] in {"laws", "powers", "world"}]
+    sliced = slice_context(context, context["source"], [*extra_blocks, *normative])
     return {
         "source": context["source"],
         "intent": raw_intent,

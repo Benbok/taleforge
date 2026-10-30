@@ -1,18 +1,20 @@
 """The same audience-safe decision context for live turns and evaluation snapshots."""
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.agents.master.universal_narration import recent_history
 from app.core.campaigns import Viewer
 from app.core.universal.profiles import load_actor
-from app.db.models import CampaignSecret, HeroAbility, User
+from app.db.models import CampaignSecret, HeroAbility, Message, User
 
 
-async def build_decide_context(session, campaign, hero, seat, msg_text, *, upto_seq=2**63 - 1, audience=None):
+async def build_decide_context(session, campaign, hero, seat, msg_text, *, upto_seq=None, audience=None):
     from app.agents.master.universal import world_rules
     from app.core.universal.world_generation import enabled as world_enabled
 
     s, c, cid = session, campaign, campaign.id
+    if upto_seq is None:
+        upto_seq = await s.scalar(select(func.max(Message.seq)).where(Message.campaign_id == cid)) or 0
     sh, resources = await load_actor(s, cid, hero.id)
     secret = await s.get(CampaignSecret, cid)
     from app.core.universal.inventory import ensure_inventory, item_view, owned_items

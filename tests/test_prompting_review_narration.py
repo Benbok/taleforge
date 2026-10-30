@@ -2,10 +2,25 @@ import asyncio
 import json
 from types import SimpleNamespace
 
+import pytest
+
 from app.agents.master.exploration import obtain_exploration_action, reviewed_narration
+from app.agents.master.prompting.slicers import review_context, slice_context
 from app.db.models import Campaign, MasterTurn
 from tests.test_prompting_slicers import context
 from tests.test_universal_resolution import setup
+
+
+@pytest.mark.parametrize("field", ["laws", "powers", "world"])
+def test_review_keeps_normative_restrictions_beyond_the_summary_and_budget(field):
+    original = context()
+    restriction = "Перенос тела между точками мгновенно невозможен."
+    text = "Свойства пространства. " + "Нейтральное описание окружения. " * 80 + restriction
+    original["source"] = "телепортируюсь домой"
+    original["world_rules"] = {field: text}
+    assert slice_context(original, original["source"])["world_rules"]["lore"] == []
+    reviewed = review_context(original, {"source": "supernatural", "effects": [{"kind": "free_effect"}]})
+    assert any(restriction in block["text"] for block in reviewed["world_rules"]["lore"])
 
 
 def test_review_gets_the_sliced_context(tmp_path):
