@@ -121,3 +121,19 @@ it("поверх картины предметы — компактные мет
   expect(plain.container.querySelector("[data-feature-marker]")).toBeNull();
   expect(plain.container.querySelector('[data-feature-id="f1"]')).not.toBeNull();
 });
+
+it("поверх картины предмет рисуется значком своего вида и с названием", () => {
+  const features = [
+    { id: "f1", entity_id: "e1", entity_type: "landmark" as const, visual_key: "landmark:tree", name: "Старый дуб", kind: "object" as const, cells: [[1, 1, 1, 1]] },
+    { id: "f2", entity_id: "e2", entity_type: "item" as const, visual_key: "item:chest", name: "Сундук", kind: "object" as const, cells: [[2, 1, 2, 1]] },
+    { id: "f3", name: "Камень", kind: "object" as const, cells: [[0, 2, 0, 2]] },
+  ];
+  const withObjects: MapLocationPlan = { ...plan, areas: [{ ...plan.areas[0], sketch: { ...sketch, features } }, plan.areas[1]] };
+  const { container } = render(<LocationMapSvg map={withObjects} idPrefix="g" backdrop={{ areaId: "here", url: "/img/1" }} />);
+  const markers = [...container.querySelectorAll("[data-feature-marker]")];
+  expect(markers).toHaveLength(3);
+  const glyphs = markers.map((m) => m.querySelector("svg")?.innerHTML ?? "");
+  expect(glyphs.every(Boolean)).toBe(true);
+  expect(new Set(glyphs).size).toBe(3);  // дерево, сундук и безымянный объект выглядят по-разному
+  expect(markers.map((m) => m.querySelector("title")?.textContent)).toEqual(["Старый дуб", "Сундук", "Камень"]);
+});

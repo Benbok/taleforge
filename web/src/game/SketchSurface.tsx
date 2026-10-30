@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { exitSegments, surfaceGeometry } from "./locationGeometry";
 import type { MapKnownArea, Sketch, SketchExit } from "./map";
 import { MapFeature } from "./MapFeature";
+import { MapGlyph } from "./MapGlyph";
+import { overlayVisual } from "./mapPresets";
 import { SketchMaterials } from "./SketchMaterials";
 import { SketchAtmosphere } from "./SketchAtmosphere";
 import { wallTorchMounts } from "./wallLighting";
@@ -79,9 +81,10 @@ export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, on
       {overPicture
         ? sketch.features.filter((f) => !f.hidden && f.kind === "object").map((feature, i) => {
             const [cx, cy] = terrainCells(feature.cells)[0] ?? [0, 0];
+            const visual = overlayVisual(feature);
             return <g key={`marker-${i}`} data-feature-marker={feature.id ?? undefined} pointerEvents="none">
-              <circle cx={cx + .5} cy={cy + .5} r=".2" fill="rgba(8,12,14,.7)" stroke="var(--tf-accent)" strokeWidth=".06" />
-              <circle cx={cx + .5} cy={cy + .5} r=".07" fill="var(--tf-accent)" />
+              <circle cx={cx + .5} cy={cy + .5} r=".33" fill="rgba(8,12,14,.78)" stroke={visual.color} strokeWidth=".07" />
+              <MapGlyph name={visual.glyph} x={cx + .27} y={cy + .27} width={.46} height={.46} color={visual.color} />
               <title>{feature.name}</title>
             </g>;
           })

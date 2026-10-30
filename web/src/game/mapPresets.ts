@@ -140,3 +140,28 @@ export function featureVisual(feature: Pick<SketchFeature, "kind" | "visual_key"
   const kind = Object.hasOwn(FEATURE_VISUALS, feature.kind) ? feature.kind : "object";
   return { ...FEATURE_VISUALS[kind], form: DEFAULT_FEATURE_FORMS[kind] };
 }
+
+/** Значок предмета по названию, когда у него нет ключа рисунка; порядок важен («дубовый стол» — стол, не дерево). */
+const NAME_GLYPHS: [RegExp, MapGlyphName][] = [
+  [/указател|дощеч|столб|(^|\s)вех/, "pin"],
+  [/сундук/, "chest"],
+  [/ключ/, "key"],
+  [/монет|кошел|денег|золот/, "coin"],
+  [/письм|свиток|записк|объявлен/, "scroll"],
+  [/зель|фляг|бутыл|кувшин/, "flask"],
+  [/меч\b|мечи|клинок|кинжал|топор|оружи/, "sword"],
+  [/факел|фонар|костёр|костер|свеч|очаг/, "torch"],
+  [/(^|\s)стол(ик|ом|а|у|ы)?(\s|$)/, "table"],
+  [/поленниц|бочк|бочон|ящик|короб|тюк|мешк|телег|повозк|корзин/, "box"],
+  [/дуб|ясен|ольх|берез|берёз|ёлк|сосн|дерев(о|ь|ц)|роща|рощ|сад|ствол/, "tree"],
+  [/плетен|плетн|плетён|изгород|куст|трав|огород|камыш|осок|лопух|канав|мох|папоротн/, "nature"],
+];
+
+export function overlayVisual(feature: Pick<SketchFeature, "name" | "kind" | "visual_key" | "entity_type">): MapVisualPreset {
+  const type = feature.entity_type ?? "landmark";
+  const key = feature.visual_key;
+  if (key && Object.hasOwn(VISUAL_VARIANTS, key) && VISUAL_VARIANTS[key].family === type) return entityVisual(type, key);
+  const text = feature.name.toLocaleLowerCase("ru");
+  const glyph = NAME_GLYPHS.find(([pattern]) => pattern.test(text))?.[1];
+  return glyph ? { ...entityVisual(type), glyph } : entityVisual(type);
+}
