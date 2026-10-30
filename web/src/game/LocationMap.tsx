@@ -20,12 +20,13 @@ export interface LocationMapSvgProps {
   pickedPassageRef?: string | null;
   showPassageLabels?: boolean;
   backdrop?: { areaId: string; url: string } | null;
+  objectIcons?: Record<string, string>;
   onCell?: (areaId: string, cell: [number, number]) => void;
   onPassage?: (exit: SketchExit, areaId: string) => void;
   onEntity?: (id: string, name: string, anchor: Element) => void;
 }
 
-export function LocationMapSvg({ map, liveSketch, tokens = [], activeLevel, idPrefix, pickedExit, pickedPassageRef, showPassageLabels=false, backdrop, onPassage, onCell, onEntity }: LocationMapSvgProps) {
+export function LocationMapSvg({ map, liveSketch, tokens = [], activeLevel, idPrefix, pickedExit, pickedPassageRef, showPassageLabels=false, backdrop, objectIcons, onPassage, onCell, onEntity }: LocationMapSvgProps) {
   const level = activeLevel ?? map.areas.find((area) => area.status === "here")?.level ?? 0;
   const areas = map.areas.filter((area) => area.level === level);
   const bounds = overviewBounds(knownBounds(map, level));
@@ -49,6 +50,7 @@ export function LocationMapSvg({ map, liveSketch, tokens = [], activeLevel, idPr
             <SketchSurface
               floorOpacity={backdrop?.areaId === area.id ? .05 : 1}
               overPicture={backdrop?.areaId === area.id}
+              objectIcons={backdrop?.areaId === area.id ? objectIcons : undefined}
               sketch={isCurrent ? liveSketch ?? area.sketch : area.sketch}
               areaId={area.id}
               idPrefix={`${idPrefix}-${area.id}`}
@@ -96,9 +98,10 @@ export interface LocationMapProps {
   idPrefix?: string;
   orientationOnly?: boolean;
   backdrop?: { areaId: string; url: string } | null;
+  objectIcons?: Record<string, string>;
 }
 
-export function LocationMap({ map, m, activeLevel, idPrefix = "location-map", orientationOnly = false, backdrop }: LocationMapProps) {
+export function LocationMap({ map, m, activeLevel, idPrefix = "location-map", orientationOnly = false, backdrop, objectIcons }: LocationMapProps) {
   const levels = useMemo(() => [...new Set(map.areas.map((area) => area.level))].sort((a, b) => a - b), [map.areas]);
   const initial = activeLevel ?? map.areas.find((area) => area.status === "here")?.level ?? levels[0] ?? 0;
   const [level, setLevel] = useState(initial);
@@ -148,7 +151,7 @@ export function LocationMap({ map, m, activeLevel, idPrefix = "location-map", or
         )}
         <div ref={z.box} {...z.pan} className="max-h-[50dvh] overflow-auto p-2">
           <div style={{ width: `${z.zoom * 100}%`, minWidth: "100%" }}>
-            <LocationMapSvg map={map} liveSketch={orientationOnly ? current?.sketch : m?.sketch} tokens={m ? locationTokens(m) : []} activeLevel={level} idPrefix={idPrefix} showPassageLabels={orientationOnly} backdrop={backdrop}
+            <LocationMapSvg map={map} liveSketch={orientationOnly ? current?.sketch : m?.sketch} tokens={m ? locationTokens(m) : []} activeLevel={level} idPrefix={idPrefix} showPassageLabels={orientationOnly} backdrop={backdrop} objectIcons={objectIcons}
               pickedExit={picked} pickedPassageRef={picked?.passage_ref}
               onCell={!orientationOnly && m && current ? (_, cell) => stepTo({ cell: planToMechanical(current, party, cell) }) : undefined}
               onEntity={m ? (id, name, anchor) => inspect(id, name, anchor) : undefined}

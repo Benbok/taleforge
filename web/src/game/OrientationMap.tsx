@@ -8,6 +8,7 @@ import {useGame} from '../stores/game';
 import {useMapWindow} from './map';
 import type {MapLocationPlan} from './map';
 import {BackdropControls,useMapBackdrop} from './MapBackdrop';
+import {ObjectIconControls,useObjectIcons} from './ObjectIcons';
 
 function GenerateMap({locationId}:{locationId:string}){
  const campaignId=useGame(s=>s.snapshot?.campaign.id);
@@ -31,11 +32,13 @@ function GenerateMap({locationId}:{locationId:string}){
 
 function OrientedPlan({map,visual,campaignId,hereId}:{map:MapState;visual:MapLocationPlan;campaignId:string;hereId:string}){
  const backdrop=useMapBackdrop(campaignId,hereId);
+ const icons=useObjectIcons(campaignId,hereId);
  const url=backdrop.artwork?.image_url;
  return <>
   <BackdropControls backdrop={backdrop}/>
+  <ObjectIconControls icons={icons}/>
   <p className='text-xs text-muted'>Ориентирующая схема: масштаб и положение ориентиров условны.</p>
-  <LocationMap map={visual} m={map} orientationOnly backdrop={url?{areaId:visual.here_id??hereId,url}:null}/>
+  <LocationMap map={visual} m={map} orientationOnly backdrop={url?{areaId:visual.here_id??hereId,url}:null} objectIcons={icons.urls}/>
  </>;
 }
 

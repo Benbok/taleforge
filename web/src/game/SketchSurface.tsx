@@ -4,6 +4,7 @@ import type { MapKnownArea, Sketch, SketchExit } from "./map";
 import { MapFeature } from "./MapFeature";
 import { MapGlyph } from "./MapGlyph";
 import { overlayVisual } from "./mapPresets";
+import { ObjectIconImage } from "./ObjectIcons";
 import { SketchMaterials } from "./SketchMaterials";
 import { SketchAtmosphere } from "./SketchAtmosphere";
 import { wallTorchMounts } from "./wallLighting";
@@ -20,6 +21,8 @@ export interface SketchSurfaceProps {
   floorOpacity?: number;
   /** Под нарисованной картиной: предметы — компактные метки, подписи с тёмным ореолом. */
   overPicture?: boolean;
+  /** id предмета → адрес нарисованного значка (только поверх картины). */
+  objectIcons?: Record<string, string>;
   children?: ReactNode;
 }
 
@@ -31,7 +34,7 @@ export function terrainCells(rects: number[][]): [number, number][] {
       Array.from({ length: x1 - x0 + 1 }, (_, x) => [x0 + x, y0 + y] as [number, number])).flat());
 }
 
-export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, onFeature, pickedExit, pickedPassageRef, showPassageLabels=false, floorOpacity=1, overPicture=false, children }: SketchSurfaceProps) {
+export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, onFeature, pickedExit, pickedPassageRef, showPassageLabels=false, floorOpacity=1, overPicture=false, objectIcons, children }: SketchSurfaceProps) {
   const area: MapKnownArea = { id: areaId, name: areaId, offset: [0, 0], level: 0, status: "here", revision: 0, sketch };
   const geometry = surfaceGeometry(area);
   const torchMounts = wallTorchMounts(sketch, geometry.floor, geometry.contours);
@@ -84,7 +87,9 @@ export function SketchSurface({ sketch, areaId = "area", idPrefix, onPassage, on
             const visual = overlayVisual(feature);
             return <g key={`marker-${i}`} data-feature-marker={feature.id ?? undefined} pointerEvents="none">
               <circle cx={cx + .5} cy={cy + .5} r=".33" fill="rgba(8,12,14,.78)" stroke={visual.color} strokeWidth=".07" />
-              <MapGlyph name={visual.glyph} x={cx + .27} y={cy + .27} width={.46} height={.46} color={visual.color} />
+              {feature.entity_id && objectIcons?.[feature.entity_id]
+                ? <ObjectIconImage url={objectIcons[feature.entity_id]} cx={cx + .5} cy={cy + .5} r={.3} />
+                : <MapGlyph name={visual.glyph} x={cx + .27} y={cy + .27} width={.46} height={.46} color={visual.color} />}
               <title>{feature.name}</title>
             </g>;
           })
