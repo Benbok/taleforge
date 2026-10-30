@@ -65,10 +65,17 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
     if len(ids) != len(intent.requirements) or set(review.covered_requirements) != ids:
         raise ValueError("Проверка не покрыла требования")
     for requirement in intent.requirements:
-        if requirement.quote not in source or not any(
-            op.kind == requirement.effect and requirement.id in op.required_by for op in intent.effects
-        ):
-            raise ValueError("Заявленный эффект отсутствует в исполняемых компонентах")
+        # The text goes back to the model as its only hint: it names the cause and the player's own words.
+        if requirement.quote not in source:
+            raise ValueError(
+                f"Цитата требования {requirement.id} должна быть дословным фрагментом слов игрока «{source[:300]}»; "
+                "рассказ мастера и история не источник цитат. Переписывай замысел по этим словам."
+            )
+        if not any(op.kind == requirement.effect and requirement.id in op.required_by for op in intent.effects):
+            raise ValueError(
+                f"Для требования {requirement.id} (effect={requirement.effect}) нет эффекта такого вида в effects "
+                f"с required_by=[{requirement.id!r}]. Добавь его или замени effect в требовании."
+            )
     if any(set(op.required_by) - ids for op in intent.effects):
         raise ValueError("Неизвестное требование")
     evidence = public_context.get("evidence", "")

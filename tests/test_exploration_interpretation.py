@@ -153,3 +153,35 @@ def test_a_stray_known_reference_never_blocks_an_ordinary_action_and_is_explaine
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_a_rejected_requirement_says_what_to_fix(tmp_path):
+    """The repair message is all the model sees on its second try: it must name the cause and the player's words."""
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
+            source = dict(source_message_id="m", source_text="захожу в постоялый двор", evidence="")
+            review = IntentReview(verdict="pass", covered_requirements=["r"])
+
+            def intent(quote, kind):
+                return IntentV2(
+                    source="mundane",
+                    player_request="ordinary",
+                    resolution="automatic",
+                    requirements=[RequirementV2(id="r", quote=quote, effect="move")],
+                    effects=[EffectIntentV2(kind=kind, required_by=["r"])],
+                )
+
+            # a quote from the narration instead of the player's own words
+            with pytest.raises(ValueError, match="захожу в постоялый двор") as wrong_quote:
+                await compile_exploration(ctx, intent("Что ты сделаешь, Пупкин", "move"), review, source)
+            assert "дословн" in str(wrong_quote.value)
+            # the quote is right but no effect of the claimed kind carries it
+            with pytest.raises(ValueError, match="move") as no_effect:
+                await compile_exploration(ctx, intent("захожу в постоялый двор", "observe"), review, source)
+            assert "effects" in str(no_effect.value)
+        await engine.dispose()
+
+    asyncio.run(run())
