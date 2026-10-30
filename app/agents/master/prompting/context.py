@@ -48,7 +48,12 @@ async def build_decide_context(session, campaign, hero, seat, msg_text, *, upto_
         )
         for e in await active_effects(s, cid, hero.id)
     ]
+    from app.agents import memory
+
+    last = await memory.latest(s, cid)
+    recalled = memory.render_for_model(last.content) if last else ""
     return dict(
+        **({"campaign_memory": recalled} if recalled else {}),
         world_development=bool(world_enabled(c)),
         world=(secret.setting or {}).get("studio", {}) if secret else {},
         # The text of the world decides what is allowed; the private notes stay with the master.

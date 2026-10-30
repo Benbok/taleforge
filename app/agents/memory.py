@@ -115,6 +115,39 @@ def render_content(c: dict[str, Any] | None) -> str:
     return "\n".join(out)
 
 
+MODEL_MEMORY_LIMIT = 2500  # символов давней памяти в запросе модели: растёт игра, а не запрос
+
+
+def render_for_model(c: dict[str, Any] | None, limit: int = MODEL_MEMORY_LIMIT) -> str:
+    """Давняя память для запроса модели в рамках бюджета: сначала что случилось, затем нити, задания, долги, NPC."""
+    if not c:
+        return ""
+    sections = []
+    if c.get("events"):
+        sections.append("Что было: " + "; ".join(c["events"][-15:]))
+    for key, title in (("threads", "Открытые нити"), ("quests", "Активные задания"), ("promises", "Обещания и долги")):
+        if c.get(key):
+            sections.append(f"{title}: " + "; ".join(c[key]))
+    if c.get("npcs"):
+        npcs = []
+        for n in c["npcs"]:
+            bits = [n.get("relation"), n.get("note")]
+            npcs.append(n["name"] + (f" ({', '.join(b for b in bits if b)})" if any(bits) else ""))
+        sections.append("NPC: " + "; ".join(npcs))
+    out, used = [], 0
+    for text in sections:
+        room = limit - used - (1 if out else 0)
+        if len(text) <= room:
+            out.append(text)
+            used += len(text) + (1 if len(out) > 1 else 0)
+        elif room > 80:
+            out.append(text[: room - 1] + "…")
+            break
+        else:
+            break
+    return "\n".join(out)
+
+
 def check(raw: dict[str, Any]) -> dict[str, Any] | None:
     try:
         return SummaryContent.model_validate(raw).model_dump()

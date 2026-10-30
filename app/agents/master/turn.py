@@ -42,7 +42,10 @@ class TurnMixin:
                 raise ValueError("Unsupported retired game rules")
         from app.agents.master.universal import run_universal_turn
 
-        return await run_universal_turn(self, cid, place)
+        result = await run_universal_turn(self, cid, place)
+        # давняя память растёт сама: сводка делается, когда набралось достаточно новых реплик
+        self.schedule_summary(cid)
+        return result
 
     async def _save_calls(self, calls: list) -> None:
         if not calls:
