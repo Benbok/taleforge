@@ -3,18 +3,18 @@
 import json
 from copy import deepcopy
 
+from app.agents.master.prompting.modules import compose_system
 from app.rules.universal.exploration import exploration_capabilities
 
 
 def decide_messages(context: dict, repair: str | None = None) -> list[dict]:
-    # Local import keeps the prompt owned by exploration during the measurement phase.
-    from app.agents.master.exploration import SYSTEM
-
     data = {key: value for key, value in context.items() if key != "repair"}
     return [
         {
             "role": "system",
-            "content": SYSTEM + "\n" + json.dumps({"capabilities": exploration_capabilities()}, ensure_ascii=False),
+            "content": compose_system(context)
+            + "\n"
+            + json.dumps({"capabilities": exploration_capabilities()}, ensure_ascii=False),
         },
         {
             "role": "user",
