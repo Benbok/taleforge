@@ -5,6 +5,7 @@ from app.agents.technical_portrait_translation import TechnicalPortraitTranslato
 from app.config import ROOT
 
 MAP_BACKDROP_STYLE = (
+    "OgMapTerrainPatch, top-view, "  # trigger words of the top-down terrain LoRA in the workflow
     "Aerial view looking straight down, camera pointing at the ground, flat orthographic top view, "
     "stylized painted game map, ground, paths, fences, hedges, bushes and rocks seen from directly above, "
     "bold clean shapes, vibrant colors, soft shadows. "
