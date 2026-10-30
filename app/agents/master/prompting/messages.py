@@ -4,11 +4,16 @@ import json
 from copy import deepcopy
 
 from app.agents.master.prompting.modules import compose_system
+from app.agents.master.prompting.slicers import slice_context
 from app.rules.universal.exploration import exploration_capabilities
 
 
-def decide_messages(context: dict, repair: str | None = None) -> list[dict]:
-    data = {key: value for key, value in context.items() if key != "repair"}
+def decide_messages(context: dict, repair: str | None = None, *, extra_blocks=()) -> list[dict]:
+    data = {
+        key: value
+        for key, value in slice_context(context, context.get("source", ""), extra_blocks).items()
+        if key != "repair"
+    }
     return [
         {
             "role": "system",

@@ -211,6 +211,7 @@ class AbilityDefinitionV2(ClosedModel):
 
 class IntentV2(ClosedModel):
     schema_version: Literal[2] = 2
+    need_lore: list[str] = Field(default_factory=list, max_length=4)
     name: str = Field(default="", max_length=128)
     source: SourceKind
     # The model's own reading of the player's words; anything but "ordinary" gets an independent review.
@@ -429,7 +430,9 @@ def clean_model_intent(raw):
     if not isinstance(raw, dict):
         return raw
     known_fields = set(IntentV2.model_fields)  # a stray field of the model's own (it restates the deed) is noise
-    cleaned = {k: v for k, v in raw.items() if not _empty(v) and k != "targets" and k in known_fields}
+    cleaned = {
+        k: v for k, v in raw.items() if not _empty(v) and k not in {"targets", "need_lore"} and k in known_fields
+    }
     targeted = {
         "damage",
         "heal",

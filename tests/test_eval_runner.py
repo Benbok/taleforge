@@ -58,3 +58,31 @@ def test_provider_failure_cannot_be_saved_as_the_baseline(tmp_path, monkeypatch)
     with pytest.raises(RuntimeError, match="Baseline not saved"):
         asyncio.run(run.evaluate(options(target, save=True)))
     assert not target.exists()
+
+
+def test_runner_counts_both_lore_requests(tmp_path, monkeypatch):
+    from tests.test_prompting_slicers import context
+
+    fixture = context()
+    (tmp_path / "station.json").write_text(json.dumps(fixture), encoding="utf-8")
+    provider = ScriptedLLM(
+        [
+            LLMReply(text='{"need_lore": ["laws:1"]}', tokens_in=100, tokens_cached=50),
+            LLMReply(
+                text='{"source": "mundane", "resolution": "automatic", "effects": [{"kind": "wait"}]}',
+                tokens_in=120,
+                tokens_cached=70,
+            ),
+        ]
+    )
+    monkeypatch.setattr(run, "FIXTURES", tmp_path)
+    monkeypatch.setattr(run, "LiteLLMClient", lambda: provider)
+    monkeypatch.setattr(run, "decide_model_for", lambda: "test/model")
+    monkeypatch.setattr(run, "BASELINE", tmp_path / "baseline.json")
+    target = tmp_path / "report.json"
+    asyncio.run(run.evaluate(options(target)))
+    report = json.loads(target.read_text(encoding="utf-8"))
+    assert report["rows"][0]["attempts"] == 2
+    assert report["mean_tokens_in"] == 220
+    assert report["rows"][0]["tokens_cached"] == 120
+    assert len(provider.requests) == 2

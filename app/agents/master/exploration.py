@@ -11,6 +11,7 @@ from sqlalchemy import select
 from app.agents.llm import repair_json
 from app.agents.master.prompting.messages import decide_messages
 from app.agents.master.prompting.modules import ALL_SYSTEM
+from app.agents.master.prompting.slicers import requested_lore
 from app.core.campaigns import AccessDenied
 from app.core.universal.contracts import ResolutionContext
 from app.core.universal.interpretation import compile_exploration, is_plain_action
@@ -233,12 +234,30 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
             try:
                 reply = await ask(
                     "exploration_decide",
-                    decide_messages(context, (hint or last_failure.message) if attempts[mid] > 1 else None),
+                    decide_messages(
+                        context,
+                        (hint or last_failure.message) if attempts[mid] > 1 else None,
+                        extra_blocks=trace.get("requested_lore", {}).get(mid, []),
+                    ),
                 )
                 try:
-                    raw = clean_model_intent(json.loads(reply))
+                    parsed = json.loads(reply)
                 except ValueError:
-                    raw = repair_json(reply) or {"invalid_json": True}
+                    parsed = repair_json(reply) or {"invalid_json": True}
+                requested = requested_lore(parsed, context)
+                if requested:
+                    saved = trace.setdefault("requested_lore", {}).setdefault(mid, [])
+                    saved[:] = list(dict.fromkeys([*saved, *requested]))
+                    await store(service, tid, trace)
+                    if attempts[mid] < 2:
+                        # Fetching lore consumes the next existing slot; it never grants a third call.
+                        raw = None
+                        continue
+                    result = PreparedExploration(failure=not_realised_fact())
+                    prepared[mid] = result.model_dump(mode="json")
+                    await store(service, tid, trace)
+                    return result
+                raw = clean_model_intent(parsed)
                 trace.setdefault("admissions", {})[mid] = raw
                 await store(service, tid, trace)
             except Exception as exc:

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from app.agents.llm import LiteLLMClient, decide_model_for, repair_json, reply_audit_error
 from app.agents.master.prompting.messages import cacheable, decide_messages, request_size
+from app.agents.master.prompting.slicers import requested_lore
 from app.agents.master.universal import STRUCTURED_MAX_TOKENS, provider_schema
 from app.rules.universal.exploration import IntentV2
 from tests.eval.capture import FIXTURES
@@ -57,7 +58,7 @@ async def evaluate(args):
         row = {
             "case": case.name,
             "repeat": repeat,
-            "size": request_size(messages, tools),
+            "size": {},
             "tokens_in": 0,
             "tokens_cached": None,
             "attempts": 1,
@@ -65,26 +66,43 @@ async def evaluate(args):
         }
         async with semaphore:
             try:
-                reply = await llm.complete(
-                    cacheable(messages, model),
-                    model=model,
-                    tools=tools,
-                    tool_choice={"type": "function", "function": {"name": "submit_action"}},
-                    max_tokens=STRUCTURED_MAX_TOKENS,
-                    temperature=0.8,
-                )
-                row.update(
-                    tokens_in=reply.tokens_in,
-                    tokens_cached=reply.tokens_cached,
-                    tokens_out=reply.tokens_out,
-                    cost=reply.cost,
-                    cost_known=reply.cost_known,
-                    latency_ms=reply.latency_ms,
-                )
-                call = next((call for call in reply.tool_calls if call.name == "submit_action"), None)
-                raw = call.arguments if call else repair_json(reply.text)
+                extra = []
+                cache_counts = []
+                for attempt in range(2):
+                    messages = decide_messages(context, extra_blocks=extra)
+                    row["attempts"] = attempt + 1
+                    for key, value in request_size(messages, tools).items():
+                        row["size"][key] = row["size"].get(key, 0) + value
+                    reply = await llm.complete(
+                        cacheable(messages, model),
+                        model=model,
+                        tools=tools,
+                        tool_choice={"type": "function", "function": {"name": "submit_action"}},
+                        max_tokens=STRUCTURED_MAX_TOKENS,
+                        temperature=0.8,
+                    )
+                    for key in ("tokens_in", "tokens_out", "cost", "latency_ms"):
+                        row[key] = row.get(key, 0) + getattr(reply, key)
+                    row["cost_known"] = row.get("cost_known", True) and reply.cost_known
+                    cache_counts.append(reply.tokens_cached)
+                    row["tokens_cached"] = sum(cache_counts) if all(v is not None for v in cache_counts) else None
+                    call = next((call for call in reply.tool_calls if call.name == "submit_action"), None)
+                    try:
+                        raw = call.arguments if call else json.loads(reply.text)
+                    except ValueError:
+                        raw = repair_json(reply.text)
+                    wanted = requested_lore(raw, context)
+                    if not wanted or reply_audit_error(reply):
+                        break
+                    extra = list(dict.fromkeys([*extra, *wanted]))
                 row["intent"] = raw
-                row["issues"] = [reply_audit_error(reply)] if reply_audit_error(reply) else check(case, raw)
+                row["issues"] = (
+                    ["need_lore exhausted"]
+                    if wanted
+                    else [reply_audit_error(reply)]
+                    if reply_audit_error(reply)
+                    else check(case, raw)
+                )
             except Exception as exc:
                 # No credentials or provider response bodies are persisted in the report.
                 row.update(issues=[f"provider: {type(exc).__name__}"], provider_error=True)

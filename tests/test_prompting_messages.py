@@ -14,7 +14,9 @@ def test_decide_messages_preserve_context_and_capabilities():
         },
         {
             "role": "user",
-            "content": json.dumps({**context, "repair": "x"}, ensure_ascii=False),
+            "content": json.dumps(
+                {**context, "world_rules": {"lore_index": [], "lore": []}, "repair": "x"}, ensure_ascii=False
+            ),
         },
     ]
     assert context == {"source": "иду", "scene": {}}

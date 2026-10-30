@@ -194,6 +194,12 @@ COMBAT = (
 )
 
 
+CORE += (
+    " В world_rules.lore_index перечислены доступные блоки лора, а world_rules.lore содержит выбранные подробности."
+    " Если для решения не хватает подробностей, верни need_lore с id нужных блоков из указателя (не более четырёх);"
+    " сервер добавит их и повторит разбор в оставшуюся попытку. Не выдумывай недостающий закон мира."
+)
+
 MODULES = (
     PromptModule("travel", TRAVEL, _travel),
     PromptModule("objects", OBJECTS, _objects),

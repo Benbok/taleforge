@@ -440,7 +440,9 @@ def test_laws_powers_and_world_reach_the_decision_and_the_meaning_review_but_nev
             "powers": "Магия природы живёт в корнях.",
             "world": "Подземное царство теней.",
         }
-        assert json.loads(provider.prompts[0][-1]["content"])["world_rules"] == rules
+        decision = json.loads(provider.prompts[0][-1]["content"])
+        assert {entry["summary"] for entry in decision["world_rules"]["lore_index"]} == set(rules.values())
+        assert "HIDDEN-SECRET" not in provider.prompts[0][-1]["content"]
         review = provider.prompts[1][-1]["content"]
         assert "NO TIME TRAVEL" in review and "Магия природы живёт в корнях." in review
         assert "HIDDEN-SECRET" not in review
