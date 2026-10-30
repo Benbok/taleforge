@@ -428,7 +428,8 @@ def clean_model_intent(raw):
     Ordinary self actions discard model target noise; actor-targeted combat retains its targets."""
     if not isinstance(raw, dict):
         return raw
-    cleaned = {k: v for k, v in raw.items() if not _empty(v) and k != "targets"}
+    known_fields = set(IntentV2.model_fields)  # a stray field of the model's own (it restates the deed) is noise
+    cleaned = {k: v for k, v in raw.items() if not _empty(v) and k != "targets" and k in known_fields}
     targeted = {
         "damage",
         "heal",

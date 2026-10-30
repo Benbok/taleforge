@@ -185,3 +185,16 @@ def test_a_rejected_requirement_says_what_to_fix(tmp_path):
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_a_field_the_schema_does_not_know_does_not_cost_the_model_an_attempt():
+    from app.rules.universal.exploration import clean_model_intent
+
+    raw = {
+        "source": "mundane",
+        "intent": "Пупкин входит в зал",  # models like to restate the deed in a field of their own
+        "effects": [{"kind": "move", "travel_scope": "between_locations", "destination_id": "x"}],
+    }
+    cleaned = clean_model_intent(raw)
+    assert "intent" not in cleaned
+    assert IntentV2.model_validate(cleaned).effects[0].destination_id == "x"
