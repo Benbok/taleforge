@@ -150,6 +150,36 @@ def test_pending_and_blocked_destination_cannot_be_executed_directly(tmp_path):
     asyncio.run(run())
 
 
+def test_a_closed_door_is_walked_through_but_locked_and_blocked_ways_are_not(tmp_path):
+    """Nothing in the game opens a door, so an ordinary closed door must not be a wall forever."""
+    from app.agents.master.world import prepare_scene
+    from app.core.universal.resolution import ResolutionContext
+    from app.core.universal.travel import destination_view
+
+    async def run():
+        engine, maker = await world_setup(tmp_path)
+        async with maker() as s:
+            campaign = await s.get(Campaign, "c")
+        await prepare_scene(
+            MasterService(maker, Bus(), Provider([entry(), {"verdict": "pass"}])), campaign, None, "gorge"
+        )
+        target = entity_id("c", "gorge", "place:tunnel")
+        async with maker() as s:
+            ctx = ResolutionContext(s, "c", user_id="u", seat_id="seat", actor_id="hero", dice=FixedDice([]))
+            origin = await s.get(Entity, "gorge")
+            links = origin.state["links"]
+            for state, passable in (("closed", True), ("locked", False), ("blocked", False)):
+                origin.state = {**origin.state, "links": [{**p, "state": state} for p in links]}
+                if passable:
+                    await destination_view(ctx, target, allow_unprepared=True)
+                else:
+                    with pytest.raises(ValueError, match="открытого пути"):
+                        await destination_view(ctx, target, allow_unprepared=True)
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
 def test_destination_provider_failure_keeps_hero_and_time_then_recovers_same_action(tmp_path):
     async def run():
         engine, maker = await world_setup(tmp_path)
