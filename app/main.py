@@ -37,6 +37,7 @@ from app.api import hero_creation as hero_creation_api
 from app.api import library_equipment_artwork as library_equipment_artwork_api
 from app.api import location_artwork as location_artwork_api
 from app.api import map_backdrop as map_backdrop_api
+from app.api import object_icons as object_icons_api
 from app.api import modules as modules_api
 from app.api import npc_portraits as npc_portraits_api
 from app.api import portraits as portraits_api
@@ -150,6 +151,16 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
             create_map_backdrop_translator(effective_llm, settings) if settings.map_backdrop_enabled else None
         )
         app.state.map_backdrop_media_dir = settings.media_dir
+        from app.agents.object_icon_images import create_object_icon_generator, create_object_icon_translator
+
+        # Same switch as the map backdrop: both use the local ComfyUI and are started by an administrator.
+        app.state.object_icon_generator = (
+            create_object_icon_generator(settings) if settings.map_backdrop_enabled else None
+        )
+        app.state.object_icon_translator = (
+            create_object_icon_translator(effective_llm, settings) if settings.map_backdrop_enabled else None
+        )
+        app.state.object_icon_media_dir = settings.media_dir
         from app.agents.equipment_images import create_equipment_generator, create_equipment_translator
 
         app.state.equipment_artwork_generator = (
@@ -256,6 +267,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     app.include_router(npc_portraits_api.router)
     app.include_router(location_artwork_api.router)
     app.include_router(map_backdrop_api.router)
+    app.include_router(object_icons_api.router)
     app.include_router(equipment_artwork_api.router)
     app.include_router(library_equipment_artwork_api.router)
     app.include_router(models.router)

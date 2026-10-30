@@ -1656,6 +1656,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaign_id}/locations/{location_id}/object-icons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Icons */
+        get: operations["list_icons_api_campaigns__campaign_id__locations__location_id__object_icons_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaign_id}/master-character": {
         parameters: {
             query?: never;
@@ -1938,6 +1955,40 @@ export interface paths {
         };
         /** Thumbnail */
         get: operations["thumbnail_api_campaigns__campaign_id__npcs__npc_id__portraits__image_id__thumbnail_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/objects/{object_id}/icon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Icon */
+        post: operations["create_icon_api_campaigns__campaign_id__objects__object_id__icon_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/objects/{object_id}/icon/{image_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Icon Image */
+        get: operations["icon_image_api_campaigns__campaign_id__objects__object_id__icon__image_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6074,6 +6125,65 @@ export interface components {
             /** Text */
             text?: string | null;
         };
+        /** ObjectIconIn */
+        ObjectIconIn: {
+            /**
+             * Regenerate
+             * @default false
+             */
+            regenerate?: boolean;
+            /** Request Key */
+            request_key: string;
+        };
+        /** ObjectIconItem */
+        ObjectIconItem: {
+            /** Can Generate */
+            can_generate: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Error */
+            error: string | null;
+            /** Id */
+            id: string;
+            /** Image Url */
+            image_url: string | null;
+            /** Name */
+            name: string;
+            /** Stale */
+            stale: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "idle" | "pending" | "ready" | "failed";
+        };
+        /** ObjectIconList */
+        ObjectIconList: {
+            /** Can Generate */
+            can_generate: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Objects */
+            objects: components["schemas"]["ObjectIconItem"][];
+        };
+        /** ObjectIconOut */
+        ObjectIconOut: {
+            /** Can Generate */
+            can_generate: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Error */
+            error: string | null;
+            /** Image Url */
+            image_url: string | null;
+            /** Stale */
+            stale: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "idle" | "pending" | "ready" | "failed";
+        };
         /** Option */
         Option: {
             /** Id */
@@ -7874,6 +7984,10 @@ export type NarrationRetryOut = components['schemas']['NarrationRetryOut'];
 export type NarrativePreparationStatusOut = components['schemas']['NarrativePreparationStatusOut'];
 export type NarrativeSettingsIn = components['schemas']['NarrativeSettingsIn'];
 export type NoteIn = components['schemas']['NoteIn'];
+export type ObjectIconIn = components['schemas']['ObjectIconIn'];
+export type ObjectIconItem = components['schemas']['ObjectIconItem'];
+export type ObjectIconList = components['schemas']['ObjectIconList'];
+export type ObjectIconOut = components['schemas']['ObjectIconOut'];
 export type Option = components['schemas']['Option'];
 export type OrderEntry = components['schemas']['OrderEntry'];
 export type OrientationMapIn = components['schemas']['OrientationMapIn'];
@@ -11506,6 +11620,38 @@ export interface operations {
             };
         };
     };
+    list_icons_api_campaigns__campaign_id__locations__location_id__object_icons_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                location_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectIconList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_master_character_api_campaigns__campaign_id__master_character_get: {
         parameters: {
             query?: never;
@@ -12167,6 +12313,75 @@ export interface operations {
             path: {
                 campaign_id: string;
                 npc_id: string;
+                image_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_icon_api_campaigns__campaign_id__objects__object_id__icon_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ObjectIconIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectIconOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    icon_image_api_campaigns__campaign_id__objects__object_id__icon__image_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                object_id: string;
                 image_id: string;
             };
             cookie?: never;

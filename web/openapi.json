@@ -9494,6 +9494,178 @@
     "title": "NoteIn",
     "type": "object"
    },
+   "ObjectIconIn": {
+    "properties": {
+     "regenerate": {
+      "default": false,
+      "title": "Regenerate",
+      "type": "boolean"
+     },
+     "request_key": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Key",
+      "type": "string"
+     }
+    },
+    "required": [
+     "request_key"
+    ],
+    "title": "ObjectIconIn",
+    "type": "object"
+   },
+   "ObjectIconItem": {
+    "properties": {
+     "can_generate": {
+      "title": "Can Generate",
+      "type": "boolean"
+     },
+     "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "image_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Image Url"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "stale": {
+      "title": "Stale",
+      "type": "boolean"
+     },
+     "status": {
+      "enum": [
+       "idle",
+       "pending",
+       "ready",
+       "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "status",
+     "image_url",
+     "stale",
+     "enabled",
+     "can_generate",
+     "error",
+     "id",
+     "name"
+    ],
+    "title": "ObjectIconItem",
+    "type": "object"
+   },
+   "ObjectIconList": {
+    "properties": {
+     "can_generate": {
+      "title": "Can Generate",
+      "type": "boolean"
+     },
+     "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "objects": {
+      "items": {
+       "$ref": "#/components/schemas/ObjectIconItem"
+      },
+      "title": "Objects",
+      "type": "array"
+     }
+    },
+    "required": [
+     "enabled",
+     "can_generate",
+     "objects"
+    ],
+    "title": "ObjectIconList",
+    "type": "object"
+   },
+   "ObjectIconOut": {
+    "properties": {
+     "can_generate": {
+      "title": "Can Generate",
+      "type": "boolean"
+     },
+     "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "image_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Image Url"
+     },
+     "stale": {
+      "title": "Stale",
+      "type": "boolean"
+     },
+     "status": {
+      "enum": [
+       "idle",
+       "pending",
+       "ready",
+       "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "status",
+     "image_url",
+     "stale",
+     "enabled",
+     "can_generate",
+     "error"
+    ],
+    "title": "ObjectIconOut",
+    "type": "object"
+   },
    "Option": {
     "additionalProperties": false,
     "properties": {
@@ -19718,6 +19890,62 @@
     ]
    }
   },
+  "/api/campaigns/{campaign_id}/locations/{location_id}/object-icons": {
+   "get": {
+    "operationId": "list_icons_api_campaigns__campaign_id__locations__location_id__object_icons_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "location_id",
+      "required": true,
+      "schema": {
+       "title": "Location Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ObjectIconList"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "List Icons",
+    "tags": [
+     "object-icons"
+    ]
+   }
+  },
   "/api/campaigns/{campaign_id}/master-character": {
    "get": {
     "operationId": "get_master_character_api_campaigns__campaign_id__master_character_get",
@@ -20852,6 +21080,135 @@
     "summary": "Thumbnail",
     "tags": [
      "npc-portraits"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/objects/{object_id}/icon": {
+   "post": {
+    "operationId": "create_icon_api_campaigns__campaign_id__objects__object_id__icon_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "object_id",
+      "required": true,
+      "schema": {
+       "title": "Object Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ObjectIconIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ObjectIconOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Create Icon",
+    "tags": [
+     "object-icons"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/objects/{object_id}/icon/{image_id}": {
+   "get": {
+    "operationId": "icon_image_api_campaigns__campaign_id__objects__object_id__icon__image_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "object_id",
+      "required": true,
+      "schema": {
+       "title": "Object Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "image_id",
+      "required": true,
+      "schema": {
+       "title": "Image Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Icon Image",
+    "tags": [
+     "object-icons"
     ]
    }
   },
