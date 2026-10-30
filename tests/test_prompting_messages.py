@@ -25,3 +25,6 @@ def test_request_size_counts_every_context_key():
     assert {"context.source", "context.scene", "context.capabilities", "context.repair"} <= counts.keys()
     assert sum(v for k, v in counts.items() if k != "total") == counts["total"]
     assert counts["system"] == len(SYSTEM)
+    assert counts["total"] == sum(len(message["content"]) for message in messages) + len(
+        json.dumps({"type": "object"}, ensure_ascii=False)
+    )
