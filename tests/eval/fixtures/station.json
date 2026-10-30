@@ -1,0 +1,23 @@
+{
+  "world_development": true,
+  "world": {"world": "Орбитальная станция Кедр. Люди живут в герметичных отсеках.", "laws": "Магии, сверхъестественных сил и телепортации не существует. Запертый шлюз требует ключа.", "powers": ""},
+  "world_rules": {"world": "Орбитальная станция Кедр. Люди живут в герметичных отсеках.", "laws": "Магии, сверхъестественных сил и телепортации не существует. Запертый шлюз требует ключа.", "powers": ""},
+  "hero": {"schema_version": 1, "abilities": {"str": 10, "dex": 12, "con": 10, "int": 14, "wis": 12, "cha": 10}, "description": {"identity": "Инженер Анна"}},
+  "resources": {"hp": "20", "energies": {"str": "20", "dex": "22", "int": "24", "wis": "22", "cha": "20"}},
+  "scene": {
+    "location": {"id": "station_hub", "name": "Центральный отсек", "description": "На столе лежит гаечный ключ. У пульта стоит техник Илья. За стеной слышен стук; источник звука не виден."},
+    "entities": [{"id": "technician", "name": "Техник Илья", "kind": "creature", "attitude": "friendly"}, {"id": "wrench", "name": "Гаечный ключ", "kind": "object"}],
+    "mode": "exploration"
+  },
+  "history": [],
+  "source": "осматриваюсь",
+  "established_evidence": "На столе лежит гаечный ключ. Источник стука за стеной не виден.",
+  "objects": [{"id": "wrench", "name": "Гаечный ключ", "location_id": "station_hub", "template": "tool", "material": "metal", "owner_id": null}],
+  "inventory": [],
+  "known_exits": [{"id": "station_lab", "name": "Лаборатория", "via": "Дверь лаборатории", "kind": "door", "state": "closed"}, {"id": "station_airlock", "name": "Шлюз", "via": "Дверь шлюза", "kind": "door", "state": "locked"}],
+  "constraints": [],
+  "active_effects": [],
+  "known_abilities": [],
+  "actor_id": "engineer",
+  "allowed_target_ids": ["engineer", "technician", "wrench"]
+}

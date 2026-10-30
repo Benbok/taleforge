@@ -13,20 +13,18 @@ from app.agents.master.action_admission import obtain_prepared_action
 from app.agents.master.action_results import mark_source, prepared_outcome, public_outcome
 from app.agents.master.helpers import _batches
 from app.agents.master.investment import decide_investment
-from app.agents.master.universal_narration import recent_history
 from app.core.campaigns import Viewer, master_seat
 from app.core.chat import active_session
 from app.core.universal.action_intents import LegacyAdmission
 from app.core.universal.profiles import load_actor
 from app.core.universal.resolution import ResolutionContext, resolve_action
 from app.core.universal.rolls import ensure_completion_message, ensure_roll_message
+from app.core.universal.scene import universal_scene
 from app.db.models import (
     AgentConfig,
     Campaign,
-    CampaignSecret,
     Character,
     Event,
-    HeroAbility,
     LlmCall,
     MasterTurn,
     Message,
@@ -300,38 +298,13 @@ async def run_universal_turn(service, cid, place=None):
                 msg = await s.get(Message, mid)
                 hero = await s.get(Character, hero_id)
                 sh, resources = await load_actor(s, cid, hero.id)
-                secret = await s.get(CampaignSecret, cid)
-                from app.core.universal.inventory import ensure_inventory, item_view, owned_items
-                from app.core.universal.scene import universal_scene
-
-                await ensure_inventory(s, cid, hero.id)
-                inventory = [item_view(row) for row in await owned_items(s, cid, hero.id)]
-                await s.commit()
                 user = await s.get(User, seat.user_id)
-                public_scene = await universal_scene(s, c, Viewer(user, c, seat))
-                from app.core.map import party_map
+                from app.agents.master.prompting.context import build_decide_context
 
-                known_exits = (await party_map(s, Viewer(user, c, seat)))["exits"]
-                known = list(await s.scalars(select(HeroAbility).where(HeroAbility.character_id == hero.id)))
-                history = await recent_history(s, c, msg.seq - 1, trace.get("audience"), public_scene)
-                from app.core.universal.objects import visible_objects
-                from app.core.universal.perception import actor_constraints, established_evidence
-
-                evidence = await established_evidence(s, cid, hero.id)
-                objects = await visible_objects(s, cid, hero.id)
-                constraints = await actor_constraints(s, cid, hero.id)
-                from app.core.universal.effects import active_effects
-
-                running = [
-                    dict(
-                        id=e["id"],
-                        kind=e["kind"],
-                        label=e["definition"].get("label") or e["kind"],
-                        description=e["definition"].get("appearance") or "",
-                        remaining_seconds=e["remaining_seconds"],
-                    )
-                    for e in await active_effects(s, cid, hero.id)
-                ]
+                context = await build_decide_context(
+                    s, c, hero, seat, msg.content, upto_seq=msg.seq - 1, audience=trace.get("audience")
+                )
+                public_scene = context["scene"]
                 receipt = await s.scalar(select(Event).where(Event.campaign_id == cid, Event.idempotency_key == mid))
                 old_receipt = receipt is not None and receipt.payload.get("schema_version") != 2
                 allowed_targets = {e["id"] for e in public_scene.get("entities", [])}
@@ -345,27 +318,6 @@ async def run_universal_turn(service, cid, place=None):
                     )
                 )
                 allowed_targets.update(h.id for h in visible_heroes)
-                context = dict(
-                    world_development=bool(world_enabled(c)),
-                    world=(secret.setting or {}).get("studio", {}) if secret else {},
-                    # The text of the world decides what is allowed; the private notes stay with the master.
-                    world_rules=world_rules(secret),
-                    hero=sh.model_dump(mode="json"),
-                    resources=resources.model_dump(mode="json"),
-                    scene=public_scene,
-                    history=history,
-                    source=msg.content,
-                    established_evidence=evidence,
-                    objects=objects,
-                    inventory=inventory,
-                    known_exits=known_exits,
-                    constraints=constraints,
-                    active_effects=running,
-                    known_abilities=[
-                        dict(name=a.name, profile_id=a.profile_ref, revision=a.profile_revision, profile=a.definition)
-                        for a in known
-                    ],
-                )
             context["actor_id"] = hero.id
             context["allowed_target_ids"] = sorted(allowed_targets)
             scope = dict(
@@ -411,7 +363,16 @@ async def run_universal_turn(service, cid, place=None):
                 preroll, invest = None, False
                 if not already_applied:
                     preroll, invest = await decide_investment(
-                        service, c, game.id, tid, trace, compiled, mid, sh, resources, seat.id,
+                        service,
+                        c,
+                        game.id,
+                        tid,
+                        trace,
+                        compiled,
+                        mid,
+                        sh,
+                        resources,
+                        seat.id,
                         ask_player=seat.occupant_type == "human",
                     )
                 async with service.maker() as s:
