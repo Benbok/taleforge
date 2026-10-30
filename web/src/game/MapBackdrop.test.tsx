@@ -147,3 +147,11 @@ it("при наведении на метку предмета показыва�
   fireEvent.pointerLeave(container.querySelector("[data-feature-marker]")!);
   expect(container.querySelector("[data-marker-hint]")).toBeNull();
 });
+
+it("существа без клетки рисуются рядом с отрядом на свободных клетках", () => {
+  const npc = { id: "n1", name: "Хозяин", type: "npc" as const, mine: false, down: false, zone: "near" as const, bearing: null, cell: null };
+  const { container } = render(<LocationMapSvg map={plan} idPrefix="pr" presence={[npc]} />);
+  const mark = container.querySelector('[data-presence-id="n1"]')!;
+  expect(mark.textContent).toBe("Хозяин");
+  expect(mark.getAttribute("transform")).not.toBe("translate(0.5 0.5)"); // клетка отряда занята
+});

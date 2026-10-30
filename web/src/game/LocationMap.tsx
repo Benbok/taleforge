@@ -21,12 +21,26 @@ export interface LocationMapSvgProps {
   showPassageLabels?: boolean;
   backdrop?: { areaId: string; url: string } | null;
   objectIcons?: Record<string, string>;
+  /** Существа без клетки (NPC, спутники): рисуются на свободных клетках рядом с отрядом, положение условно. */
+  presence?: SceneTokenView[];
   onCell?: (areaId: string, cell: [number, number]) => void;
   onPassage?: (exit: SketchExit, areaId: string) => void;
   onEntity?: (id: string, name: string, anchor: Element) => void;
 }
 
-export function LocationMapSvg({ map, liveSketch, tokens = [], activeLevel, idPrefix, pickedExit, pickedPassageRef, showPassageLabels=false, backdrop, objectIcons, onPassage, onCell, onEntity }: LocationMapSvgProps) {
+/** Свободные клетки пола по удалению от отряда: туда условно ставятся существа без своей клетки. */
+export function presenceCells(sketch: MapLocationPlan["areas"][number]["sketch"], count: number): [number, number][] {
+  const taken = new Set<string>([sketch.party.join(",")]);
+  for (const feature of sketch.features) for (const [x, y] of terrainCells(feature.cells)) taken.add(`${x},${y}`);
+  for (const exit of sketch.exits) for (const [x, y] of exit.cells ?? []) taken.add(`${x},${y}`);
+  const free: [number, number][] = [];
+  for (let y = 0; y < sketch.rows; y++) for (let x = 0; x < sketch.cols; x++)
+    if ((!sketch.mask || sketch.mask[y]?.[x] === ".") && !taken.has(`${x},${y}`)) free.push([x, y]);
+  const [px, py] = sketch.party;
+  return free.sort((a, b) => Math.hypot(a[0] - px, a[1] - py) - Math.hypot(b[0] - px, b[1] - py)).slice(0, count);
+}
+
+export function LocationMapSvg({ map, liveSketch, tokens = [], activeLevel, idPrefix, pickedExit, pickedPassageRef, showPassageLabels=false, backdrop, objectIcons, presence = [], onPassage, onCell, onEntity }: LocationMapSvgProps) {
   const level = activeLevel ?? map.areas.find((area) => area.status === "here")?.level ?? 0;
   const areas = map.areas.filter((area) => area.level === level);
   const bounds = overviewBounds(knownBounds(map, level));
@@ -73,10 +87,23 @@ export function LocationMapSvg({ map, liveSketch, tokens = [], activeLevel, idPr
         );
       })}
       {current && !tokens.some(({ item }) => item.mine) && <g data-party-marker="true" pointerEvents="none" transform={`translate(${current.offset[0] + (liveSketch?.party ?? current.sketch.party)[0] + .5} ${current.offset[1] + (liveSketch?.party ?? current.sketch.party)[1] + .5})`}>
-        <circle r=".38" fill="var(--tf-surface)" stroke="var(--tf-accent)" strokeWidth=".09" />
-        <path d="M0 -.23 L.17 .19 L0 .1 L-.17 .19 Z" fill="var(--tf-accent)" />
+        <circle r=".46" fill="rgba(8,12,14,.85)" stroke="var(--tf-accent)" strokeWidth=".12" />
+        <path d="M0 -.28 L.2 .23 L0 .12 L-.2 .23 Z" fill="var(--tf-accent)" />
         <title>Позиция отряда</title>
       </g>}
+      {current && presence.length > 0 && (() => {
+        const sketch = liveSketch ?? current.sketch;
+        const cells = presenceCells(sketch, presence.length);
+        return presence.slice(0, cells.length).map((item, i) => {
+          const [x, y] = cells[i];
+          const visual = entityVisual(item.type, item.visual_key);
+          return <g key={item.id} data-presence-id={item.id} className={onEntity ? "cursor-pointer" : undefined} transform={`translate(${current.offset[0] + x + .5} ${current.offset[1] + y + .5})`} onClick={onEntity ? (event) => onEntity(item.id, item.name, event.currentTarget) : undefined}>
+            <circle r=".4" fill="rgba(8,12,14,.82)" stroke={visual.color} strokeWidth=".08" />
+            <MapGlyph name={visual.glyph} x={-.25} y={-.25} width={.5} height={.5} color={visual.color} pointerEvents="none" />
+            <title>{item.name}{item.companion_of ? " — спутник" : ""}</title>
+          </g>;
+        });
+      })()}
       {current && tokens.map(({ item, col, row }) => {
         const [x, y] = mechanicalToPlan(current, [col, row], liveSketch?.party ?? current.sketch.party);
         const visual = entityVisual(item.type, item.visual_key);
@@ -151,7 +178,7 @@ export function LocationMap({ map, m, activeLevel, idPrefix = "location-map", or
         )}
         <div ref={z.box} {...z.pan} className="max-h-[50dvh] overflow-auto p-2">
           <div style={{ width: `${z.zoom * 100}%`, margin: "0 auto" }}>
-            <LocationMapSvg map={map} liveSketch={orientationOnly ? current?.sketch : m?.sketch} tokens={m ? locationTokens(m) : []} activeLevel={level} idPrefix={idPrefix} showPassageLabels={orientationOnly} backdrop={backdrop} objectIcons={objectIcons}
+            <LocationMapSvg map={map} liveSketch={orientationOnly ? current?.sketch : m?.sketch} tokens={m ? locationTokens(m) : []} activeLevel={level} idPrefix={idPrefix} showPassageLabels={orientationOnly} backdrop={backdrop} objectIcons={objectIcons} presence={orientationOnly ? presenceOf(m) : undefined}
               pickedExit={picked} pickedPassageRef={picked?.passage_ref}
               onCell={!orientationOnly && m && current ? (_, cell) => stepTo({ cell: planToMechanical(current, party, cell) }) : undefined}
               onEntity={m ? (id, name, anchor) => inspect(id, name, anchor) : undefined}
@@ -173,6 +200,10 @@ export function LocationMap({ map, m, activeLevel, idPrefix = "location-map", or
       {!orientationOnly && (traverse.error || traverse.reason || step.error || step.note) && <p className="rounded-lg border border-warn/40 bg-warn/10 p-3 text-sm text-ink" role={traverse.error || step.error ? "alert" : "status"}>{traverse.error ?? traverse.reason ?? step.error ?? step.note}</p>}
     </section>
   );
+}
+
+function presenceOf(m?: MapState): SceneTokenView[] {
+  return (m?.scene_view ?? []).filter((t) => !t.cell && !t.mine && t.type !== "item" && !t.down);
 }
 
 export function locationTokens(map: MapState): Cell<SceneTokenView>[] {
