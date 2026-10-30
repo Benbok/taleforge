@@ -1,6 +1,7 @@
 """Build the master's request without database or provider side effects."""
 
 import json
+from copy import deepcopy
 
 from app.rules.universal.exploration import exploration_capabilities
 
@@ -9,21 +10,45 @@ def decide_messages(context: dict, repair: str | None = None) -> list[dict]:
     # Local import keeps the prompt owned by exploration during the measurement phase.
     from app.agents.master.exploration import SYSTEM
 
+    data = {key: value for key, value in context.items() if key != "repair"}
     return [
-        {"role": "system", "content": SYSTEM},
+        {
+            "role": "system",
+            "content": SYSTEM + "\n" + json.dumps({"capabilities": exploration_capabilities()}, ensure_ascii=False),
+        },
         {
             "role": "user",
-            "content": json.dumps(
-                {**context, "capabilities": exploration_capabilities(), "repair": repair}, ensure_ascii=False
-            ),
+            "content": json.dumps({**data, "repair": repair}, ensure_ascii=False),
         },
     ]
+
+
+def cacheable(messages: list[dict], model: str) -> list[dict]:
+    """Anthropic's explicit cache marker; other providers retain their native format."""
+    if not model.startswith(("anthropic/", "claude")):
+        return messages
+    result = deepcopy(messages)
+    for message in result:
+        if message["role"] == "system":
+            content = message["content"]
+            if isinstance(content, str):
+                content = [{"type": "text", "text": content}]
+            if content:
+                content[-1]["cache_control"] = {"type": "ephemeral"}
+            message["content"] = content
+    return result
 
 
 def request_size(messages: list[dict], tool_schema: dict) -> dict[str, int]:
     """Serialized character counts, including JSON punctuation; these are not tokens."""
     sizes = {
-        "system": sum(len(m["content"]) for m in messages if m["role"] == "system"),
+        "system": sum(
+            len(m["content"])
+            if isinstance(m["content"], str)
+            else sum(len(block.get("text", "")) for block in m["content"])
+            for m in messages
+            if m["role"] == "system"
+        ),
         "schema": len(json.dumps(tool_schema, ensure_ascii=False)),
     }
     for message in messages:

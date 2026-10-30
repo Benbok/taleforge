@@ -132,6 +132,10 @@ async def _call(service, campaign, turn, purpose, payload, *, generation_id=None
             max_tokens=STRUCTURED_MAX_TOKENS,
         )
     started = monotonic()
+    if purpose in {"exploration_decide", "intent_review"}:
+        from app.agents.master.prompting.messages import cacheable
+
+        payload = cacheable(payload, model)
     try:
         reply = await service.llm.complete(payload, model=model, api_base=api_base, temperature=temperature, **options)
     except Exception as exc:

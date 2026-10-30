@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.agents.llm import LiteLLMClient, decide_model_for, repair_json, reply_audit_error
-from app.agents.master.prompting.messages import decide_messages, request_size
+from app.agents.master.prompting.messages import cacheable, decide_messages, request_size
 from app.agents.master.universal import STRUCTURED_MAX_TOKENS, provider_schema
 from app.rules.universal.exploration import IntentV2
 from tests.eval.capture import FIXTURES
@@ -66,7 +66,7 @@ async def evaluate(args):
         async with semaphore:
             try:
                 reply = await llm.complete(
-                    messages,
+                    cacheable(messages, model),
                     model=model,
                     tools=tools,
                     tool_choice={"type": "function", "function": {"name": "submit_action"}},
