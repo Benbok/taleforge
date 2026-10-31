@@ -4,7 +4,16 @@ from app.db.models import AdventureVersion
 from tests.test_author_secret_access import make_player, publish
 from tests.test_universal_studio import BASE, create
 
-KEYS = {"version_id", "project_id", "title", "author_name", "version", "public_summary", "published_at"}
+KEYS = {
+    "version_id",
+    "project_id",
+    "title",
+    "author_name",
+    "version",
+    "public_summary",
+    "published_at",
+    "cover_thumbnail_url",
+}
 
 
 def catalog(client, headers):
