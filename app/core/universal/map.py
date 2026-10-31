@@ -3,6 +3,15 @@
 from app.core.universal.visibility import visible_entity
 
 
+def map_entity_type(entity):
+    """В универсальном бою враждебность задаётся hostile, а не старым attitude."""
+    from app.core.inspect import entity_type
+
+    if entity.kind == "creature" and "hostile" in (entity.state or {}):
+        return "creature" if entity.state["hostile"] else "npc"
+    return entity_type(entity)
+
+
 def route_is_known(place, destination_id):
     state = place.state or {}
     sketch = state.get("sketch") or {}

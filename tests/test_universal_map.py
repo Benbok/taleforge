@@ -11,6 +11,44 @@ from app.db.models import Campaign, Character, Entity, Event, Scene, Seat, User
 from tests.test_universal_resolution import setup
 
 
+def test_map_shows_local_heroes_npcs_and_enemies_with_runtime_hostility(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            s.add_all(
+                [
+                    Entity(id="hall", campaign_id="c", kind="location", name="Зал"),
+                    Entity(id="away", campaign_id="c", kind="location", name="Другое место"),
+                ]
+            )
+            await s.flush()
+            for hid in ("hero", "target"):
+                (await s.get(Character, hid)).location_id = "hall"
+            s.add(Scene(campaign_id="c", location_id="hall"))
+            for eid, place, state in [
+                ("guide", "hall", {"hostile": False}),
+                ("enemy", "hall", {"hostile": True, "attitude": "neutral"}),
+                ("hidden", "hall", {"hostile": True, "hidden": True}),
+                ("private", "hall", {"visibility": "private"}),
+                ("remote", "away", {"hostile": True}),
+            ]:
+                s.add(Entity(id=eid, campaign_id="c", location_id=place, kind="creature", name=eid, state=state))
+            await s.flush()
+            viewer = Viewer(await s.get(User, "u"), await s.get(Campaign, "c"), await s.get(Seat, "seat"))
+            view = await party_map(s, viewer)
+            actors = {token["id"]: token for token in view["scene_view"]}
+            assert set(actors) == {"hero", "target", "guide", "enemy"}
+            assert actors["hero"]["mine"] and actors["hero"]["type"] == "hero"
+            assert actors["target"]["type"] == "hero"
+            assert actors["guide"]["type"] == "npc"
+            assert actors["enemy"]["type"] == "creature"
+            assert all(token["cell"] is None for token in actors.values())
+            assert (await clock_view(s, "c"))["step_index"] == "0"
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
 def test_universal_map_is_read_only_and_hides_private_inventory(tmp_path):
     async def run():
         engine, maker = await setup(tmp_path)

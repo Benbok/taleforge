@@ -45,14 +45,25 @@ function OrientedPlan({map,visual,campaignId,hereId}:{map:MapState;visual:MapLoc
 export default function OrientationMap({map}:{map:MapState}){
  const inspect=useInspector(s=>s.open);
  const visual=orientationPlan(map);
+ const actors=!visual?(map.scene_view??[]).filter(item=>['hero','npc','creature'].includes(item.type)):[];
+ const actorIds=new Set(actors.map(item=>item.id));
+ const around=map.around.filter(item=>!actorIds.has(item.id));
  const campaignId=useGame(s=>s.snapshot?.campaign.id);
  return <section className='space-y-4' aria-label='Ориентирующая карта'>
   <p className='rounded-lg border border-line-soft bg-raised p-3 text-sm text-muted'>Карта показывает известное окружение. Осмотр и масштаб не расходуют время. Действия и перемещения описывайте в чате.</p>
   {visual ? (campaignId&&map.here ? <OrientedPlan key={map.here.id} map={map} visual={visual} campaignId={campaignId} hereId={map.here.id}/> : <><p className='text-xs text-muted'>Ориентирующая схема: масштаб и положение ориентиров условны.</p><LocationMap map={visual} m={map} orientationOnly /></>) : <div className='space-y-3'><p className='text-sm text-muted'>Точная схема ещё не известна. Для игры достаточно описания и известных ориентиров. Схема создаётся при первом входе; для уже начатой игры её можно создать здесь.</p>{map.here&&<GenerateMap key={map.here.id} locationId={map.here.id}/>}</div>}
   {map.here?.description&&<p className='whitespace-pre-line leading-relaxed text-ink-2'>{map.here.description}</p>}
-  {map.around.length>0&&<div className='space-y-2'>
+  {actors.length>0&&<div className='space-y-2'>
+   <h3 className='font-semibold'>Участники сцены</h3>
+   <ul className='grid gap-2 sm:grid-cols-2'>{actors.map(item=><li key={item.id}>
+    <button className='w-full rounded-lg border border-line px-3 py-2 text-left hover:border-accent' onClick={event=>inspect(item.id,item.name,event.currentTarget)}>
+     {item.name}<span className='ml-2 text-xs text-muted'>{item.type==='hero'?'Герой':item.type==='npc'?'NPC':'Противник'}{item.mine?' · ваш герой':''}{item.down?(item.type==='hero'?' · без сознания':' · мёртв'):''}</span>
+    </button>
+   </li>)}</ul>
+  </div>}
+  {around.length>0&&<div className='space-y-2'>
    <h3 className='font-semibold'>Известное окружение</h3>
-   <ul className='grid gap-2 sm:grid-cols-2'>{map.around.map(item=><li key={item.id}>
+   <ul className='grid gap-2 sm:grid-cols-2'>{around.map(item=><li key={item.id}>
     <button className='w-full rounded-lg border border-line px-3 py-2 text-left hover:border-accent' onClick={event=>inspect(item.id,item.name,event.currentTarget)}>{item.name}{item.condition&&<span className='ml-2 text-xs text-muted'>{item.condition}</span>}</button>
    </li>)}</ul>
   </div>}
