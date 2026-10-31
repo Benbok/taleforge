@@ -59,13 +59,6 @@ export default function HeroCreationDialogue({
       <header className='flex flex-wrap items-start justify-between gap-3 border-b border-line pb-5'>
         <div>
           <div className='mb-2 flex items-center gap-2'>
-            <a
-              href='/?tab=heroes'
-              className='text-xs font-semibold text-accent hover:underline flex items-center gap-1 transition-colors'
-            >
-              ← Библиотека героев
-            </a>
-            <span className='text-line' aria-hidden='true'>/</span>
             <p className='text-xs uppercase tracking-widest text-patina'>02 / Вместе с мастером</p>
           </div>
           <h2 className='font-heading text-2xl font-bold tracking-tight text-ink'>Беседа с мастером</h2>

@@ -361,7 +361,13 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
         <ActionButton
           danger
           className="font-mono text-xs"
-          confirm={`Вы уверены, что хотите удалить кампанию «${room.name}» безвозвратно?`}
+          confirm={{
+            title: `Удалить кампанию «${room.name}»?`,
+            description:
+              "Журнал чата, сюжетная арка и прогресс за столом будут удалены безвозвратно. Герои игроков в их профилях сохранятся.",
+            confirmLabel: "Удалить кампанию",
+            danger: true,
+          }}
           run={async () => {
             await api(`/api/campaigns/${room.id}`, { method: "DELETE" });
             navigate("/", { replace: true });

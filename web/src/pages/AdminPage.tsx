@@ -2,6 +2,7 @@ import { Link, Navigate, useSearchParams } from "react-router-dom";
 import AudioSection from "../admin/AudioSection";
 import SpendSection from "../admin/SpendSection";
 import VoiceSection from "../admin/VoiceSection";
+import BackButton from "../components/BackButton";
 import Header from "../components/Header";
 import ModelsSection from "../profile/ModelsSection";
 import UsersSection from "../profile/UsersSection";
@@ -145,14 +146,7 @@ export default function AdminPage() {
   return (
     <>
       <Header>
-        <Link
-          className="btn btn-outline-copper h-9 px-3.5 text-xs font-mono tracking-wider flex items-center gap-1.5"
-          to="/"
-          aria-label="К столам кампаний"
-        >
-          <span>←</span>
-          <span className="hidden sm:inline">К СТОЛАМ</span>
-        </Link>
+        <BackButton fallback="/" />
       </Header>
 
       <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6 md:px-8 md:py-8">

@@ -1,5 +1,6 @@
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import AuthorWorkspace from "../author/AuthorWorkspace";
+import BackButton from "../components/BackButton";
 import Header from "../components/Header";
 
 export default function AuthorProjectPage() {
@@ -8,9 +9,7 @@ export default function AuthorProjectPage() {
   return (
     <>
       <Header>
-        <Link className="btn btn-outline-copper h-8 px-2.5 text-xs font-mono" to="/author">
-          ← Проекты
-        </Link>
+        <BackButton fallback="/author" />
       </Header>
       {projectId ? <AuthorWorkspace projectId={projectId} /> : null}
     </>

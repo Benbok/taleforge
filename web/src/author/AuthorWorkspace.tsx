@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { confirmAction } from "../stores/confirm";
 import { useEffect, useState, type ReactNode } from "react";
 import { ApiError } from "../lib/api";
 import type { DraftPatch, EditProposal, PreparationView, StageStatus, ValidationIssue, ValidationReport } from "../lib/api.gen";
@@ -335,8 +336,18 @@ function LegacyAuthorWorkspace({ projectId }: { projectId: string }) {
     const status = st?.status ?? "not_requested";
     const active = status === "queued" || status === "running";
     const isStale = stale.has(`stage:${name}`);
-    const run = (regenerate: boolean) => {
-      if (name === "plot" && worldBuilt && !window.confirm("Новый сюжет удалит уже созданные места, NPC и карты. Продолжить?")) return;
+    const run = async (regenerate: boolean) => {
+      if (
+        name === "plot" &&
+        worldBuilt &&
+        !(await confirmAction({
+          title: "Создать новый сюжет?",
+          description: "Новый сюжет удалит уже созданные места, NPC и карты.",
+          confirmLabel: "Создать сюжет",
+          danger: true,
+        }))
+      )
+        return;
       prepare.mutate({ stage: name, regenerate });
     };
     const failed = status === "failed" || status === "blocked";
@@ -400,7 +411,16 @@ function LegacyAuthorWorkspace({ projectId }: { projectId: string }) {
   };
 
   const pastePlot = async (value: Record<string, unknown>) => {
-    if (worldBuilt && !window.confirm("Новый каркас удалит уже созданные места, NPC и карты. Продолжить?")) return false;
+    if (
+      worldBuilt &&
+      !(await confirmAction({
+        title: "Принять новый каркас?",
+        description: "Новый каркас удалит уже созданные места, NPC и карты.",
+        confirmLabel: "Принять каркас",
+        danger: true,
+      }))
+    )
+      return false;
     try {
       const r = await authoring.importPlot(projectId, { plan: value, expected_revision: revision, request_key: newRequestKey() });
       setPlotErrors([]);
@@ -610,11 +630,13 @@ function LegacyAuthorWorkspace({ projectId }: { projectId: string }) {
                 className="btn btn-primary min-h-11 px-5 text-sm font-medium"
                 type="button"
                 disabled={busy || mapsRunning}
-                onClick={() => {
-                  if (window.confirm("Пересобрать карты всех мест? Планировка каждого места — вызов модели.")) {
-                    prepare.mutate({ stage: "maps", regenerate: true, target: "*" });
-                  }
-                }}
+                onClick={() =>
+                  void confirmAction({
+                    title: "Пересобрать карты всех мест?",
+                    description: "Планировка каждого места — отдельный вызов модели.",
+                    confirmLabel: "Пересобрать",
+                  }).then((ok) => ok && prepare.mutate({ stage: "maps", regenerate: true, target: "*" }))
+                }
               >
                 {mapsRunning ? "Пересобираю карты…" : "Пересобрать карты"}
               </button>

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import BackButton from "../components/BackButton";
 import Header from "../components/Header";
 import { api } from "../lib/api";
 import AccountSection, { type Profile } from "../profile/AccountSection";
@@ -15,14 +16,7 @@ export default function ProfilePage() {
   return (
     <>
       <Header>
-        <Link
-          className="btn btn-outline-copper h-9 px-3.5 text-xs font-mono tracking-wider flex items-center gap-1.5"
-          to="/"
-          aria-label="К списку столов"
-        >
-          <span>←</span>
-          <span className="hidden sm:inline">К СТОЛАМ</span>
-        </Link>
+        <BackButton fallback="/" />
       </Header>
 
       <main className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-6 md:px-8 md:py-8">

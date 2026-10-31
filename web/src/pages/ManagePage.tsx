@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams, useSearchParams } from "react-router-dom";
+import BackButton from "../components/BackButton";
 import Header from "../components/Header";
 import MasterTab from "../cabinet/MasterTab";
 import PlayersTab from "../cabinet/PlayersTab";
@@ -195,14 +196,7 @@ export default function ManagePage() {
   return (
     <>
       <Header>
-        <Link
-          className="btn btn-outline-copper h-9 px-3.5 text-xs font-mono tracking-wider flex items-center gap-1.5"
-          to="/"
-          aria-label="К кампаниям"
-        >
-          <span>←</span>
-          <span className="hidden sm:inline">К СТОЛАМ</span>
-        </Link>
+        <BackButton fallback={`/c/${id}`} />
         {r && (
           <Link
             className="btn btn-primary ml-auto h-9 px-4 text-xs font-mono tracking-wider flex items-center gap-1.5"

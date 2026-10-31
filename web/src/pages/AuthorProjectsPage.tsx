@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import ImportedAdventures from "../author/ImportedAdventures";
+import BackButton from "../components/BackButton";
 import Header from "../components/Header";
 import { ApiError } from "../lib/api";
 import { authoring, authorKeys, emptyStudio, mergeDraft } from "../lib/authoring";
@@ -39,7 +40,9 @@ export default function AuthorProjectsPage() {
 
   return (
     <>
-      <Header />
+      <Header>
+        <BackButton fallback="/?tab=worlds" />
+      </Header>
       <main className="mx-auto flex max-w-4xl flex-col gap-8 p-4 sm:p-6">
         <header className="flex flex-col gap-2">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-accent">

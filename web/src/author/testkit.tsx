@@ -2,6 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router-dom";
+import "../components/confirmKit";
+import ConfirmDialog from "../components/ConfirmDialog";
 import { vi } from "vitest";
 
 export interface Call {
@@ -34,6 +36,7 @@ export function renderWithClient(ui: ReactElement, client = new QueryClient({ de
   return { client, ...render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>
+      <ConfirmDialog />
     </QueryClientProvider>,
   ) };
 }

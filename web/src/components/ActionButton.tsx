@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { confirmAction, specFromText, type ConfirmSpec } from "../stores/confirm";
 import { toast } from "../stores/toasts";
 
 /** Кнопка с запросом: пока идёт — крутится и не нажимается повторно; успех — уведомление, ошибка — причина
@@ -19,7 +20,7 @@ export default function ActionButton({
   children: ReactNode;
   primary?: boolean;
   danger?: boolean;
-  confirm?: string;
+  confirm?: string | ConfirmSpec;
   className?: string;
   title?: string;
   disabled?: boolean;
@@ -29,7 +30,19 @@ export default function ActionButton({
 
   async function click() {
     if (busy || disabled) return;
-    if (confirm && !window.confirm(confirm)) return;
+    if (confirm) {
+      // Операция идёт внутри окна: ошибка остаётся там же, а кнопка не меняется, даже если её строка исчезнет.
+      const spec = typeof confirm === "string" ? specFromText(confirm) : confirm;
+      await confirmAction({
+        ...spec,
+        danger: spec.danger || danger,
+        run: async () => {
+          await run();
+          if (done) toast.ok(done);
+        },
+      });
+      return;
+    }
     setBusy(true);
     setError(null);
     try {

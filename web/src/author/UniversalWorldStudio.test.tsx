@@ -1,6 +1,7 @@
 ﻿import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import UniversalWorldStudio from './UniversalWorldStudio';
+import { answerConfirm } from '../components/confirmKit';
 import { mockApi, renderWithClient } from './testkit';
 
 const fields = {title:'Стеклянные острова',premise:'Исследовать гавань',world:'Острова',laws:'Никто не летает',
@@ -105,11 +106,11 @@ function filledStudio() {
 
 it('regenerates over the filled fields only after the author confirms, and saves nothing', async () => {
  const mock = filledStudio();
- vi.spyOn(window, 'confirm').mockReturnValue(true);
  renderWithClient(<UniversalWorldStudio projectId='ap_1' />);
  await screen.findByDisplayValue(fields.premise);
  fireEvent.change(screen.getByLabelText('Идея мира'),{target:{value:'Властелин колец'}});
  fireEvent.click(screen.getByRole('button',{name:'Перегенерировать с заменой'}));
+ answerConfirm('Заменить');
  await screen.findByDisplayValue('НОВЫЙ ЗАМЫСЕЛ');
  expect((screen.getByLabelText('Силы и возможности') as HTMLTextAreaElement).value).toBe('Как действует магия');
  expect((screen.getByLabelText('Законы мира') as HTMLTextAreaElement).value).toBe(fields.laws); // not offered: stays
@@ -119,11 +120,11 @@ it('regenerates over the filled fields only after the author confirms, and saves
 
 it('does not regenerate when the author declines the confirmation', async () => {
  const mock = filledStudio();
- vi.spyOn(window, 'confirm').mockReturnValue(false);
  renderWithClient(<UniversalWorldStudio projectId='ap_1' />);
  await screen.findByDisplayValue(fields.premise);
  fireEvent.change(screen.getByLabelText('Идея мира'),{target:{value:'Властелин колец'}});
  fireEvent.click(screen.getByRole('button',{name:'Перегенерировать с заменой'}));
+ answerConfirm('Отмена');
  expect(mock.calls.some(c=>c.url.endsWith('/studio/draft'))).toBe(false);
  expect((screen.getByLabelText('Замысел') as HTMLTextAreaElement).value).toBe(fields.premise);
 });
@@ -154,12 +155,12 @@ it('hides an accepted world from the catalog and brings it back', async () => {
 
 it('archives the project only after the author confirms', async () => {
  const mock = publishedStudio(true);
- const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
  renderWithClient(<UniversalWorldStudio projectId='ap_1' />);
  const button = await screen.findByRole('button',{name:'Архивировать проект'});
  fireEvent.click(button);
+ answerConfirm('Отмена');
  expect(mock.calls.some(c=>c.url.endsWith('/archive'))).toBe(false);
- confirm.mockReturnValue(true);
  fireEvent.click(button);
+ answerConfirm('Архивировать');
  await waitFor(()=>expect(mock.calls.some(c=>c.url.endsWith('/archive')&&c.method==='POST')).toBe(true));
 });

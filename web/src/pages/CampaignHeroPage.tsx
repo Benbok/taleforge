@@ -1,7 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import ActionButton from "../components/ActionButton";
+import BackButton from "../components/BackButton";
 import Header from "../components/Header";
 import UniversalHeroCard from '../builder/UniversalHeroCard';
 import HeroPortraitStudio from '../builder/HeroPortraitStudio';
@@ -25,7 +26,6 @@ interface Room {
 export default function CampaignHeroPage() {
   const { id = "" } = useParams();
   const qc = useQueryClient();
-  const navigate = useNavigate();
   const room = useQuery({ queryKey: ["room", id], queryFn: () => api<Room>(`/api/campaigns/${id}`) });
   const list = useQuery({
     queryKey: ["characters", id],
@@ -111,14 +111,7 @@ export default function CampaignHeroPage() {
   return (
     <>
       <Header>
-        <button
-          className="btn btn-outline-copper h-9 px-3.5 text-xs font-mono tracking-wider flex items-center gap-1.5"
-          onClick={() => navigate(`/c/${id}`)}
-          aria-label="Вернуться к столу кампании"
-        >
-          <span>←</span>
-          <span className="truncate max-w-[180px] sm:max-w-xs">{room.data?.name ?? "Кампания"}</span>
-        </button>
+        <BackButton fallback={`/c/${id}`} />
       </Header>
 
       <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 md:px-8 md:py-8">

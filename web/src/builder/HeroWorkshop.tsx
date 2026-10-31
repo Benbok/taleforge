@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import BackButton from '../components/BackButton';
 import Header from '../components/Header';
 import { api } from '../lib/api';
 import { emptyDescription, type HeroCard, type HeroDialogue } from '../lib/universal';
@@ -38,19 +39,13 @@ export default function HeroWorkshop() {
 
   return <>
     <Header>
-      <Link className='btn flex items-center gap-1.5' to='/?tab=heroes'>
-        <span aria-hidden='true'>←</span> Библиотека героев
-      </Link>
+      <BackButton fallback='/?tab=heroes' />
       <Link className='btn' to='/'>К столам</Link>
     </Header>
     <main className='workshop-page mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 md:px-8 md:py-8'>
       <header className='workshop-masthead relative overflow-hidden rounded-2xl border border-line p-6 md:p-8'>
         <div className='workshop-emblem' aria-hidden='true'>✧</div>
         <nav aria-label='Навигация' className='relative mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted'>
-          <Link to='/?tab=heroes' className='text-accent hover:underline flex items-center gap-1 transition-colors'>
-            ← Библиотека героев
-          </Link>
-          <span className='text-line' aria-hidden='true'>/</span>
           <span>Мастерская героя</span>
         </nav>
         <h1 className='relative mt-3 font-heading text-3xl tracking-tight md:text-4xl'>Мастерская героя</h1>

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import AuthForm from "../components/AuthForm";
+import BackButton from "../components/BackButton";
 import Header from "../components/Header";
 import { api } from "../lib/api";
 import type { CampaignCard, InvitePreview } from "../lib/types";
@@ -30,7 +31,9 @@ export default function InvitePage() {
 
   return (
     <>
-      <Header />
+      <Header>
+        <BackButton fallback="/" />
+      </Header>
       <main className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-8 md:py-12">
         {preview.isLoading && (
           <div className="card p-8 text-center text-muted font-mono text-sm">

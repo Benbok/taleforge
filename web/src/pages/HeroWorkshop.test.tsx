@@ -2,6 +2,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { answerConfirm } from '../components/confirmKit';
 import LibraryHeroPage from './LibraryHeroPage';
 import CampaignHeroPage from './CampaignHeroPage';
 
@@ -77,7 +79,7 @@ function open(path = '/heroes/new') {
   return render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={[path]}><Routes>
     <Route path='/heroes/:hid' element={<LibraryHeroPage />} />
     <Route path='/c/:id/hero' element={<CampaignHeroPage />} />
-  </Routes></MemoryRouter></QueryClientProvider>);
+  </Routes></MemoryRouter><ConfirmDialog /></QueryClientProvider>);
 }
 afterEach(() => { cleanup(); clients.splice(0).forEach(q => q.clear()); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
@@ -131,13 +133,13 @@ it('confirms deleting only the selected saved draft and keeps it deleted after r
     }
     throw new Error(`Unexpected ${init.method} ${path}`);
   });
-  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
   const page = open();
   const row = await screen.findByRole('article', { name: 'Черновик: Ива' });
   fireEvent.click(within(row).getByRole('button', { name: 'Удалить' }));
+  answerConfirm('Отмена');
   expect(deleted).toEqual([]);
-  confirm.mockReturnValue(true);
   fireEvent.click(within(row).getByRole('button', { name: 'Удалить' }));
+  answerConfirm('Удалить черновик');
   await waitFor(() => expect(screen.queryByRole('article', { name: 'Черновик: Ива' })).toBeNull());
   expect(deleted).toEqual(['hd1']);
   expect(screen.getByRole('button', { name: 'Продолжить: Бран' })).toBeTruthy();
@@ -150,7 +152,6 @@ it('deletes an opened draft and returns to the creation form', async () => {
   const draft = { id: 'hd1', revision: 2, status: 'ready', description, transcript: [],
     proposal: { abilities, explanations, equipment }, campaign_id: null, hero_id: null };
   let deleted = false;
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
   vi.stubGlobal('fetch', async (path: string, init: RequestInit) => {
     if (path === '/api/hero-creation/dialogues/hd1' && init.method === 'GET') return response(draft);
     if (path === '/api/hero-creation/dialogues/hd1?expected_revision=2' && init.method === 'DELETE') {
@@ -161,6 +162,7 @@ it('deletes an opened draft and returns to the creation form', async () => {
   });
   open('/heroes/new?dialogue=hd1');
   fireEvent.click(await screen.findByRole('button', { name: 'Удалить' }));
+  answerConfirm('Удалить черновик');
   expect(await screen.findByRole('button', { name: 'Обсудить с мастером' })).toBeTruthy();
   expect(deleted).toBe(true);
   expect(screen.queryByRole('heading', { name: 'Беседа с мастером' })).toBeNull();

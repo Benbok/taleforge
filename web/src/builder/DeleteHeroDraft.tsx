@@ -9,7 +9,7 @@ export default function DeleteHeroDraft({ draft, onDeleted, disabled = false }: 
   const qc = useQueryClient();
   const name = draft.description.name || draft.description.identity.slice(0, 80);
   return <ActionButton danger disabled={disabled} title='Удалить черновик'
-    confirm={`Удалить черновик «${name}»? Переписка и предложение будут удалены.`}
+    confirm={{ title: `Удалить черновик «${name}»?`, description: 'Переписка с мастером и предложение героя будут удалены.', confirmLabel: 'Удалить черновик', danger: true }}
     done='Черновик удалён'
     run={async () => {
       await api(`/api/hero-creation/dialogues/${draft.id}?expected_revision=${draft.revision}`, { method: 'DELETE' });

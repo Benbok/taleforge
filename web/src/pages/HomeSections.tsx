@@ -82,7 +82,12 @@ export function HeroesLibrarySection({ heroes }: { heroes: LibraryHero[] }) {
                 <ActionButton
                   className="px-3 py-1 text-xs text-muted hover:text-bad"
                   title="Удалить героя из профиля"
-                  confirm={`Удалить героя «${h.name || "без имени"}» из профиля?`}
+                  confirm={{
+                    title: `Удалить героя «${h.name || "без имени"}»?`,
+                    description: "Герой исчезнет из вашей библиотеки. Копии в кампаниях останутся.",
+                    confirmLabel: "Удалить героя",
+                    danger: true,
+                  }}
                   run={async () => {
                     await api(`/api/me/characters/${h.id}`, { method: "DELETE" });
                     await qc.invalidateQueries({ queryKey: ["library"] });

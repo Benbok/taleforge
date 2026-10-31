@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { api } from "./lib/api";
 import type { Theme } from "./lib/types";
+import ConfirmDialog from "./components/ConfirmDialog";
 import Toasts from "./components/Toasts";
 import GamePage from "./pages/GamePage";
 import CampaignHeroPage from "./pages/CampaignHeroPage";
@@ -52,6 +53,7 @@ export default function App() {
         </Routes>
       </BrowserRouter>
       <Toasts />
+      <ConfirmDialog />
     </QueryClientProvider>
   );
 }

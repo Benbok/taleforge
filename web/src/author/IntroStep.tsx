@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { confirmAction } from "../stores/confirm";
 import { useEffect, useState } from "react";
 import { api, ApiError } from "../lib/api";
 import type { IntroOut } from "../lib/api.gen";
@@ -129,11 +130,14 @@ export default function IntroStep({ projectId, revision, running, status, errorC
                 className="btn min-h-11 px-4 text-sm"
                 type="button"
                 disabled={busy}
-                onClick={() => {
-                  if (window.confirm("Модель напишет новый текст; текущая запись к нему не подойдёт и будет удалена. Продолжить?")) {
-                    prepare.mutate({ rewrite: true, voiced: false });
-                  }
-                }}
+                onClick={() =>
+                  void confirmAction({
+                    title: "Переписать вступление?",
+                    description: "Модель напишет новый текст; текущая озвучка к нему не подойдёт и будет удалена.",
+                    confirmLabel: "Переписать",
+                    danger: true,
+                  }).then((ok) => ok && prepare.mutate({ rewrite: true, voiced: false }))
+                }
               >
                 Переписать только текст
               </button>

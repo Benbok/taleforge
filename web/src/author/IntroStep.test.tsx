@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import IntroStep from "./IntroStep";
+import { answerConfirm } from "../components/confirmKit";
 import { mockApi, renderWithClient } from "./testkit";
 
 afterEach(() => {
@@ -72,7 +73,6 @@ it("свой текст сохраняется, а устаревшее всту
 
 
 it("«Переписать только текст» просит новый текст без записи", async () => {
-  vi.spyOn(window, "confirm").mockReturnValue(true);
   const { mock } = mount((c) =>
     c.url.endsWith("/intro") && c.method === "GET"
       ? { body: intro({ voices: [{ id: "v1", duration: 2 }], provider: "voicestudio" }) }
@@ -83,6 +83,7 @@ it("«Переписать только текст» просит новый т�
           : undefined,
   );
   fireEvent.click(await screen.findByRole("button", { name: "Переписать только текст" }));
+  answerConfirm("Переписать");
   await waitFor(() => expect(mock.calls.some((c) => c.method === "POST" && c.url.endsWith("/intro"))).toBe(true));
   expect(mock.calls.find((c) => c.method === "POST" && c.url.endsWith("/intro"))?.body).toMatchObject({ rewrite: true, voiced: false });
 });

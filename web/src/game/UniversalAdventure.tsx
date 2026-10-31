@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {MapButton} from './MapWindow';
 import ConnectionBanner from '../components/ConnectionBanner';
+import BackButton from '../components/BackButton';
 import Header from '../components/Header';
 import UniversalHeroCard from '../builder/UniversalHeroCard';
 import { formatCount } from '../lib/counts';
@@ -76,7 +77,7 @@ export default function UniversalAdventure({
 
   return (
     <div className='flex h-dvh flex-col bg-bg'>
-      <Header><Link to='/' className='btn btn-outline-copper'>← К столам</Link></Header>
+      <Header><BackButton fallback='/' /></Header>
       <div className='flex flex-wrap items-center justify-between gap-3 border-b border-line bg-surface px-4 py-3'>
         <div>
           <p className='text-xs text-patina'>Исследовательское приключение</p>

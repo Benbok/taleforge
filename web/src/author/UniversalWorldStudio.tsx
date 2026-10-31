@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { confirmAction } from "../stores/confirm";
 import CampaignCoverStudio from "../cabinet/CampaignCoverStudio";
 import { ApiError } from "../lib/api";
 import { authoring, authorKeys, hasDraftableText, mergeDraft, newRequestKey, type StudioFields, type StudioView } from "../lib/authoring";
@@ -253,12 +254,6 @@ export default function UniversalWorldStudio({ projectId }: { projectId: string 
           aria-label="Навигация"
           className="relative mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted"
         >
-          <Link to="/author" className="text-accent hover:underline flex items-center gap-1 transition-colors">
-            ← Проекты
-          </Link>
-          <span className="text-line" aria-hidden="true">
-            /
-          </span>
           <span>Творческая студия</span>
         </nav>
 
@@ -381,11 +376,13 @@ export default function UniversalWorldStudio({ projectId }: { projectId: string 
                     type="button"
                     className="btn btn-outline-copper self-start font-mono text-xs"
                     disabled={busy || !idea.trim()}
-                    onClick={() => {
-                      if (window.confirm("Заменить уже написанные поля новым черновиком? Правка останется несохранённой, пока вы не нажмёте «Сохранить мир».")) {
-                        draft.mutate(true);
-                      }
-                    }}
+                    onClick={() =>
+                      void confirmAction({
+                        title: "Заменить написанные поля новым черновиком?",
+                        description: "Правка останется несохранённой, пока вы не нажмёте «Сохранить мир».",
+                        confirmLabel: "Заменить",
+                      }).then((ok) => ok && draft.mutate(true))
+                    }
                   >
                     Перегенерировать с заменой
                   </button>
@@ -691,11 +688,15 @@ export default function UniversalWorldStudio({ projectId }: { projectId: string 
                 type="button"
                 className="btn bg-surface text-xs text-bad"
                 disabled={busy}
-                onClick={() => {
-                  if (window.confirm("Архивировать проект? Он исчезнет из списка и каталога, запущенные игры продолжатся.")) {
-                    archive.mutate();
-                  }
-                }}
+                onClick={() =>
+                  void confirmAction({
+                    title: `Архивировать проект «${fields.title}»?`,
+                    description: "Он исчезнет из списка и каталога. Версии и запущенные игры сохранятся.",
+                    confirmLabel: "Архивировать",
+                    danger: true,
+                    run: () => archive.mutateAsync(),
+                  })
+                }
               >
                 Архивировать проект
               </button>

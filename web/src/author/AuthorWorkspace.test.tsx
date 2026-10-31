@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import AuthorWorkspace from "./AuthorWorkspace";
+import { answerConfirm } from "../components/confirmKit";
 import { mockApi, renderWithClient } from "./testkit";
 
 type Call = { url: string; method: string; body: unknown };
@@ -174,7 +175,6 @@ it("на шаге «Карты» видны карты всех мест и от
 });
 
 it("кнопка «Пересобрать карты» запускает пересборку всех мест", async () => {
-  vi.spyOn(window, "confirm").mockReturnValue(true);
   const mock = api(
     (c) => (c.url.endsWith("/prepare") ? { status: 202, body: { job_id: "aj_m", stage: "maps", status: "queued", source_revision: 7 } } : undefined),
     stages({ lore: { status: "ready" }, plot: { status: "ready" }, geography: { status: "ready" }, materialize: { status: "ready" } }),
@@ -182,6 +182,7 @@ it("кнопка «Пересобрать карты» запускает пер
   localStorage.setItem("author:step:ap_1", "maps");
   renderWithClient(<AuthorWorkspace projectId="ap_1" />);
   fireEvent.click(await screen.findByRole("button", { name: "Пересобрать карты" }));
+  answerConfirm("Пересобрать");
   await waitFor(() => expect(mock.calls.some((c) => c.url.endsWith("/prepare"))).toBe(true));
   expect(mock.calls.find((c) => c.url.endsWith("/prepare"))?.body).toMatchObject({ stage: "maps", target_ref: "*", regenerate: true });
 });
