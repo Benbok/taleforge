@@ -25,8 +25,8 @@ def loot_slots(campaign, location_id: str) -> list[LootSlot]:
     count = 0 if roll < zero else 1 if roll < zero + one else 2
     result = []
     for i in range(count):
-        kind_roll = digest[8 + i] % 100
-        kind = "consumable" if kind_roll < 50 else "weapon" if kind_roll < 75 else "armor"
+        kind_roll = digest[8 + i]
+        kind = "consumable" if kind_roll < 128 else "weapon" if kind_roll < 192 else "armor"
         result.append(LootSlot(f"loot_{i + 1}", kind))
     return result
 

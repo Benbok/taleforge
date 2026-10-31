@@ -59,3 +59,10 @@ def test_explicit_requests_and_active_effects_keep_their_rules():
     context["source"] = "выхожу из формы"
     context["active_effects"] = [{"id": "form"}]
     assert "magic" in {module.name for module in select_modules(context)}
+
+
+def test_object_module_tells_loot_can_be_taken_and_gifts_given():
+    context = empty_world()
+    context["objects"] = [dict(id="find", template="loot", loot_kind="weapon")]
+    text = compose_system(context)
+    assert "template=loot" in text and "take" in text and "give" in text and "recipient_id" in text

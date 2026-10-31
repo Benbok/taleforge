@@ -15,7 +15,19 @@ provider scenery is removed. Only existing public, unowned scene object entities
 become markers; narrative-only props remain in the description until represented by
 saved entities. Positions and scale are explicitly approximate. This is a local
 schematic operation with no model/image-generation calls. It creates no world objects,
-enemies, loot, passages, cover bonuses, rewards or game steps.
+enemies, passages, cover bonuses, rewards or game steps.
+
+Scene preparation separately reserves 0–2 loot slots on the server. The model supplies
+names and descriptions; the saved reservation controls kind, count and common item
+profiles (STR weapon 1d6, DEX weapon 1d4, armor +1 defense, consumable +6 HP).
+Normal difficulty uses 30/60/10% for zero/one/two items; deadly difficulty and
+`loot_enabled: false` disable loot. Missing slots receive neutral names and extra
+items are ignored. Repeated publication reuses the saved scene.
+
+Loot is an object with `state.loot`, visible to the parser as `template=loot`.
+`take` creates ordinary owned equipment and removes the source from the scene
+atomically; a repeated request or competing hero cannot duplicate it. Orientation
+maps show these existing objects, without creating items themselves.
 
 Campaign serialization and a fresh location check ensure simultaneous/repeated
 requests save one sketch. Saved sketches, complexes and module rooms are preserved.

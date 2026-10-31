@@ -153,9 +153,11 @@ async def retry_failed_scene(session, campaign, ref):
     if location is None or location.campaign_id != campaign.id:
         return False
     before = row.reservation
-    row.reservation = await scene_reservation(
-        session, campaign, location, before.get("turn_id"), before.get("source_id", "")
-    )
+    refreshed = await scene_reservation(session, campaign, location, before.get("turn_id"), before.get("source_id", ""))
+    row.reservation = {
+        **refreshed,
+        "context": {**refreshed["context"], "loot_slots": before["context"].get("loot_slots", [])},
+    }
     storage.retry(row)
     await session.flush()
     return True

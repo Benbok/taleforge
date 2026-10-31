@@ -55,6 +55,9 @@ async def gift_bonus(ctx, action) -> int:
         if op.kind != "give" or not op.object_id or op.object_id in seen:
             continue
         seen.add(op.object_id)
+        item = await ctx.session.get(Entity, op.object_id)
+        if item is None or "universal_item" not in item.state:
+            continue  # Передача обычных сосудов между героями не является подарком NPC.
         row, _ = await validate_gift(ctx, op.object_id, op.recipient_id)
         total += GIFT_BONUS[state_of(row).profile.status]
     return min(total, GIFT_BONUS_CAP)

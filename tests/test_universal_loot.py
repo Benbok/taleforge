@@ -95,6 +95,34 @@ def test_the_table_is_followed():
         assert loot_slots(campaign(enabled=False), str(i)) == []
 
 
+def test_slot_kinds_follow_half_consumables_and_quarter_gear():
+    kinds = Counter(s.kind for i in range(10000) for s in loot_slots(campaign(), str(i)))
+    total = sum(kinds.values())
+    assert abs(kinds["consumable"] / total - 0.5) < 0.03
+    assert abs(kinds["weapon"] / total - 0.25) < 0.03
+    assert abs(kinds["armor"] / total - 0.25) < 0.03
+
+
+def test_retry_keeps_the_original_reserved_loot_budget(tmp_path):
+    from app.core.universal.world_generation import retry_failed_scene
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            c = await s.get(Campaign, "c")
+            c.settings = {**c.settings, "loot_enabled": False}
+            row = await reserved_scene(s, 0)
+            assert row.reservation["context"]["loot_slots"] == []
+            row.status = "blocked"
+            c.settings = {**c.settings, "loot_enabled": True}
+            assert loot_slots(c, row.target_entity_id)
+            assert await retry_failed_scene(s, c, row.id)
+            assert row.reservation["context"]["loot_slots"] == []
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
 @pytest.mark.parametrize("kind", ["weapon", "armor", "consumable"])
 def test_profile_numbers_come_from_the_server(kind):
     profile = loot_profile(LootSlot("loot_1", kind), "Находка", "Описание")

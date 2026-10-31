@@ -25,6 +25,38 @@ async def gift_setup(s, status="common", owner="hero", equipped=False):
     return npc, item
 
 
+def test_speech_check_preserves_an_ordinary_vessel_transfer_between_heroes(tmp_path):
+    from app.core.universal.objects import ObjectState, object_state
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            cup = Entity(
+                id="cup",
+                campaign_id="c",
+                kind="object",
+                name="Кружка",
+                state={"exploration": ObjectState(template="vessel", owner_id="hero").model_dump(mode="json")},
+            )
+            s.add(cup)
+            await s.flush()
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([20]))
+            a = await offer(s, ctx, cup)
+            operations = [op.model_copy(update={"recipient_id": "target"}) for op in a.operations]
+            a = a.model_copy(
+                update={"operations": operations, "definition": a.definition.model_copy(update={"effects": operations})}
+            )
+            from app.rules.universal.exploration import definition_key
+
+            a.definition.id = definition_key(a.definition)
+            assert await gift_bonus(ctx, a) == 0
+            result = await resolve_exploration(ctx, a, "offer")
+            assert result.success and object_state(await s.get(Entity, "cup")).owner_id == "target"
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
 async def offer(s, ctx, item, mid="offer", speak=True, resolution="check", **kwargs):
     effects = [dict(kind="give", object_id=item.id, recipient_id="npc")]
     if speak:

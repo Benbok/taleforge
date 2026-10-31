@@ -315,8 +315,8 @@ async def validate_exploration(ctx, action):
                     await validate_gift(ctx, ref, op.recipient_id)
                     continue
 
-                # A deed may be done with one's own gear (drawn, or named in what is done); only raw-material uses
-                # such as placing, giving or pouring it are refused.
+                # Свое снаряжение можно использовать в действии, но нельзя превращать в сырьё.
+                # Подарки NPC проверены выше отдельно от операций над обычными предметами.
                 if op.kind not in {"weapon_attack", "equip", "unequip", "consume", "free_effect", "take"}:
                     raise ValueError("Снаряжение не является обычным материалом")
                 _, _, item = await _owned(ctx.session, ctx.campaign_id, a.actor_id, ref)
