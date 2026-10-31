@@ -54,7 +54,7 @@ def test_observer_enemy_can_reply(tmp_path):
             foe = await enemy(s)
             foe.state = {**foe.state, "exploration_observer": dict(wis="10", notices={"hero": "witness"})}
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([20, 3, 3]))
-            action = await prepare(s, ctx, "wait", source="mundane")
+            action = await prepare(s, ctx, "guard", source="mundane")
             results = await run_exchange(ctx, action, request_key="m")
             assert len(results) == 2
             assert (await s.get(Character, "hero")).resources["hp"] != "22"

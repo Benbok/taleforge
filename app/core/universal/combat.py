@@ -11,6 +11,7 @@ from app.core.universal.clock import clock_view, complete_step, lock_campaign
 from app.core.universal.combat_actions import effective_actor, initialize_combatant
 from app.core.universal.inventory import create_item, ensure_inventory, equipped_items, state_of
 from app.core.universal.profiles import load_actor
+from app.core.universal.provocation import provokes
 from app.core.universal.validation import authorize_actor
 from app.db.models import Character, CombatExchange, Entity, Event, now
 from app.rules.universal.exploration import (
@@ -28,6 +29,8 @@ def enemy_source_key(source):
 
 
 async def eligible_enemies(ctx, exchange):
+    if not provokes(ExplorationAction.model_validate(exchange.proposal)):
+        return []
     s = ctx.session
     hero = await s.get(Character, exchange.actor_id)
     targets = []

@@ -40,11 +40,17 @@ def test_one_reply_and_one_completion_for_each_hero_action(tmp_path, kind):
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([20, 3, 3]))
             action = await prepare(s, ctx, kind, source="mundane")
             results = await run_exchange(ctx, action, request_key="m")
-            assert len(results) == 2 and results[1].success
+            expected = 2 if kind == "guard" else 1
+            assert len(results) == expected
+            if expected == 2:
+                assert results[1].success
             assert (await clock_view(s, "c"))["game_seconds"] == "6"
             assert await s.scalar(select(func.count()).select_from(UniversalStep)) == 1
             assert (await run_exchange(ctx, action, request_key="m"))[0].status == "repeated"
-            assert await s.scalar(select(func.count()).select_from(Event).where(Event.tool == "universal_action")) == 2
+            assert (
+                await s.scalar(select(func.count()).select_from(Event).where(Event.tool == "universal_action"))
+                == expected
+            )
         await engine.dispose()
 
     asyncio.run(run())
@@ -74,7 +80,7 @@ def test_stale_chosen_enemy_is_rechecked_outside_model_transaction(tmp_path):
         async with maker() as s:
             await enemy(s)
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
-            action = await prepare(s, ctx, "wait", source="mundane")
+            action = await prepare(s, ctx, "guard", source="mundane")
 
             async def choose(view):
                 async with maker() as other:
@@ -131,7 +137,7 @@ def test_concurrent_duplicate_requests_produce_one_reply(tmp_path):
         async with maker() as s:
             await enemy(s)
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
-            action = await prepare(s, ctx, "wait", source="mundane")
+            action = await prepare(s, ctx, "guard", source="mundane")
             await s.commit()
 
         async def invoke():
