@@ -5,6 +5,7 @@ import hashlib
 from sqlalchemy import select
 
 from app.core.universal.clock import lock_campaign
+from app.core.universal.loot import FALLBACK_NAMES, LootSlot, loot_profile, loot_slots
 from app.core.world_generation import storage
 from app.core.world_generation.contracts import Blocked
 from app.db.models import CampaignSecret, Character, Entity, Message, WorldGenerationState
@@ -125,6 +126,7 @@ async def scene_reservation(session, campaign, location, turn_id=None, source_id
         world=(secret.setting or {}).get("studio", {}) if secret else {},
         public_intro=campaign.public_intro,
         difficulty=campaign.difficulty,
+        loot_slots=[dict(ref=slot.ref, kind=slot.kind) for slot in loot_slots(campaign, location.id)],
         location=dict(id=location.id, name=_given_name(location), description=location.description),
         existing_objects=present,
         existing_neighbors=neighbors,
@@ -168,6 +170,9 @@ async def publish_scene(session, row, plan: WorldScenePlan):
     reservation = row.reservation
     if location is None or location.campaign_id != cid:
         raise Blocked("target_missing", "Места больше нет")
+    saved = (location.state or {}).get("universal_scene", {})
+    if saved.get("ready") and saved.get("generation_ref") == row.id:
+        return saved.get("manifest", row.result_manifest)
     if location.description != reservation["foundation"]:
         raise Blocked("stale_context", "Описание места изменилось во время подготовки")
     allowed = {n["id"] for n in reservation["context"]["existing_neighbors"]}
@@ -206,6 +211,31 @@ async def publish_scene(session, row, plan: WorldScenePlan):
         if entity.kind == "creature":
             await initialize_combatant(session, cid, entity.id)
         made.append(entity.id)
+    items = {item.ref: item for item in plan.items}
+    for raw in reservation["context"].get("loot_slots", []):
+        slot = LootSlot(**raw)
+        spec = items.get(slot.ref)
+        profile = loot_profile(
+            slot,
+            spec.name if spec else FALLBACK_NAMES[slot.kind],
+            spec.description if spec else "Обычный предмет, оставленный в этом месте.",
+            spec.attribute if spec else "str",
+        )
+        key = entity_id(cid, location.id, "loot:" + slot.ref)
+        if await session.get(Entity, key) is not None:
+            raise Blocked("identity_conflict", "Предмет уже существует")
+        session.add(
+            Entity(
+                id=key,
+                campaign_id=cid,
+                location_id=location.id,
+                kind="object",
+                name=profile.name,
+                description=profile.description,
+                state=dict(universal_scene_ref=row.id, loot=profile.model_dump(mode="json")),
+            )
+        )
+        made.append(key)
     links = list((location.state or {}).get("links", []))
     destinations = {}
     for spec in plan.passages:
@@ -243,14 +273,15 @@ async def publish_scene(session, row, plan: WorldScenePlan):
         links.append(passage)
         destinations[spec.ref] = target_id
     foundation = location.description or ""
+    manifest = dict(entities=made, destinations=destinations, location_id=location.id)
     location.description = foundation + ("\n\n" if foundation else "") + plan.description
     location.state = {
         **location.state,
         "links": links,
-        "universal_scene": dict(ready=True, generation_ref=row.id, title=plan.name),
+        "universal_scene": dict(ready=True, generation_ref=row.id, title=plan.name, manifest=manifest),
     }
     await session.flush()
     from app.core.universal.orientation_generation import ensure_map
 
     await ensure_map(session, cid, location.id)
-    return dict(entities=made, destinations=destinations, location_id=location.id)
+    return manifest

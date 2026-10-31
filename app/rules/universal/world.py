@@ -52,15 +52,23 @@ class WorldPassage(ClosedModel):
         return self
 
 
+class WorldLoot(ClosedModel):
+    ref: str = Field(pattern=r"^loot_[12]$")
+    name: str = Field(min_length=1, max_length=100)
+    description: str = Field(default="", max_length=600)
+    attribute: Literal["str", "dex"] = "str"
+
+
 class WorldScenePlan(ClosedModel):
     name: str = Field(min_length=1, max_length=100)
     description: str = Field(min_length=1, max_length=6000)
     objects: list[WorldObject] = Field(default_factory=list, max_length=16)
     passages: list[WorldPassage] = Field(default_factory=list, max_length=8)
+    items: list[WorldLoot] = Field(default_factory=list, max_length=2)
 
     @model_validator(mode="after")
     def unique_refs(self):
-        refs = [o.ref for o in self.objects] + [p.ref for p in self.passages]
+        refs = [o.ref for o in self.objects] + [p.ref for p in self.passages] + [i.ref for i in self.items]
         if len(refs) != len(set(refs)):
             raise ValueError("World references must be unique within a scene")
         return self

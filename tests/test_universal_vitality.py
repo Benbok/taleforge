@@ -56,7 +56,7 @@ def test_world_events_follow_knockout_until_actionable_without_offline_timer(tmp
             hero.resources = {**hero.resources, "hp": "2"}
             await enemy(s)
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([20, 6, 6, 20]))
-            action = await prepare(s, ctx, "wait", source="mundane")
+            action = await prepare(s, ctx, "guard", source="mundane")
             result = await run_exchange(ctx, action, request_key="m")
             assert len(result) == 2 and hero.resources["hp"] == "1"
             assert public_vitality(hero) == "conscious"
