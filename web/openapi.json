@@ -655,6 +655,28 @@
    },
    "CampaignCard": {
     "properties": {
+     "cover_thumbnail_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cover Thumbnail Url"
+     },
+     "cover_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cover Url"
+     },
      "created_at": {
       "format": "date-time",
       "title": "Created At",
@@ -782,7 +804,9 @@
      "party",
      "recap",
      "last_session_at",
-     "created_at"
+     "created_at",
+     "cover_url",
+     "cover_thumbnail_url"
     ],
     "title": "CampaignCard",
     "type": "object"
@@ -1120,6 +1144,28 @@
       ],
       "title": "Brief"
      },
+     "cover_thumbnail_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cover Thumbnail Url"
+     },
+     "cover_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cover Url"
+     },
      "created_at": {
       "format": "date-time",
       "title": "Created At",
@@ -1250,7 +1296,9 @@
      "settings",
      "brief",
      "seats",
-     "created_at"
+     "created_at",
+     "cover_url",
+     "cover_thumbnail_url"
     ],
     "title": "CampaignOut",
     "type": "object"
@@ -1883,6 +1931,17 @@
       "title": "Author Name",
       "type": "string"
      },
+     "cover_thumbnail_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cover Thumbnail Url"
+     },
      "project_id": {
       "title": "Project Id",
       "type": "string"
@@ -2382,6 +2441,101 @@
      "dead"
     ],
     "title": "CompanionPublic",
+    "type": "object"
+   },
+   "CoverIn": {
+    "properties": {
+     "regenerate": {
+      "default": false,
+      "title": "Regenerate",
+      "type": "boolean"
+     },
+     "request_key": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Key",
+      "type": "string"
+     }
+    },
+    "required": [
+     "request_key"
+    ],
+    "title": "CoverIn",
+    "type": "object"
+   },
+   "CoverOut": {
+    "properties": {
+     "can_generate": {
+      "title": "Can Generate",
+      "type": "boolean"
+     },
+     "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "image_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Image Url"
+     },
+     "inherited": {
+      "default": false,
+      "title": "Inherited",
+      "type": "boolean"
+     },
+     "stale": {
+      "title": "Stale",
+      "type": "boolean"
+     },
+     "status": {
+      "enum": [
+       "idle",
+       "pending",
+       "ready",
+       "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+     },
+     "thumbnail_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Thumbnail Url"
+     }
+    },
+    "required": [
+     "status",
+     "image_url",
+     "thumbnail_url",
+     "stale",
+     "enabled",
+     "can_generate",
+     "error"
+    ],
+    "title": "CoverOut",
     "type": "object"
    },
    "CreationDialogue": {
@@ -15511,6 +15665,61 @@
     ]
    }
   },
+  "/api/adventures/catalog/{project_id}/cover/{image_id}/thumbnail": {
+   "get": {
+    "description": "Small cover of a world that is listed in the catalog; anything else is simply not found.",
+    "operationId": "catalog_cover_api_adventures_catalog__project_id__cover__image_id__thumbnail_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "image_id",
+      "required": true,
+      "schema": {
+       "title": "Image Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Catalog Cover",
+    "tags": [
+     "adventures"
+    ]
+   }
+  },
   "/api/adventures/{version_id}/games": {
    "post": {
     "operationId": "launch_api_adventures__version_id__games_post",
@@ -16063,6 +16272,216 @@
     "summary": "Set Catalog Visibility",
     "tags": [
      "author"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/cover": {
+   "get": {
+    "operationId": "cover_status_api_author_projects__project_id__cover_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CoverOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Cover Status",
+    "tags": [
+     "world-covers"
+    ]
+   },
+   "post": {
+    "operationId": "create_cover_api_author_projects__project_id__cover_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CoverIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CoverOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Create Cover",
+    "tags": [
+     "world-covers"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/cover/{image_id}": {
+   "get": {
+    "operationId": "image_api_author_projects__project_id__cover__image_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "image_id",
+      "required": true,
+      "schema": {
+       "title": "Image Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Image",
+    "tags": [
+     "world-covers"
+    ]
+   }
+  },
+  "/api/author/projects/{project_id}/cover/{image_id}/thumbnail": {
+   "get": {
+    "operationId": "thumbnail_api_author_projects__project_id__cover__image_id__thumbnail_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "image_id",
+      "required": true,
+      "schema": {
+       "title": "Image Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Thumbnail",
+    "tags": [
+     "world-covers"
     ]
    }
   },
@@ -19125,6 +19544,216 @@
     "summary": "Game Portrait",
     "tags": [
      "portraits"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/cover": {
+   "get": {
+    "operationId": "cover_status_api_campaigns__campaign_id__cover_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CoverOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Cover Status",
+    "tags": [
+     "campaign-covers"
+    ]
+   },
+   "post": {
+    "operationId": "create_cover_api_campaigns__campaign_id__cover_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CoverIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CoverOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Create Cover",
+    "tags": [
+     "campaign-covers"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/cover/{image_id}": {
+   "get": {
+    "operationId": "image_api_campaigns__campaign_id__cover__image_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "image_id",
+      "required": true,
+      "schema": {
+       "title": "Image Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Image",
+    "tags": [
+     "campaign-covers"
+    ]
+   }
+  },
+  "/api/campaigns/{campaign_id}/cover/{image_id}/thumbnail": {
+   "get": {
+    "operationId": "thumbnail_api_campaigns__campaign_id__cover__image_id__thumbnail_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "campaign_id",
+      "required": true,
+      "schema": {
+       "title": "Campaign Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "image_id",
+      "required": true,
+      "schema": {
+       "title": "Image Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Thumbnail",
+    "tags": [
+     "campaign-covers"
     ]
    }
   },

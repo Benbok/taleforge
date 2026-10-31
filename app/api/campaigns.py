@@ -36,6 +36,7 @@ from app.content.importer import latest_version
 from app.core import adventure, audio, chat, master_log, plot, plot_anchors
 from app.core import campaigns as svc
 from app.core.authoring.access import author_secrets_visible
+from app.core.campaign_covers import cover_urls, latest_cover_ids
 from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer
 from app.core.world import get_scene, party_groups
 from app.db.models import (
@@ -65,6 +66,7 @@ async def campaign_out(session, campaign: Campaign, user: User) -> CampaignOut:
         rows = (await session.scalars(select(AgentConfig).where(AgentConfig.id.in_(agent_ids)))).all()
         providers = {a.id: a.provider for a in rows}
     mine = svc.seat_for(campaign, user.id)
+    cover = (await latest_cover_ids(session, [campaign.id])).get(campaign.id)
     return CampaignOut(
         id=campaign.id,
         name=campaign.name,
@@ -95,6 +97,7 @@ async def campaign_out(session, campaign: Campaign, user: User) -> CampaignOut:
             for s in campaign.seats
         ],
         created_at=campaign.created_at,
+        **cover_urls(campaign.id, cover),
     )
 
 

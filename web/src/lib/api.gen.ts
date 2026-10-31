@@ -528,6 +528,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/adventures/catalog/{project_id}/cover/{image_id}/thumbnail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Catalog Cover
+         * @description Small cover of a world that is listed in the catalog; anything else is simply not found.
+         */
+        get: operations["catalog_cover_api_adventures_catalog__project_id__cover__image_id__thumbnail_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/adventures/{version_id}/games": {
         parameters: {
             query?: never;
@@ -711,6 +731,58 @@ export interface paths {
          * @description Take the world out of the catalog or put it back. Versions and running games are not touched.
          */
         put: operations["set_catalog_visibility_api_author_projects__project_id__catalog_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/author/projects/{project_id}/cover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cover Status */
+        get: operations["cover_status_api_author_projects__project_id__cover_get"];
+        put?: never;
+        /** Create Cover */
+        post: operations["create_cover_api_author_projects__project_id__cover_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/author/projects/{project_id}/cover/{image_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Image */
+        get: operations["image_api_author_projects__project_id__cover__image_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/author/projects/{project_id}/cover/{image_id}/thumbnail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Thumbnail */
+        get: operations["thumbnail_api_author_projects__project_id__cover__image_id__thumbnail_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1468,6 +1540,58 @@ export interface paths {
         put?: never;
         /** Game Portrait */
         post: operations["game_portrait_api_campaigns__campaign_id__characters__hero_id__portrait_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/cover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cover Status */
+        get: operations["cover_status_api_campaigns__campaign_id__cover_get"];
+        put?: never;
+        /** Create Cover */
+        post: operations["create_cover_api_campaigns__campaign_id__cover_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/cover/{image_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Image */
+        get: operations["image_api_campaigns__campaign_id__cover__image_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/cover/{image_id}/thumbnail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Thumbnail */
+        get: operations["thumbnail_api_campaigns__campaign_id__cover__image_id__thumbnail_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3228,6 +3352,10 @@ export interface components {
         };
         /** CampaignCard */
         CampaignCard: {
+            /** Cover Thumbnail Url */
+            cover_thumbnail_url: string | null;
+            /** Cover Url */
+            cover_url: string | null;
             /**
              * Created At
              * Format: date-time
@@ -3401,6 +3529,10 @@ export interface components {
             brief: {
                 [key: string]: unknown;
             } | null;
+            /** Cover Thumbnail Url */
+            cover_thumbnail_url: string | null;
+            /** Cover Url */
+            cover_url: string | null;
             /**
              * Created At
              * Format: date-time
@@ -3590,6 +3722,8 @@ export interface components {
         CatalogEntryOut: {
             /** Author Name */
             author_name: string;
+            /** Cover Thumbnail Url */
+            cover_thumbnail_url?: string | null;
             /** Project Id */
             project_id: string;
             /** Public Summary */
@@ -3753,6 +3887,41 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** CoverIn */
+        CoverIn: {
+            /**
+             * Regenerate
+             * @default false
+             */
+            regenerate?: boolean;
+            /** Request Key */
+            request_key: string;
+        };
+        /** CoverOut */
+        CoverOut: {
+            /** Can Generate */
+            can_generate: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Error */
+            error: string | null;
+            /** Image Url */
+            image_url: string | null;
+            /**
+             * Inherited
+             * @default false
+             */
+            inherited?: boolean;
+            /** Stale */
+            stale: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "idle" | "pending" | "ready" | "failed";
+            /** Thumbnail Url */
+            thumbnail_url: string | null;
         };
         /** CreationDialogue */
         CreationDialogue: {
@@ -7830,6 +7999,8 @@ export type CharacterView = components['schemas']['CharacterView'];
 export type ChatEditIn = components['schemas']['ChatEditIn'];
 export type ChatMessage = components['schemas']['ChatMessage'];
 export type CompanionPublic = components['schemas']['CompanionPublic'];
+export type CoverIn = components['schemas']['CoverIn'];
+export type CoverOut = components['schemas']['CoverOut'];
 export type CreationDialogue = components['schemas']['CreationDialogue'];
 export type CreationIn = components['schemas']['CreationIn'];
 export type CreationRulesIn = components['schemas']['CreationRulesIn'];
@@ -9145,6 +9316,38 @@ export interface operations {
             };
         };
     };
+    catalog_cover_api_adventures_catalog__project_id__cover__image_id__thumbnail_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                image_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     launch_api_adventures__version_id__games_post: {
         parameters: {
             query?: never;
@@ -9504,6 +9707,136 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cover_status_api_author_projects__project_id__cover_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoverOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_cover_api_author_projects__project_id__cover_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoverIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoverOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    image_api_author_projects__project_id__cover__image_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                image_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    thumbnail_api_author_projects__project_id__cover__image_id__thumbnail_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                image_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -11175,6 +11508,136 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UniversalGameCard"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cover_status_api_campaigns__campaign_id__cover_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoverOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_cover_api_campaigns__campaign_id__cover_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoverIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoverOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    image_api_campaigns__campaign_id__cover__image_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                image_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    thumbnail_api_campaigns__campaign_id__cover__image_id__thumbnail_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+                image_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

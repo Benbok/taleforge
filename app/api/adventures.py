@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
+from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
@@ -11,7 +12,8 @@ from app.api.deps import SessionDep, UserDep
 from app.core.authoring.contracts import CatalogEntryOut, InstanceOptions, LaunchReceipt, LaunchRequest, VersionOut
 from app.core.authoring.instances import instantiate_adventure
 from app.core.authoring.projects import is_listed
-from app.core.campaigns import AccessDenied, Conflict, NotFound, is_admin
+from app.core.campaign_covers import read_thumbnail, ready_covers
+from app.core.campaigns import AccessDenied, Conflict, NotFound, Viewer, is_admin
 from app.db.models import AdventureVersion, AuthorProject, Campaign, User
 
 router = APIRouter(prefix="/api/adventures", tags=["adventures"])
@@ -50,6 +52,8 @@ async def catalog(session: SessionDep, user: UserDep) -> list[CatalogEntryOut]:
         .where(AuthorProject.archived_at.is_(None))
         .order_by(AdventureVersion.published_at.desc())
     )
+    rows = list(rows)
+    covers = await ready_covers(session, {project.workspace_campaign_id for _, project, _ in rows})
     return [
         CatalogEntryOut(
             version_id=v.id,
@@ -59,10 +63,34 @@ async def catalog(session: SessionDep, user: UserDep) -> list[CatalogEntryOut]:
             version=v.version,
             public_summary=v.public_summary,
             published_at=v.published_at.isoformat(),
+            cover_thumbnail_url=(
+                f"/api/adventures/catalog/{v.project_id}/cover/{image}/thumbnail"
+                if (image := covers.get(project.workspace_campaign_id))
+                else None
+            ),
         )
         for v, project, author in rows
         if is_listed(project)
     ]
+
+
+@router.get("/catalog/{project_id}/cover/{image_id}/thumbnail")
+async def catalog_cover(project_id: str, image_id: str, user: UserDep, session: SessionDep, request: Request):
+    """Small cover of a world that is listed in the catalog; anything else is simply not found."""
+    project = await session.get(AuthorProject, project_id)
+    if project is None or project.archived_at is not None or not is_listed(project):
+        raise NotFound("обложка не найдена")
+    viewer = Viewer(user, await session.get(Campaign, project.workspace_campaign_id), None)
+    path, mime = await read_thumbnail(session, viewer, image_id, request.app.state.campaign_cover_media_dir)
+    return FileResponse(
+        path,
+        media_type=mime,
+        headers={
+            "Cache-Control": "private, max-age=3600",
+            "Vary": "Authorization",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @router.post("/{version_id}/games", response_model=LaunchReceipt, status_code=201)

@@ -17,6 +17,7 @@ from app.api.deps import SessionDep, UserDep
 from app.api.schemas import Out
 from app.content import theme as themes
 from app.core import campaigns as svc
+from app.core.campaign_covers import cover_urls, latest_cover_ids
 from app.core.inspect import types_for
 from app.db.models import AdventureVersion, Campaign, Character, ContentPack, GameSession
 
@@ -56,6 +57,8 @@ class CampaignCard(Out):
     recap: str | None = None  # «Ранее в кампании…» целиком: длинный текст клиент сворачивает сам
     last_session_at: datetime | None = None
     created_at: datetime
+    cover_url: str | None = None
+    cover_thumbnail_url: str | None = None
 
 
 @router.get("/theme")
@@ -87,12 +90,14 @@ async def entity_types(campaign_id: str, ids: str, user: UserDep, session: Sessi
 async def my_campaigns(user: UserDep, session: SessionDep, request: Request) -> list[CampaignCard]:
     hub = request.app.state.hub
     out = []
-    for c in await svc.list_campaigns(session, user):
-        out.append(await _card(session, c, user, hub.online_users(c.id)))
+    campaigns = await svc.list_campaigns(session, user)
+    covers = await latest_cover_ids(session, [c.id for c in campaigns])
+    for c in campaigns:
+        out.append(await _card(session, c, user, hub.online_users(c.id), covers.get(c.id)))
     return out
 
 
-async def _card(session, c: Campaign, user, online: set[str]) -> CampaignCard:
+async def _card(session, c: Campaign, user, online: set[str], cover: str | None = None) -> CampaignCard:
     heroes = (
         await session.scalars(select(Character).where(Character.campaign_id == c.id, Character.seat_id.is_not(None)))
     ).all()
@@ -148,4 +153,5 @@ async def _card(session, c: Campaign, user, online: set[str]) -> CampaignCard:
         recap=((last.content or {}).get("recap") or "").strip() or None if last else None,
         last_session_at=(game.ended_at or game.started_at) if game else None,
         created_at=c.created_at,
+        **cover_urls(c.id, cover),
     )

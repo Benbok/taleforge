@@ -432,6 +432,8 @@ class CampaignOut(Out):
     brief: dict | None = None  # анкета: только владельцу и мастеру, в пожеланиях могут быть спойлеры
     seats: list[SeatOut]
     created_at: datetime
+    cover_url: str | None = None  # последняя готовая обложка мира; файл отдаётся только участникам
+    cover_thumbnail_url: str | None = None
 
 
 class InviteCreateIn(BaseModel):

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import ActionButton from "../components/ActionButton";
 import { Field, Segmented } from "../components/Form";
 import BriefForm from "./BriefForm";
+import CampaignCoverStudio from "./CampaignCoverStudio";
 import GeneratedSfx from "./GeneratedSfx";
 import { api } from "../lib/api";
 import {
@@ -328,6 +329,12 @@ export default function SettingsTab({ room, onRoom }: { room: Room; onRoom: (r: 
           <p className="text-muted font-mono text-xs">Загрузка опций анкеты…</p>
         )}
       </section>
+
+      <CampaignCoverStudio
+        endpoint={`/api/campaigns/${room.id}/cover`}
+        name={room.name}
+        unsaved={f.name.trim() !== room.name || f.public_intro !== room.public_intro}
+      />
 
       {/* Save Button */}
       <div>

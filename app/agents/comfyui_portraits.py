@@ -34,6 +34,7 @@ class ComfyUIPortraitGenerator:
         poll_interval=1.0,
         style=None,
         control_style="",
+        size=None,
     ):
         self.base_url = base_url.rstrip("/")
         self.timeout_seconds = timeout_seconds
@@ -42,6 +43,10 @@ class ComfyUIPortraitGenerator:
         self.style = style
         self.control_style = control_style  # prepended to the style when a control image guides the layout
         self.workflow = json.loads(Path(workflow).read_text(encoding="utf-8"))
+        if size:  # (width, height) of the empty latent, e.g. a landscape picture from a square portrait workflow
+            for node in self.workflow.values():
+                if node.get("class_type") == "EmptyLatentImage":
+                    node["inputs"]["width"], node["inputs"]["height"] = size
         self.output_nodes = [k for k, v in self.workflow.items() if v.get("class_type") == "SaveImage"]
         if not self.output_nodes or "{{prompt}}" not in json.dumps(self.workflow):
             raise ValueError("ComfyUI workflow must be API format with SaveImage and {{prompt}}")

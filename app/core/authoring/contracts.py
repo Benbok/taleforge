@@ -461,6 +461,7 @@ class CatalogEntryOut(Contract):
     version: int
     public_summary: dict
     published_at: str
+    cover_thumbnail_url: str | None = None  # small picture of the world cover, if one was drawn in the studio
 
 
 class AuthorMapArea(Contract):
