@@ -100,6 +100,9 @@ async def _objects(ctx, action, event):
             field: bindings.get(getattr(op, field), getattr(op, field))
             for field in ("object_id", "source_id", "target_id", "recipient_id")
         }
+        from app.core.universal.loot import item_ref
+
+        updates["object_id"] = await item_ref(ctx.session, ctx.campaign_id, ctx.actor_id, updates.get("object_id"))
         actual = op.model_copy(update=updates)
         if actual.kind == "give":
             item = await ctx.session.get(Entity, actual.object_id or "")
@@ -127,9 +130,10 @@ async def _objects(ctx, action, event):
         if actual.kind == "take":
             item = await ctx.session.get(Entity, actual.object_id or "")
             if item is not None and "loot" in item.state:
-                from app.core.universal.loot import pick_up
+                if item.state.get("taken_by") != ctx.actor_id:  # taken first, with the rest of the action in mind
+                    from app.core.universal.loot import pick_up
 
-                changes.append(await pick_up(ctx, item, event, index))
+                    changes.append(await pick_up(ctx, item, event, index))
                 continue
             if item is not None and "universal_item" in item.state:
                 # Own gear is drawn, not picked up: it is the hero's already, so nothing is moved.
@@ -253,6 +257,10 @@ async def _execute(ctx, action, key):
 
     if action.introductions:
         await _introductions(ctx, action)
+    if result.success:
+        from app.core.universal.loot import take_finds_first
+
+        result.changes.extend(await take_finds_first(ctx, action, event))
     if result.success and any(op.kind in COMBAT_KINDS for op in action.operations):
         await combat_action(ctx, action, event, result, now)
     if result.success:

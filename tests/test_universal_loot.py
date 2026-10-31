@@ -308,3 +308,36 @@ def test_two_heroes_cannot_take_the_same_find(tmp_path):
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_a_find_can_be_taken_and_put_on_in_the_same_action(tmp_path):
+    """Found in play: "take the bracer and wind it round the arm" was refused as a whole, because the second part
+    named an item that was not yet the hero's when the action was checked."""
+    from app.core.universal.exploration_resolution import resolve_exploration
+    from app.core.universal.inventory import owned_items, state_of
+    from app.core.universal.resolution import ResolutionContext
+    from app.rules.dice import FixedDice
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            await lying_loot(s)
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
+            with pytest.raises(ValueError):  # putting on before taking is still no deed
+                await loot_action(
+                    s, ctx, [dict(kind="equip", object_id="find"), dict(kind="take", object_id="find")], mid="wrong"
+                )
+            await s.rollback()
+        async with maker() as s:
+            await lying_loot(s)
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
+            action = await loot_action(
+                s, ctx, [dict(kind="take", object_id="find"), dict(kind="equip", object_id="find")]
+            )
+            result = await resolve_exploration(ctx, action, "take")
+            assert result.success, result.failure
+            knife = [row for row in await owned_items(s, "c", "hero") if state_of(row).profile.name == "Нож"]
+            assert len(knife) == 1 and state_of(knife[0]).equipped
+        await engine.dispose()
+
+    asyncio.run(run())

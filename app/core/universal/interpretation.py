@@ -300,9 +300,17 @@ async def validate_exploration(ctx, action):
             if obj is not None and "loot" in obj.state:
                 from app.core.universal.loot import available_loot
 
-                if op.kind != "take" or field != "object_id":
-                    raise ValueError("Предмет из сцены можно только взять")
-                available_loot(obj, actor)
+                taken_before = any(
+                    earlier.kind == "take" and earlier.object_id == ref for earlier in a.operations[:index]
+                )
+                if field != "object_id" or (
+                    op.kind != "take" and not (taken_before and op.kind in {"equip", "consume"})
+                ):
+                    raise ValueError(
+                        "Предмет из сцены можно только взять; надеть или использовать его можно после take"
+                    )
+                if op.kind == "take":
+                    available_loot(obj, actor)
                 continue
             if obj is not None and "universal_item" in obj.state:
                 from app.core.universal.inventory import _owned

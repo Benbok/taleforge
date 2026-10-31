@@ -71,6 +71,38 @@ def loot_view(row) -> dict:
     )
 
 
+def item_id_of(campaign_id, actor_id, loot_id):
+    """The id ``create_item`` gives the hero's copy of a find (it is derived, so it is known before it exists)."""
+    return "en_" + hashlib.sha256(f"{campaign_id}:{actor_id}:loot:{loot_id}".encode()).hexdigest()[:24]
+
+
+async def item_ref(session, campaign_id, actor_id, ref):
+    """What an operation of this action means by ``ref``: a find this hero has taken is their own item by now."""
+    if not ref:
+        return ref
+    from app.db.models import Entity
+
+    row = await session.get(Entity, ref)
+    if row is not None and "loot" in row.state and row.state.get("taken_by") == actor_id:
+        return item_id_of(campaign_id, actor_id, ref)
+    return ref
+
+
+async def take_finds_first(ctx, action, source_event):
+    """Finds named by a ``take`` are the hero's before anything else of the action runs, so that "take it and put
+    it on" finds the item when the second part is carried out."""
+    from app.db.models import Entity
+
+    changes = []
+    for index, op in enumerate(action.operations):
+        if op.kind != "take" or not op.object_id:
+            continue
+        row = await ctx.session.get(Entity, op.object_id)
+        if row is not None and "loot" in row.state and not row.state.get("taken_by"):
+            changes.append(await pick_up(ctx, row, source_event, index))
+    return changes
+
+
 async def pick_up(ctx, row, source_event, index):
     from app.core.universal.inventory import create_item
     from app.db.models import Character

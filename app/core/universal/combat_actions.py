@@ -210,11 +210,13 @@ async def combat_action(ctx, action, event, result, now):
             if op.kind not in COMBAT_KINDS or op.target_id not in {None, target_id}:
                 continue
             if op.kind in {"equip", "unequip"}:
+                from app.core.universal.loot import item_ref
+
                 await equip(
                     s,
                     ctx.campaign_id,
                     action.actor_id,
-                    op.object_id or "",
+                    await item_ref(s, ctx.campaign_id, action.actor_id, op.object_id) or "",
                     op.kind == "equip",
                     f"gear-{event.id}-{index}",
                 )

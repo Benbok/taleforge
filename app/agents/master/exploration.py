@@ -76,9 +76,9 @@ def plain_outcomes(text):
     "the attempt failed" leaves it to guess what was attempted (and it guessed a blow for a retreat)."""
     deed = " ".join(text.split())[:300]
     return CheckNarration(
-        success=f"Задуманное удалось лишь словами: «{deed}». Предметы и состояние мира при этом не менялись.",
+        success=f"Задуманное в общих чертах удалось: «{deed}». Механикой не закреплено: предметы и мир не менялись.",
         failure=f"Задуманное не удалось: «{deed}».",
-        critical_success=f"Задуманное удалось блестяще, но лишь словами: «{deed}». Предметы и мир не менялись.",
+        critical_success=f"Задуманное удалось блестяще: «{deed}». Механикой не закреплено: предметы и мир не менялись.",
         critical_failure=f"Задуманное сорвалось неловко: «{deed}».",
     )
 

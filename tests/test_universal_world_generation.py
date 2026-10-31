@@ -551,3 +551,23 @@ def test_a_person_of_the_plot_already_in_the_world_is_not_made_again_elsewhere(t
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_an_object_with_a_template_or_material_outside_the_lists_is_made_ordinary_not_refused():
+    """Found in play: the model wrote template values like "creature" for people; eight drafts in a row were refused
+    for it and the opening trail never got prepared."""
+    from app.rules.universal.world import WorldScenePlan
+
+    plan = WorldScenePlan.model_validate(
+        scene_plan(
+            objects=[
+                {"ref": "monk", "kind": "npc", "name": "Монах", "template": "creature", "material": "bone"},
+                {"ref": "door", "kind": "object", "name": "Дверь", "template": "door", "material": "iron"},
+                {"ref": "well", "kind": "object", "name": "Колодец", "template": "water_source", "material": "stone"},
+            ]
+        )
+    )
+    monk, door, well = plan.objects
+    assert (monk.template, monk.material) == ("prop", "stone")
+    assert (door.template, door.material) == ("prop", "stone")
+    assert (well.template, well.material) == ("water_source", "stone")  # a valid value is never touched

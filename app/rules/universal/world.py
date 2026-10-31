@@ -47,6 +47,19 @@ class WorldObject(ClosedModel):
 
     _clean_text = field_validator("name", "description", mode="before")(fix_mixed_script)
 
+    @model_validator(mode="before")
+    @classmethod
+    def ordinary_when_unknown(cls, data):
+        """template and material only shape a prop: a value outside the lists ("creature" for a person, bone, iron)
+        is a draft's slip, not worth a whole scene, so the object is made ordinary."""
+        if isinstance(data, dict):
+            data = dict(data)
+            if data.get("template") not in {None, "prop", "vessel", "wood_source", "water_source", "structure"}:
+                data["template"] = "prop"
+            if data.get("material") not in {None, "wood", "plant", "stone"}:
+                data["material"] = "stone"
+        return data
+
     @model_validator(mode="after")
     def living_hostile(self):
         if self.hostile and self.kind == "object":
