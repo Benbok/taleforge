@@ -44,6 +44,8 @@ export interface CampaignCard {
   recap: string | null;
   last_session_at: string | null;
   created_at: string;
+  cover_url?: string | null;
+  cover_thumbnail_url?: string | null;
 }
 
 export interface InvitePreview {

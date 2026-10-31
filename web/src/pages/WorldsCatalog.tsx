@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
+import CampaignCoverImage from "../components/CampaignCoverImage";
 import { newRequestKey } from "../lib/authoring";
 import type { CatalogEntryOut, LaunchReceipt } from "../lib/api.gen";
 
@@ -63,7 +64,15 @@ export default function WorldsCatalog({ isAdmin }: { isAdmin: boolean }) {
           {catalog.data.map((w) => {
             const intro = String(w.public_summary.intro ?? "");
             return (
-              <article key={w.version_id} className="card flex flex-col justify-between overflow-hidden border-line bg-surface p-6">
+              <article key={w.version_id} className="card flex flex-col justify-between overflow-hidden border-line bg-surface">
+                {w.cover_thumbnail_url && (
+                  <CampaignCoverImage
+                    url={w.cover_thumbnail_url}
+                    name={w.title}
+                    className="aspect-video w-full border-b border-line-soft"
+                  />
+                )}
+                <div className="flex flex-1 flex-col justify-between p-6">
                 <div className="flex flex-col gap-3">
                   <div className="font-mono text-xs tracking-widest text-muted">Автор: {w.author_name}</div>
                   <h3 className="font-heading text-3xl font-semibold text-ink">{w.title}</h3>
@@ -85,6 +94,7 @@ export default function WorldsCatalog({ isAdmin }: { isAdmin: boolean }) {
                     </button>
                   </div>
                 )}
+                </div>
               </article>
             );
           })}

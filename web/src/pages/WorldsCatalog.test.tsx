@@ -6,13 +6,14 @@ import WorldsCatalog from './WorldsCatalog';
 
 const calls: { path: string; body?: unknown }[] = [];
 const entries = [
-  { version_id: 'av1', project_id: 'p1', title: 'Стеклянные острова', author_name: 'Arty', version: 2, published_at: '2026-10-27T10:00:00Z', public_summary: { title: 'Стеклянные острова', intro: 'Гавань ждёт.' } },
+  { version_id: 'av1', project_id: 'p1', title: 'Стеклянные острова', author_name: 'Arty', version: 2, published_at: '2026-10-27T10:00:00Z', public_summary: { title: 'Стеклянные острова', intro: 'Гавань ждёт.' }, cover_thumbnail_url: '/api/adventures/catalog/p1/cover/aw1/thumbnail' },
   { version_id: 'av2', project_id: 'p2', title: 'Туманный остров', author_name: 'root', version: 1, published_at: '2026-10-26T10:00:00Z', public_summary: { title: 'Туманный остров', intro: '' } },
 ];
 let release: (() => void) | null = null;
 let failFor: string | null = null;
 vi.mock('../lib/api', () => ({
   ApiError: class ApiError extends Error {},
+  getToken: () => 'token',
   api: async (path: string, init?: { body?: unknown }) => {
     calls.push({ path, body: init?.body });
     if (path === '/api/adventures/catalog') return entries;
@@ -26,8 +27,14 @@ vi.mock('../lib/api', () => ({
 }));
 
 let client: QueryClient;
-beforeEach(() => { calls.length = 0; release = null; failFor = null; });
-afterEach(() => { cleanup(); client?.clear(); });
+const fetched: string[] = [];
+beforeEach(() => {
+  calls.length = 0; release = null; failFor = null; fetched.length = 0;
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => { fetched.push(url); return { ok: true, blob: async () => new Blob(['x']) } as Response; }));
+  URL.createObjectURL = vi.fn(() => 'blob:cover');
+  URL.revokeObjectURL = vi.fn();
+});
+afterEach(() => { cleanup(); client?.clear(); vi.unstubAllGlobals(); });
 
 function show(isAdmin: boolean) {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -74,6 +81,13 @@ it('ошибка прошлого запуска исчезает, когда з
   expect(await screen.findByRole('alert')).toBeDefined();
   fireEvent.click(second);
   await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+});
+
+it('показывает миниатюру обложки только у мира, у которого она есть', async () => {
+  show(true);
+  expect(await screen.findAllByAltText('Обложка мира «Стеклянные острова»')).toHaveLength(1);
+  expect(screen.queryByAltText('Обложка мира «Туманный остров»')).toBeNull();
+  expect(fetched).toEqual(['/api/adventures/catalog/p1/cover/aw1/thumbnail']);
 });
 
 it('пустой каталог объясняет, что миров ещё нет', async () => {

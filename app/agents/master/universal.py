@@ -108,7 +108,8 @@ async def _call(service, campaign, turn, purpose, payload, *, generation_id=None
         else:
             model = model_for(cfg.provider, cfg.model)
         temperature = 0.2 if purpose == "decide" else cfg.temperature if cfg else 0.8
-    options = {"max_tokens": NARRATION_MAX_TOKENS}  # reasoning shares this budget with the text
+    # reasoning shares this budget with the text; a plot with its cast thinks longer than a narration does
+    options = {"max_tokens": STRUCTURED_MAX_TOKENS if purpose == "world_secrets" else NARRATION_MAX_TOKENS}
     if purpose in {
         "decide",
         "exploration_decide",

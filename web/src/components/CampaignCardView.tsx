@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { actionOf, STATUS_TEXT, statusOf, when } from "../lib/cards";
 import type { CampaignCard } from "../lib/types";
 import Avatar from "./Avatar";
+import CampaignCoverImage from "./CampaignCoverImage";
 import Recap from "./Recap";
 import CampaignWorldLabel from "./CampaignWorldLabel";
 
@@ -40,6 +41,8 @@ export default function CampaignCardView({
   }
 
   const Heading = featured ? "h2" : "h3";
+  // Главный стол показывает широкую обложку, остальные — уменьшенную копию.
+  const coverUrl = featured ? c.cover_url : (c.cover_thumbnail_url ?? c.cover_url);
   const lastDate = when(c.last_session_at);
 
   return (
@@ -50,7 +53,18 @@ export default function CampaignCardView({
           : "border-line bg-surface"
       }`}
     >
-      {featured && (
+      {coverUrl && (
+        <CampaignCoverImage
+          url={coverUrl}
+          name={c.name}
+          className={
+            featured
+              ? "h-[50vh] max-h-[560px] min-h-[220px] w-full"
+              : "aspect-video w-full border-b border-line-soft"
+          }
+        />
+      )}
+      {featured && !coverUrl && (
         <svg
           aria-hidden="true"
           className="pointer-events-none absolute -right-12 top-2 hidden h-[340px] w-[340px] text-accent opacity-[0.14] lg:block"

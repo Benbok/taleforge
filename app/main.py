@@ -31,6 +31,7 @@ from app.api import (
 from app.api import adventures as adventures_api
 from app.api import audio as audio_api
 from app.api import authoring as authoring_api
+from app.api import campaign_covers as campaign_covers_api
 from app.api import equipment_artwork as equipment_artwork_api
 from app.api import generation as generation_api
 from app.api import hero_creation as hero_creation_api
@@ -42,6 +43,7 @@ from app.api import npc_portraits as npc_portraits_api
 from app.api import object_icons as object_icons_api
 from app.api import portraits as portraits_api
 from app.api import sfx as sfx_api
+from app.api import world_covers as world_covers_api
 from app.api.errors import validation_handler
 from app.config import Settings
 from app.core import audio
@@ -133,6 +135,11 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
             TechnicalPortraitTranslator(effective_llm, settings) if settings.portrait_provider == "comfyui" else None
         )
         app.state.portrait_media_dir = settings.media_dir
+        from app.agents.campaign_images import create_cover_generator, create_cover_translator
+
+        app.state.campaign_cover_generator = create_cover_generator(settings)
+        app.state.campaign_cover_translator = create_cover_translator(effective_llm, settings)
+        app.state.campaign_cover_media_dir = settings.media_dir
         from app.agents.location_images import create_location_generator, create_location_translator
 
         app.state.location_artwork_generator = (
@@ -266,6 +273,8 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None, dice_fa
     app.include_router(portraits_api.router)
     app.include_router(npc_portraits_api.router)
     app.include_router(location_artwork_api.router)
+    app.include_router(campaign_covers_api.router)
+    app.include_router(world_covers_api.router)
     app.include_router(map_backdrop_api.router)
     app.include_router(object_icons_api.router)
     app.include_router(equipment_artwork_api.router)

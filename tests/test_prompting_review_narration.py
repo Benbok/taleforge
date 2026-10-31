@@ -106,3 +106,11 @@ def test_narration_context_keeps_what_the_story_needs(tmp_path):
             await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_review_sees_the_inventory_it_is_told_to_check():
+    """Found in play: the review was told to require the item in the hero's inventory but was never given it,
+    so a strike with the knife the hero really carried was refused."""
+    original = context()
+    original["inventory"] = [{"id": "knife", "name": "Дорожный нож", "equipped": True}]
+    assert review_context(original, {"source": "item", "effects": []})["inventory"] == original["inventory"]

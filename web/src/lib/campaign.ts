@@ -55,6 +55,8 @@ export interface Room {
   };
   brief: Brief | null;
   seats: Seat[];
+  cover_url?: string | null;
+  cover_thumbnail_url?: string | null;
 }
 
 export interface TtsVoiceOption {

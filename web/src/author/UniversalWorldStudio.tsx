@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import CampaignCoverStudio from "../cabinet/CampaignCoverStudio";
 import { ApiError } from "../lib/api";
 import { authoring, authorKeys, hasDraftableText, mergeDraft, newRequestKey, type StudioFields, type StudioView } from "../lib/authoring";
 
@@ -478,6 +479,13 @@ export default function UniversalWorldStudio({ projectId }: { projectId: string 
               </button>
             </div>
           </form>
+
+          <CampaignCoverStudio
+            scope="world"
+            endpoint={`/api/author/projects/${projectId}/cover`}
+            name={fields.title}
+            unsaved={dirty}
+          />
 
           {/* Секция: Обсуждение с мастером */}
           <section
