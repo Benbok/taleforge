@@ -1,5 +1,6 @@
 # Локальный запуск: docker compose up
 # С публичной ссылкой для друзей: docker compose --profile tunnel up   (адрес — в логах сервиса tunnel)
+#   или без VPN для друзей из России: docker compose --profile tuna up (нужны TUNA_API_KEY и TUNA_DOMAIN в .env)
 # С голосовыми репликами (локальный Whisper на видеокарте NVIDIA): docker compose --profile voice up
 #   и STT_API_BASE=http://stt:8000/v1 в .env. Профили складываются: --profile voice --profile tunnel
 services:
@@ -88,6 +89,18 @@ services:
     image: cloudflare/cloudflared:latest
     profiles: ["tunnel"]
     command: tunnel --no-autoupdate --url http://app:8000
+    depends_on: [app]
+
+  # Туннель через tuna.am: узлы в России, работает без VPN. Ключ и постоянный бесплатный домен —
+  # в кабинете my.tuna.am (раздел «Домены»). Запуск: docker compose --profile tuna up -d
+  tuna:
+    image: yuccastream/tuna:latest
+    profiles: ["tuna"]
+    command: http app:8000 --inspect=false
+    environment:
+      TUNA_API_KEY: ${TUNA_API_KEY:-}
+      TUNA_DOMAIN: ${TUNA_DOMAIN:-}
+    restart: unless-stopped
     depends_on: [app]
 
   # Сервер расшифровки речи (Speaches, faster-whisper) с OpenAI-совместимым /v1/audio/transcriptions.
