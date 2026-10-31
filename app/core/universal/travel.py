@@ -10,6 +10,7 @@ from app.core.object_policy import revealed_to
 from app.core.universal.profiles import actor_row
 from app.db.models import Campaign, Character, Entity, KnownFact, Seat, User
 from app.rules.universal.exploration import EffectChange
+from app.rules.universal.failures import PathClosed
 
 # A closed door is an ordinary door: the party opens it by going through. Only a locked or blocked way holds them.
 IMPASSABLE = {"locked", "blocked"}
@@ -31,8 +32,11 @@ async def destination_view(ctx, destination_id, *, allow_unprepared=False):
     )
     view = await party_map(ctx.session, viewer)
     candidates = [exit for exit in view["exits"] if exit.get("id") == destination_id]
-    if not candidates or not any(exit.get("state") not in IMPASSABLE for exit in candidates):
+    if not candidates:
         raise ValueError("Нет известного открытого пути к выбранному месту")
+    if not any(exit.get("state") not in IMPASSABLE for exit in candidates):
+        shut = candidates[0]
+        raise PathClosed(shut.get("label") or shut.get("name") or "выбранный", str(shut.get("state")))
     source = await ctx.session.get(Entity, (view.get("here") or {}).get("id"))
     sketch = (source.state.get("sketch") or {}) if source else {}
     # A display projection omits hidden doors. Validate authoritative passages

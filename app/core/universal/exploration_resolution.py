@@ -1,6 +1,7 @@
 """One serialized V2 action: spend, effects, time, receipt and learning. No model I/O."""
 
 import hashlib
+import logging
 
 from sqlalchemy import select
 
@@ -17,9 +18,11 @@ from app.core.universal.validation import authorize_actor
 from app.db.models import Entity, Event, HeroAbility, Message
 from app.rules.dice import FixedDice
 from app.rules.universal.exploration import TIMED_KINDS, EffectChange, ExplorationAction, ExplorationOutcome
-from app.rules.universal.failures import action_failure
+from app.rules.universal.failures import ActionValidationError, action_failure
 from app.rules.universal.investment import INVEST_MAX_SHORTFALL, invest_price, shortfall
 from app.rules.universal.profiles import CheckProof, DieProof, resolve_check
+
+log = logging.getLogger(__name__)
 
 OBJECT_KINDS = {"create_object", "take", "place", "give", "fill", "pour", "empty", "consume", "move", "command"}
 
@@ -138,7 +141,11 @@ async def resolve_exploration(ctx, action, request_key):
             raise ValueError("Неверный ключ сообщения")
         async with ctx.session.begin_nested():
             return await _execute(ctx, action, request_key)
-    except (ValueError, AccessDenied, NotFound):
+    except ActionValidationError as exc:
+        return ExplorationOutcome(status="denied", failure=exc.failure)
+    except (ValueError, AccessDenied, NotFound) as exc:
+        # The player sees one stable line; the real cause stays in the log, or no denial could ever be diagnosed.
+        log.warning("exploration denied for %s: %s: %s", request_key, type(exc).__name__, exc)
         return ExplorationOutcome(status="denied", failure=action_failure("invalid_proposal"))
 
 
@@ -308,7 +315,7 @@ async def _execute(ctx, action, key):
                 result.changes.extend(await observe_known_scene(ctx, op.aspect, op.target_id or op.object_id))
             elif op.kind == "speak":
                 result.changes.extend(await _addressee(ctx, state.actor, op))
-    if action.resolution == "check" and result.critical_failure:
+    if action.resolution == "check" and result.critical_failure and not is_talk_only(action):
         result.changes.append(await _fumble(ctx, action, event))
     for observer in await s.scalars(
         select(Entity).where(
@@ -359,6 +366,14 @@ async def _execute(ctx, action, key):
     return result
 
 
+TALK_KINDS = frozenset({"speak", "wait"})
+
+
+def is_talk_only(action):
+    """Words and waiting only: nothing physical is attempted, so nothing physical can go wrong."""
+    return bool(action.operations) and all(op.kind in TALK_KINDS for op in action.operations)
+
+
 def _told_outcome(action, result):
     """The outcome the model wrote for this check result, if it wrote one."""
     hints = action.check_outcomes
@@ -366,12 +381,21 @@ def _told_outcome(action, result):
         return None  # an automatic deed always succeeds: its success words are still the story of it
     if result.success:
         return (hints.critical_success if result.critical else None) or hints.success or None
-    return (hints.critical_failure if result.critical_failure else None) or hints.failure or None
+    # A fumbled word is still only a failed word: the model's tale of a wound would not match the saved state.
+    fumble = result.critical_failure and not is_talk_only(action)
+    return (hints.critical_failure if fumble else None) or hints.failure or None
 
 
 def _outcome_hint(action, result):
     """With nothing told and nothing changed, a plain statement of the result is all there is."""
-    return _told_outcome(action, result) or (
+    told = _told_outcome(action, result)
+    if told:
+        return told
+    if action.resolution == "attack" and not result.success:
+        # A miss belongs to the attacker: say outright that the target is untouched, or the writer reads
+        # "the attempt failed" as a setback of whoever is on the receiving end.
+        return "Атака не попала в цель: цель не пострадала, урона нет."
+    return (
         "Проверка успешна; новых подтверждённых наблюдений нет."
         if result.success
         else "Попытка не удалась; задуманные эффекты не возникли."

@@ -26,7 +26,7 @@ from app.rules.universal.exploration import (
     RequirementV2,
     clean_model_intent,
 )
-from app.rules.universal.failures import ActionFailure, ActionModelError, action_failure
+from app.rules.universal.failures import ActionFailure, ActionModelError, ActionValidationError, action_failure
 from app.rules.universal.profiles import CheckNarration
 
 log = logging.getLogger(__name__)
@@ -67,13 +67,20 @@ def not_realised_fact():
     )
 
 
-# Neutral words for a deed the engine had to shape itself; the story tells the rest from the player's own words.
-PLAIN_OUTCOMES = CheckNarration(
-    success="Попытка удалась.",
-    failure="Попытка не удалась.",
-    critical_success="Попытка удалась блестяще.",
-    critical_failure="Попытка провалилась неловко.",
-)
+# The writer's only hint when the engine shaped a deed itself; the validator's own message stays in the journal.
+FLOOR_NOTE = "Замысел героя оформлен проще, чем он был задуман: расскажи только то, что действительно произошло."
+
+
+def plain_outcomes(text):
+    """Neutral words that still name the deed: the writer is told not to retell the attempt, so a bare
+    "the attempt failed" leaves it to guess what was attempted (and it guessed a blow for a retreat)."""
+    deed = " ".join(text.split())[:300]
+    return CheckNarration(
+        success=f"Задуманное удалось лишь словами: «{deed}». Предметы и состояние мира при этом не менялись.",
+        failure=f"Задуманное не удалось: «{deed}».",
+        critical_success=f"Задуманное удалось блестяще, но лишь словами: «{deed}». Предметы и мир не менялись.",
+        critical_failure=f"Задуманное сорвалось неловко: «{deed}».",
+    )
 
 
 SYSTEM = ALL_SYSTEM  # Compatibility for consumers inspecting the full prompt.
@@ -98,6 +105,9 @@ REVIEW = (
     "Обычному действию free_effect не нужен для каждого шага: take, place, observe и wait достаточно; "
     "free_effect (бесплатный, без энергии) нужен только если результат остаётся в мире, а иначе его не выразить "
     "(факел из доски, ловушка). "
+    "Если действие бросает, отдаёт, ест, применяет или тратит конкретный предмет, он должен быть у героя "
+    "(inventory) или в его руках; предмет, который лежит в сцене и ещё не взят, героем не владеется: "
+    "это mismatch, в message скажи, что сначала предмет нужно взять. "
     "Рассказ прошлых ходов не закон: образные слова рассказчика («магия отзывается болезненной пульсацией», "
     "«не удалось») и прежний провал ничего не запрещают. Нельзя отклонять заклинание (mismatch, unsupported, "
     "forbidden) из-за evidence: допустимость решает только world_rules. "
@@ -167,7 +177,8 @@ async def fallback_action(service, campaign, mid, context, scope, leaning, name=
             resolution="check",
             attribute=(sized or {}).get("attribute", "wis"),
             difficulty=(sized or {}).get("difficulty", 10),
-            check_outcomes=PLAIN_OUTCOMES,
+            name=name or " ".join(text.split())[:60],
+            check_outcomes=plain_outcomes(text),
             requirements=[RequirementV2(id="req_1", quote=text[:1000], effect="free_effect")],
             effects=[
                 EffectIntentV2(
@@ -383,6 +394,12 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
             prepared[mid] = result.model_dump(mode="json")
             await store(service, tid, trace)
             return result
+        except ActionValidationError as exc:
+            # The hero's state, not a slip of the model: no repair attempt can change it, so say so at once.
+            result = PreparedExploration(failure=exc.failure)
+            prepared[mid] = result.model_dump(mode="json")
+            await store(service, tid, trace)
+            return result
         except (ValueError, AccessDenied) as exc:
             log.warning("exploration proposal rejected: %s | raw=%s", exc, json.dumps(raw, ensure_ascii=False)[:3000])
             # An unaffordable spell is the player's real answer, and a later slip of the model's repair attempt
@@ -412,8 +429,7 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
         await journal(service, campaign, "exhausted", mid, context, {"hint": hint or "", "floor": leaning or "mundane"})
         floor = await fallback_action(service, campaign, mid, context, scope, leaning, named, sized, talk_only)
         if isinstance(floor, ExplorationAction):
-            note = (hint or "").strip()[:300]
-            result = PreparedExploration(proposal=floor, scene_note=note)
+            result = PreparedExploration(proposal=floor, scene_note=FLOOR_NOTE)
             prepared[mid] = result.model_dump(mode="json")
             await store(service, tid, trace)
             return result

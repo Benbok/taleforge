@@ -52,6 +52,11 @@ _FAILURES = {
         "insufficient_resources",
         "Для этого действия недостаточно энергии. Ресурсы не потрачены.",
     ),
+    "cannot_act": (
+        "not_allowed",
+        "Герой без сознания или не способен действовать: действие не выполнено, ресурсы не потрачены. "
+        "Он может только пережидать время.",
+    ),
     "stale_profile": (
         "stale_profile",
         "Правила действия изменились; требуется новое подтверждение. Ресурсы не потрачены.",
@@ -83,6 +88,18 @@ class ActionValidationError(ValueError):
     def __init__(self, code: str):
         self.failure = action_failure(code)
         super().__init__(code)
+
+
+class PathClosed(ActionValidationError):
+    """The world keeps this way shut: a fact to tell in the story, not a slip of the model to repair or replace."""
+
+    def __init__(self, label: str, state: str):
+        message = (
+            f"Путь «{label}» сейчас закрыт ({state}): перейти по нему нельзя. "
+            "Герой остался на месте; время и ресурсы не потрачены."
+        )
+        ValueError.__init__(self, message)
+        self.failure = ActionFailure(category="target_unavailable", code="path_closed", message=message)
 
 
 class ActionModelError(RuntimeError):

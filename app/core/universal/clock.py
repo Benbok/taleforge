@@ -47,7 +47,7 @@ async def _complete_step(session, campaign_id, source_key, elapsed_seconds, *, d
     from app.core.universal.vitality import advance_vitality
 
     changes = await advance_periodic(session, campaign_id, start, end, sequence, dice)
-    changes.extend(await advance_vitality(session, campaign_id, sequence, dice))
+    changes.extend(await advance_vitality(session, campaign_id, sequence, dice, now=end))
     changes.extend(await expire_effects(session, campaign_id, end))
     from app.core.universal.regeneration import regenerate_energy
 

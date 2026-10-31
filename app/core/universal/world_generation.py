@@ -23,6 +23,16 @@ def entity_id(campaign_id, location_id, ref):
     return "en_" + hashlib.sha256(f"{VERSION}:{campaign_id}:{location_id}:{ref}".encode()).hexdigest()[:24]
 
 
+def _given_name(location):
+    """The entry place carries the world's title until its scene is prepared; shown to the model as a title it would
+    copy for the place ("Путешествие в мрак бездны"), so it gets the neutral placeholder the story already knows."""
+    from app.core.universal.places import START_LOCATION_NAME
+
+    if (location.state or {}).get("studio_entry") and not (location.state.get("universal_scene") or {}).get("ready"):
+        return START_LOCATION_NAME
+    return location.name
+
+
 async def reserve_scene(session, campaign, location_id, turn_id=None, source_id=""):
     await lock_campaign(session, campaign.id)
     location = await session.get(Entity, location_id, populate_existing=True)
@@ -115,7 +125,7 @@ async def scene_reservation(session, campaign, location, turn_id=None, source_id
         world=(secret.setting or {}).get("studio", {}) if secret else {},
         public_intro=campaign.public_intro,
         difficulty=campaign.difficulty,
-        location=dict(id=location.id, name=location.name, description=location.description),
+        location=dict(id=location.id, name=_given_name(location), description=location.description),
         existing_objects=present,
         existing_neighbors=neighbors,
         present_heroes=heroes,

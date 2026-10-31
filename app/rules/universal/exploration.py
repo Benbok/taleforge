@@ -5,9 +5,9 @@ import json
 from decimal import Decimal, InvalidOperation
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
-from app.rules.universal.contracts import AbilityKey, ClosedModel, Count
+from app.rules.universal.contracts import AbilityKey, ClosedModel, Count, exact_int
 from app.rules.universal.profiles import ActionOutcome, CheckNarration
 from app.rules.universal.progression import RewardIntent
 
@@ -179,6 +179,10 @@ class EffectIntentV2(ClosedModel):
             raise ValueError("Only a large or huge creation can lead to another place")
         return self
 
+    _whole_numbers = field_validator("capacity_ml", "quantity", mode="before")(
+        lambda value: exact_int(value) if isinstance(value, str) else value
+    )  # digits written as text are still the number; floats and bools still fail the strict integer
+
 
 class IntroductionV2(ClosedModel):
     ref: str = Field(min_length=1, max_length=48)
@@ -233,6 +237,10 @@ class IntentV2(ClosedModel):
     check_outcomes: CheckNarration | None = None
     known_profile_id: str | None = Field(default=None, max_length=128)
     known_revision: Count = Field(default=1, ge=1)
+
+    _whole_difficulty = field_validator("difficulty", mode="before")(
+        lambda value: exact_int(value) if isinstance(value, str) else value
+    )  # a model that writes "10" means ten; a float or a bool still fails the strict integer
 
 
 class IntentReview(ClosedModel):

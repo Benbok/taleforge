@@ -122,7 +122,6 @@ def test_bound_hero_cannot_melee_distant_enemy(tmp_path):
 
 
 def test_deferred_form_is_present_for_detection_and_expiry_reassesses(tmp_path):
-
     from app.db.models import Entity
 
     async def run():
@@ -285,6 +284,57 @@ def test_visible_unprofiled_foe_is_selectable_without_mutating_on_read(tmp_path)
             card = await exploration_game_card(s, await s.get(Character, "hero"))
             assert card["combat"]["enemies"][0]["id"] == "new-foe"
             assert "universal_sheet" not in foe.state
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def _down(hero, state="stable", **extra):
+    hero.resources = {
+        **hero.resources,
+        "hp": "0",
+        "vitality": dict(state=state, successes="3", failures="1", eligible_sequence="1", **extra),
+    }
+
+
+def test_a_hero_down_at_zero_may_only_wait_and_is_told_so(tmp_path):
+    """Found in play: at 0 HP every action was dropped as bare "invalid parameters" and the story went on as if
+    nothing had been said; the player must be told, and passive waiting (time passing) must still be possible."""
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            _down(await s.get(Character, "hero"))
+            await s.commit()
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
+            from app.rules.universal.failures import ActionValidationError
+
+            with pytest.raises(ActionValidationError) as refused:
+                await prepare(s, ctx, "observe", source="mundane")
+            assert refused.value.failure.code == "cannot_act" and "сознан" in refused.value.failure.message
+            await s.rollback()  # the refused attempt leaves no half-written message behind
+            waiting = await prepare(s, ctx, "wait", source="mundane", mid="w")
+            assert (await resolve_exploration(ctx, waiting, "w")).status == "applied"
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_stable_hero_comes_round_after_an_hour_of_game_time(tmp_path):
+    """A stable hero used to stay at 0 HP for ever: alone at the table there was nobody to heal, so no way back."""
+    from app.core.universal.clock import complete_step
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            _down(await s.get(Character, "hero"), stable_at="0")
+            await complete_step(s, "c", "short", 1800, dice=FixedDice([]))
+            hero = await s.get(Character, "hero")
+            assert hero.resources["hp"] == "0" and hero.resources["vitality"]["state"] == "stable"
+            step = await complete_step(s, "c", "long", 1800, dice=FixedDice([]))
+            hero = await s.get(Character, "hero")
+            assert hero.resources["hp"] == "1" and hero.resources["vitality"]["state"] == "conscious"
+            assert any(change["kind"] == "vitality" for change in step.changes)
         await engine.dispose()
 
     asyncio.run(run())

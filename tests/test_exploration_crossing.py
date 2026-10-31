@@ -138,8 +138,10 @@ def test_a_structure_that_leads_nowhere_cannot_be_crossed(tmp_path):
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
             await build(ctx, s, structure("large"))
             row = await the_object(s)
-            _, result = await build(ctx, s, walk(row.id), "m2", 2)
-            assert result.status == "denied" and await location_of(s) == "loc_origin"
+            # Caught while compiling, so the model can still repair it, instead of at execution as a denial.
+            with pytest.raises(ValueError, match="никуда не ведёт"):
+                await build(ctx, s, walk(row.id), "m2", 2)
+            assert await location_of(s) == "loc_origin"
             assert await s.scalar(select(func.count()).select_from(Entity).where(Entity.kind == "location")) == 1
         await engine.dispose()
 

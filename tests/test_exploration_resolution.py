@@ -332,3 +332,78 @@ def test_a_structure_cannot_be_picked_up_or_poured(tmp_path):
         await engine.dispose()
 
     asyncio.run(run())
+
+
+async def _compile_move(ctx, object_id, travel_scope=None):
+    intent = IntentV2(
+        source="mundane",
+        player_request="ordinary",
+        resolution="automatic",
+        effects=[EffectIntentV2(kind="move", object_id=object_id, travel_scope=travel_scope)],
+    )
+    return await compile_exploration(
+        ctx, intent, IntentReview(verdict="pass"), dict(source_message_id="m2", source_text="Иду", evidence="")
+    )
+
+
+def test_walking_onto_a_thing_that_leads_nowhere_is_caught_while_the_model_can_still_repair_it(tmp_path):
+    """Found in play: "get to the wagon and take the rope" was shaped as a crossing of the wagon, which only failed
+    at execution as a bare denial of the whole action; the repair hint must come before the die."""
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await run_low(maker, "24")
+        async with maker() as s:
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
+            await build(ctx, s, structure(leads_to="Дальний берег", leads_view="Берег за мостом."))
+            bridge = (await s.scalars(select(Entity).where(Entity.kind == "object"))).one()
+            assert (await _compile_move(ctx, bridge.id)).operations[0].object_id == bridge.id  # a real crossing
+            from app.core.universal.objects import object_state, store
+
+            state = object_state(bridge)
+            state.leads_to = ""
+            store(bridge, state)
+            await s.flush()
+            with pytest.raises(ValueError, match="within_scene"):
+                await _compile_move(ctx, bridge.id)
+            # named together with within_scene it is only an approach: the walk stays, the crossing is dropped
+            approach = await _compile_move(ctx, bridge.id, travel_scope="within_scene")
+            assert approach.operations[0].kind == "move" and approach.operations[0].object_id is None
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def _bound(effect, required_by):
+    from app.rules.universal.exploration import RequirementV2
+
+    return IntentV2(
+        source="mundane",
+        player_request="ordinary",
+        resolution="automatic",
+        requirements=[RequirementV2(id="req_1", quote="Осматриваюсь", effect=effect)],
+        effects=[EffectIntentV2(kind="observe", required_by=required_by)],
+    )
+
+
+def test_a_forgotten_link_to_an_effect_that_is_there_is_made_not_bounced(tmp_path):
+    """Found in play (3 of 10 fallbacks): the model wrote the right effect but left required_by empty."""
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
+            source = dict(source_message_id="m", source_text="Осматриваюсь", evidence="")
+            action = await compile_exploration(
+                ctx, _bound("observe", []), IntentReview(verdict="pass", covered_requirements=["req_1"]), source
+            )
+            assert action.operations[0].required_by == ["req_1"]
+            with pytest.raises(
+                ValueError, match="нет эффекта такого вида"
+            ):  # an effect that is not there stays a fault
+                await compile_exploration(
+                    ctx, _bound("heal", []), IntentReview(verdict="pass", covered_requirements=["req_1"]), source
+                )
+        await engine.dispose()
+
+    asyncio.run(run())

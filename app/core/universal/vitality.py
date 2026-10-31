@@ -48,7 +48,33 @@ async def enter_zero_hp(session, campaign_id, actor_id, source_key, exchange_seq
     return resources
 
 
-async def advance_vitality(session, campaign_id, sequence, dice):
+STABLE_RECOVERY_SECONDS = 3600  # an hour of saved game time brings a stable hero back to one hit point
+
+
+def _recover_stable(actor, stored, state, now):
+    """A stable hero used to stay at 0 HP for ever: alone at the table nobody can heal them. Time that really
+    passed in the saved game (a waiting step) does."""
+    since = state.get("stable_at")
+    if since is None:
+        set_resources(actor, {**stored, "vitality": {**state, "stable_at": str(now)}})
+        return None
+    if now - int(since) < STABLE_RECOVERY_SECONDS:
+        return None
+    state = dict(state=state_of_waking(), successes="0", failures="0")
+    set_resources(actor, {**stored, "hp": "1", "vitality": state})
+    return EffectChange(
+        kind="vitality",
+        subject_id=actor.id,
+        description=f"{actor.name}: приходит в сознание.",
+        data=dict(state="conscious"),
+    )
+
+
+def state_of_waking():
+    return "conscious"
+
+
+async def advance_vitality(session, campaign_id, sequence, dice, now=None):
     actors = list(await session.scalars(select(Character).where(Character.campaign_id == campaign_id)))
     actors += list(
         await session.scalars(select(Entity).where(Entity.campaign_id == campaign_id, Entity.kind == "creature"))
@@ -57,6 +83,11 @@ async def advance_vitality(session, campaign_id, sequence, dice):
     for actor in actors:
         stored = resources_of(actor)
         state = stored.get("vitality", {})
+        if state.get("state") == "stable" and now is not None:
+            woke = _recover_stable(actor, stored, state, now)
+            if woke is not None:
+                changes.append(woke)
+            continue
         if state.get("state") != "unconscious" or int(state["eligible_sequence"]) > sequence:
             continue
         if int(state.get("last_sequence", "0")) >= sequence:
@@ -90,6 +121,8 @@ async def advance_vitality(session, campaign_id, sequence, dice):
             "failures": str(hp.death_saves.failures),
             "last_sequence": str(sequence),
         }
+        if status == "stable" and now is not None:
+            state["stable_at"] = str(now)
         set_resources(actor, {**stored, "hp": str(hp.current), "vitality": state})
         changes.append(
             EffectChange(

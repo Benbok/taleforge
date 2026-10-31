@@ -142,7 +142,7 @@ def test_pending_and_blocked_destination_cannot_be_executed_directly(tmp_path):
             await destination_view(ctx, target, allow_unprepared=True)
             origin = await s.get(Entity, "gorge")
             origin.state = {**origin.state, "links": [{**p, "state": "blocked"} for p in origin.state["links"]]}
-            with pytest.raises(ValueError, match="открытого пути"):
+            with pytest.raises(ValueError, match="сейчас закрыт"):
                 await destination_view(ctx, target, allow_unprepared=True)
             assert (await s.get(Character, "hero")).location_id == "gorge"
         await engine.dispose()
@@ -173,7 +173,7 @@ def test_a_closed_door_is_walked_through_but_locked_and_blocked_ways_are_not(tmp
                 if passable:
                     await destination_view(ctx, target, allow_unprepared=True)
                 else:
-                    with pytest.raises(ValueError, match="открытого пути"):
+                    with pytest.raises(ValueError, match="сейчас закрыт"):
                         await destination_view(ctx, target, allow_unprepared=True)
         await engine.dispose()
 
@@ -253,3 +253,33 @@ def test_the_world_prompts_keep_a_sound_from_becoming_a_hostile_creature():
 
     assert "звук" in world.PLAN_SYSTEM and "hostile" in world.PLAN_SYSTEM
     assert "звук" in world.REVIEW_SYSTEM and "враждеб" in world.REVIEW_SYSTEM
+
+
+def test_a_shut_way_is_a_fact_of_the_world_the_story_can_tell(tmp_path):
+    """Found in play: the model swapped a blocked crossing for a walk on the spot and the story took the hero
+    through it; a closed way now ends the attempt at once with a failure the writer narrates."""
+    from app.agents.master.world import prepare_scene
+    from app.core.universal.resolution import ResolutionContext
+    from app.core.universal.travel import destination_view
+    from app.rules.universal.failures import ActionValidationError
+
+    async def run():
+        engine, maker = await world_setup(tmp_path)
+        async with maker() as s:
+            campaign = await s.get(Campaign, "c")
+        await prepare_scene(
+            MasterService(maker, Bus(), Provider([entry(), {"verdict": "pass"}])), campaign, None, "gorge"
+        )
+        target = entity_id("c", "gorge", "place:tunnel")
+        async with maker() as s:
+            ctx = ResolutionContext(s, "c", user_id="u", seat_id="seat", actor_id="hero", dice=FixedDice([]))
+            origin = await s.get(Entity, "gorge")
+            origin.state = {**origin.state, "links": [{**p, "state": "blocked"} for p in origin.state["links"]]}
+            with pytest.raises(ActionValidationError) as shut:
+                await destination_view(ctx, target, allow_unprepared=True)
+            failure = shut.value.failure
+            assert failure.code == "path_closed" and failure.category == "target_unavailable"
+            assert "blocked" in failure.message and "сейчас закрыт" in str(shut.value)
+        await engine.dispose()
+
+    asyncio.run(run())

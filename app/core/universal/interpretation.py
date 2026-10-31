@@ -23,6 +23,7 @@ from app.rules.universal.exploration import (
     definition_key,
     exploration_cost,
 )
+from app.rules.universal.failures import ActionValidationError
 
 
 def needs_intent_review(source, intent, known=False):
@@ -46,6 +47,15 @@ def is_plain_action(intent, *, crossable=False):
         and all(effect.kind in ORDINARY_KINDS for effect in intent.effects)
         and not (crossable and any(e.kind == "move" and not e.object_id for e in intent.effects))
     )
+
+
+def _leads_somewhere(row):
+    from app.core.universal.objects import object_state
+
+    if "exploration" not in (row.state or {}):
+        return False  # a scene prop without exploration state cannot be crossed either
+    state = object_state(row)
+    return state.template == "structure" and bool(state.leads_to)
 
 
 @dataclass
@@ -72,6 +82,21 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
                 )
             if op.destination_id and op.destination_id not in exits:
                 raise ValueError("destination_id отсутствует в known_exits; выбери известный выход из known_exits")
+    for index, op in enumerate(intent.effects):
+        if op.kind != "move" or not op.object_id:
+            continue
+        crossing = await ctx.session.get(Entity, op.object_id)
+        # Only a structure that leads somewhere can be walked over; found out here the model can still repair it,
+        # at execution it would be a bare denial of the whole action ("get to the wagon and take the rope").
+        if crossing is not None and crossing.kind == "object" and not _leads_somewhere(crossing):
+            if op.travel_scope == "within_scene":
+                # The model named the thing it walks up to: that is an approach, not a crossing.
+                intent.effects[index] = op.model_copy(update={"object_id": None})
+                continue
+            raise ValueError(
+                f"«{crossing.name}» никуда не ведёт: move с object_id нужен только для моста, лестницы или прохода. "
+                "Чтобы подойти к предмету внутри места, используй move без object_id и travel_scope=within_scene"
+            )
     ids = {r.id for r in intent.requirements}
     if len(ids) != len(intent.requirements) or set(review.covered_requirements) != ids:
         raise ValueError("Проверка не покрыла требования")
@@ -82,6 +107,12 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
                 f"Цитата требования {requirement.id} должна быть дословным фрагментом слов игрока «{source[:300]}»; "
                 "рассказ мастера и история не источник цитат. Переписывай замысел по этим словам."
             )
+        if not any(op.kind == requirement.effect and requirement.id in op.required_by for op in intent.effects):
+            # The model wrote the effect and forgot the link: the link is the only thing missing, so make it.
+            for index, op in enumerate(intent.effects):
+                if op.kind == requirement.effect:
+                    intent.effects[index] = op.model_copy(update={"required_by": [*op.required_by, requirement.id]})
+                    break
         if not any(op.kind == requirement.effect and requirement.id in op.required_by for op in intent.effects):
             raise ValueError(
                 f"Для требования {requirement.id} (effect={requirement.effect}) нет эффекта такого вида в effects "
@@ -191,8 +222,10 @@ async def validate_exploration(ctx, action):
         and a.targets == [actor.id]
         and all(op.kind == "wait" for op in a.operations)
     )
-    if resources.hp <= 0 or (current["cannot_act"] and not passive_wait):
-        raise ValueError("Герой сейчас не может действовать")
+    if (resources.hp <= 0 or current["cannot_act"]) and not passive_wait:
+        # Waiting is all a helpless hero can do, and the only way the world moves on for one; the rest is refused
+        # with a line the player is shown, not a bare "invalid parameters".
+        raise ActionValidationError("cannot_act")
     if current["cannot_move"] and any(op.kind == "move" for op in a.operations):
         raise ValueError("Эффект запрещает двигаться")
     if (not combat and a.targets != [ctx.actor_id]) or a.resolution not in {
