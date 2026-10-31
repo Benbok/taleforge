@@ -28,9 +28,20 @@ def enemy_source_key(source):
     return "reply-" + hashlib.sha256(source.encode()).hexdigest()[:40]
 
 
+RESTLESS_TURNS = 2  # a foe that keeps the hero in sight this many turns of looking and talking is on them
+
+
+def _restless(foe, exchange):
+    """Count the hero's turns a foe has watched; a replay of the same exchange counts nothing twice."""
+    watch = dict(foe.state.get("watch") or {})
+    if watch.get("last") != exchange.id:
+        watch = {"turns": int(watch.get("turns", 0)) + 1, "last": exchange.id}
+        foe.state = {**foe.state, "watch": watch}
+    return watch["turns"] >= RESTLESS_TURNS
+
+
 async def eligible_enemies(ctx, exchange):
-    if not provokes(ExplorationAction.model_validate(exchange.proposal)):
-        return []
+    quiet = not provokes(ExplorationAction.model_validate(exchange.proposal))
     s = ctx.session
     hero = await s.get(Character, exchange.actor_id)
     targets = []
@@ -61,6 +72,10 @@ async def eligible_enemies(ctx, exchange):
 
         if not foe.state.get("hostile") or not await visible_entity(s, ctx.campaign_id, hero.id, foe):
             continue
+        if quiet and not _restless(foe, exchange) and not foe.state.get("aggressive"):
+            continue  # it has not made up its mind yet
+        if quiet:
+            foe.state = {**foe.state, "aggressive": True}
         await initialize_combatant(s, ctx.campaign_id, foe.id)
         if (await load_actor(s, ctx.campaign_id, foe.id))[1].hp <= 0:
             continue

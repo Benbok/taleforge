@@ -121,8 +121,10 @@ async def initialize_combatant(session, campaign_id, actor_id):
         return
     if actor.kind != "creature":
         raise ValueError("Это не существо")
+    from app.core.universal.foes import POWER_ABILITIES
+
     sheet = UniversalSheet(
-        abilities=dict(str=13, dex=12, con=10, int=8, wis=10, cha=8),
+        abilities=POWER_ABILITIES.get(actor.state.get("power"), POWER_ABILITIES["normal"]),
         description={"identity": actor.description or actor.name},
     )
     derived = derive(sheet, [])

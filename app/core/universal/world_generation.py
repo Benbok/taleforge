@@ -5,6 +5,7 @@ import hashlib
 from sqlalchemy import select
 
 from app.core.universal.clock import lock_campaign
+from app.core.universal.foes import FALLBACK_FOES, FoeSlot, foe_slots
 from app.core.universal.loot import FALLBACK_NAMES, LootSlot, loot_profile, loot_slots
 from app.core.world_generation import storage
 from app.core.world_generation.contracts import Blocked
@@ -146,6 +147,10 @@ async def scene_reservation(session, campaign, location, turn_id=None, source_id
         public_intro=campaign.public_intro,
         difficulty=campaign.difficulty,
         loot_slots=[dict(ref=slot.ref, kind=slot.kind) for slot in loot_slots(campaign, location.id)],
+        foe_slots=[
+            dict(ref=slot.ref, power=slot.power)
+            for slot in foe_slots(campaign, location.id, entry=bool((location.state or {}).get("studio_entry")))
+        ],
         cast=await cast_view(session, campaign.id, secret),
         location=dict(id=location.id, name=_given_name(location), description=location.description),
         existing_objects=present,
@@ -204,6 +209,8 @@ async def publish_scene(session, row, plan: WorldScenePlan):
     names = {o["name"].casefold() for o in reservation["context"]["existing_objects"]}
     # one person is one person: a member of the plot's cast who already stands somewhere is not made again here
     placed = [p["name"].casefold() for p in reservation["context"].get("cast", []) if p.get("introduced")]
+    foes = {raw["ref"]: FoeSlot(**raw) for raw in reservation["context"].get("foe_slots", [])}
+    met = set()
     for spec in plan.objects:
         if spec.name.casefold() in names:
             continue
@@ -222,7 +229,12 @@ async def publish_scene(session, row, plan: WorldScenePlan):
             )
             state["exploration"] = prop.model_dump(mode="json")
         else:
-            state.update(hostile=spec.hostile, attitude="hostile" if spec.hostile else "neutral")
+            slot = foes.get(spec.ref)
+            if slot is not None:  # a place of the server's encounter: always hostile, as strong as the server says
+                met.add(slot.ref)
+                state.update(hostile=True, attitude="hostile", power=slot.power)
+            else:
+                state.update(hostile=spec.hostile, attitude="hostile" if spec.hostile else "neutral")
         entity = Entity(
             id=key,
             campaign_id=cid,
@@ -236,6 +248,26 @@ async def publish_scene(session, row, plan: WorldScenePlan):
         await session.flush()
         if entity.kind == "creature":
             await initialize_combatant(session, cid, entity.id)
+        made.append(entity.id)
+    for slot in foes.values():
+        if slot.ref in met:
+            continue
+        name, description = FALLBACK_FOES[slot.power]  # the model left a place of the encounter empty
+        key = entity_id(cid, location.id, "foe:" + slot.ref)
+        if await session.get(Entity, key) is not None:
+            raise Blocked("identity_conflict", "Существо уже существует")
+        entity = Entity(
+            id=key,
+            campaign_id=cid,
+            location_id=location.id,
+            kind="creature",
+            name=name,
+            description=description,
+            state=dict(universal_scene_ref=row.id, hidden=False, hostile=True, attitude="hostile", power=slot.power),
+        )
+        session.add(entity)
+        await session.flush()
+        await initialize_combatant(session, cid, entity.id)
         made.append(entity.id)
     items = {item.ref: item for item in plan.items}
     for raw in reservation["context"].get("loot_slots", []):
