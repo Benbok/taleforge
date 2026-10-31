@@ -659,7 +659,10 @@ async def get_secrets(campaign_id: str, user: UserDep, session: SessionDep) -> d
     if not v.is_master or not await author_secrets_visible(session, v.campaign, user):
         raise NotFound("нет доступа")
     s = await session.get(CampaignSecret, campaign_id)
-    return {"setting": s.setting, "plot": s.plot}
+    from app.core.universal.world_generation import cast_view
+
+    # which people of the plot already stand in the world: how far the story has been brought out
+    return {"setting": s.setting, "plot": s.plot, "cast": await cast_view(session, campaign_id, s)}
 
 
 @router.put("/campaigns/{campaign_id}/secrets")

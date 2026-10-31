@@ -1,5 +1,6 @@
 """Bounded authoring proposals; these are world facts, not player action outcomes."""
 
+import re
 from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
@@ -7,6 +8,25 @@ from pydantic import Field, field_validator, model_validator
 from app.rules.universal.contracts import ClosedModel
 
 Ref = str
+
+
+_LOOKALIKES = str.maketrans("ABCEHKMOPTXaceopxy", "АВСЕНКМОРТХасеорху")
+_CYRILLIC = re.compile("[А-Яа-яЁё]")
+_LATIN = re.compile("[A-Za-z]")
+
+
+def fix_mixed_script(value):
+    """A word with Latin lookalikes inside Cyrillic ("Mapла") is a model slip, never a name: set the letters right.
+    A word that is wholly Latin is left alone."""
+    if not isinstance(value, str):
+        return value
+    return re.sub(
+        r"\w+",
+        lambda m: m.group().translate(_LOOKALIKES)
+        if _CYRILLIC.search(m.group()) and _LATIN.search(m.group())
+        else m.group(),
+        value,
+    )
 
 
 def clip(limit):
@@ -24,6 +44,8 @@ class WorldObject(ClosedModel):
     amount: int = Field(default=1, ge=1, le=10000, strict=True)
     hidden: bool = False
     hostile: bool = False
+
+    _clean_text = field_validator("name", "description", mode="before")(fix_mixed_script)
 
     @model_validator(mode="after")
     def living_hostile(self):
@@ -44,6 +66,22 @@ class WorldPassage(ClosedModel):
     hidden: bool = False
 
     _clip_destination = field_validator("destination", mode="before")(clip(100))
+    _clean_text = field_validator("name", "destination", "description", mode="before")(fix_mixed_script)
+
+    @model_validator(mode="before")
+    @classmethod
+    def hint_from_name(cls, data):
+        """The hint of where a way leads is cosmetic (the far place is made when someone first goes there): a draft
+        that left it out is not worth a whole scene, the way's own name stands in for it."""
+        if (
+            isinstance(data, dict)
+            and not data.get("existing_destination_id")
+            and not str(data.get("destination") or "").strip()
+        ):
+            name = str(data.get("name") or "").strip()
+            if name:
+                data = {**data, "destination": name[:100]}
+        return data
 
     @model_validator(mode="after")
     def destination_required(self):
@@ -58,13 +96,25 @@ class WorldLoot(ClosedModel):
     description: str = Field(default="", max_length=600)
     attribute: Literal["str", "dex"] = "str"
 
+    _clean_text = field_validator("name", "description", mode="before")(fix_mixed_script)
+
 
 class WorldScenePlan(ClosedModel):
+    @model_validator(mode="before")
+    @classmethod
+    def unwrap_payload(cls, data):
+        """A draft sometimes comes back as a call envelope, {"action": ..., "payload": {the plan}}."""
+        if isinstance(data, dict) and "name" not in data and isinstance(data.get("payload"), dict):
+            return data["payload"]
+        return data
+
     name: str = Field(min_length=1, max_length=100)
     description: str = Field(min_length=1, max_length=6000)
     objects: list[WorldObject] = Field(default_factory=list, max_length=16)
     passages: list[WorldPassage] = Field(default_factory=list, max_length=8)
     items: list[WorldLoot] = Field(default_factory=list, max_length=2)
+
+    _clean_text = field_validator("name", "description", mode="before")(fix_mixed_script)
 
     @model_validator(mode="after")
     def unique_refs(self):

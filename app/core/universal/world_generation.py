@@ -24,6 +24,25 @@ def entity_id(campaign_id, location_id, ref):
     return "en_" + hashlib.sha256(f"{VERSION}:{campaign_id}:{location_id}:{ref}".encode()).hexdigest()[:24]
 
 
+async def cast_view(session, campaign_id, secret):
+    """The plot's people with a mark for each of them that already stands in the world, so the scene maker brings in
+    the ones still missing where they belong instead of leaving the plot's people as words in a secret."""
+    cast = (secret.setting or {}).get("cast") if secret else None
+    if not cast:
+        return []
+    names = [
+        row.name.casefold()
+        for row in await session.scalars(
+            select(Entity).where(Entity.campaign_id == campaign_id, Entity.kind == "creature")
+        )
+    ]
+    return [
+        {**person, "introduced": any(person["name"].casefold() in name for name in names)}
+        for person in cast
+        if isinstance(person, dict) and person.get("name")
+    ]
+
+
 def _given_name(location):
     """The entry place carries the world's title until its scene is prepared; shown to the model as a title it would
     copy for the place ("Путешествие в мрак бездны"), so it gets the neutral placeholder the story already knows."""
@@ -127,6 +146,7 @@ async def scene_reservation(session, campaign, location, turn_id=None, source_id
         public_intro=campaign.public_intro,
         difficulty=campaign.difficulty,
         loot_slots=[dict(ref=slot.ref, kind=slot.kind) for slot in loot_slots(campaign, location.id)],
+        cast=await cast_view(session, campaign.id, secret),
         location=dict(id=location.id, name=_given_name(location), description=location.description),
         existing_objects=present,
         existing_neighbors=neighbors,
@@ -182,8 +202,12 @@ async def publish_scene(session, row, plan: WorldScenePlan):
         raise Blocked("invalid_destination", "Предложена посторонняя связь")
     made = []
     names = {o["name"].casefold() for o in reservation["context"]["existing_objects"]}
+    # one person is one person: a member of the plot's cast who already stands somewhere is not made again here
+    placed = [p["name"].casefold() for p in reservation["context"].get("cast", []) if p.get("introduced")]
     for spec in plan.objects:
         if spec.name.casefold() in names:
+            continue
+        if spec.kind != "object" and any(person in spec.name.casefold() for person in placed):
             continue
         key = entity_id(cid, location.id, "object:" + spec.ref)
         if await session.get(Entity, key) is not None:

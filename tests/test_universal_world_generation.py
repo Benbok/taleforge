@@ -395,3 +395,159 @@ def test_overlong_review_message_and_destination_are_clipped_not_rejected():
     assert review.verdict == "revise" and len(review.message) == 1500
     passage = WorldPassage.model_validate({"ref": "tunnel", "name": "Туннель", "destination": "y" * 300})
     assert len(passage.destination) == 100
+
+
+def test_a_passage_without_a_destination_hint_is_named_after_itself():
+    """Found in play (2 of 3 drafts): the model left the hint out; it is cosmetic, the passage name will do."""
+    from app.rules.universal.world import WorldScenePlan
+
+    plan = WorldScenePlan.model_validate(scene_plan(passages=[{"ref": "lane", "name": "Узкий лаз"}]))
+    assert plan.passages[0].destination == "Узкий лаз"
+    with pytest.raises(ValueError):  # a named exit to a known place still needs no hint, an unnamed one is no exit
+        WorldScenePlan.model_validate(scene_plan(passages=[{"ref": "lane", "name": ""}]))
+
+
+def test_a_plan_wrapped_in_a_payload_is_unwrapped():
+    """Found in play: one draft came back as {"action": ..., "payload": {the plan}}."""
+    from app.rules.universal.world import WorldScenePlan
+
+    plan = WorldScenePlan.model_validate({"action": "submit_scene", "payload": scene_plan()})
+    assert plan.name == "Подземный проход"
+    with pytest.raises(ValueError):  # anything else extra stays forbidden
+        WorldScenePlan.model_validate({**scene_plan(), "action": "submit_scene"})
+
+
+def test_a_blocked_scene_gets_a_fresh_try_on_the_next_action_within_a_bound(tmp_path):
+    """Found in play: three malformed drafts blocked the opening scene for good and the game never started."""
+
+    async def run():
+        from app.agents.master.world import AUTO_RETRY_LIMIT, prepare_scene
+
+        engine, maker = await world_setup(tmp_path)
+        async with maker() as s:
+            campaign = await s.get(Campaign, "c")
+        with pytest.raises(ScenePreparationError):
+            await prepare_scene(MasterService(maker, Bus(), Provider([{}, {}, {}])), campaign, None, "gorge")
+        recovered = MasterService(maker, Bus(), Provider([scene_plan(), {"verdict": "pass"}]))
+        await prepare_scene(recovered, campaign, None, "gorge")
+        async with maker() as s:
+            assert (await s.scalar(select(WorldGenerationState))).status == "ready"
+        await engine.dispose()
+
+        (tmp_path / "spent").mkdir()
+        engine, maker = await world_setup(tmp_path / "spent")
+        async with maker() as s:
+            campaign = await s.get(Campaign, "c")
+        with pytest.raises(ScenePreparationError):
+            await prepare_scene(MasterService(maker, Bus(), Provider([{}, {}, {}])), campaign, None, "gorge")
+        async with maker() as s:
+            phase = await s.scalar(select(WorldGenerationState))
+            phase.llm_attempt_count = AUTO_RETRY_LIMIT
+            await s.commit()
+        with pytest.raises(ScenePreparationError):  # the bound holds: spent attempts are not renewed by themselves
+            await prepare_scene(
+                MasterService(maker, Bus(), Provider([scene_plan(), {"verdict": "pass"}])), campaign, None, "gorge"
+            )
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_name_with_latin_lookalikes_inside_cyrillic_is_set_right():
+    """Found in play: an NPC came out as "Mapла" (Latin M, a, p inside a Cyrillic word)."""
+    from app.rules.universal.world import WorldScenePlan
+
+    plan = WorldScenePlan.model_validate(
+        scene_plan(
+            name="Pыбные ряды",
+            objects=[{"ref": "fishwife", "kind": "npc", "name": "Mapла, торговка", "description": "Торгует рыбой."}],
+            passages=[{"ref": "lane", "name": "Mocт к пристани", "destination": "Coляная пристань"}],
+        )
+    )
+    assert plan.name == "Рыбные ряды"
+    assert plan.objects[0].name == "Марла, торговка"
+    assert plan.passages[0].name == "Мост к пристани" and plan.passages[0].destination == "Соляная пристань"
+    # a genuinely Latin word is left alone
+    assert WorldScenePlan.model_validate(scene_plan(name="Гавань Dock Nine")).name == "Гавань Dock Nine"
+
+
+def test_the_scene_context_shows_the_cast_and_who_is_already_in_the_world(tmp_path):
+    async def run():
+        from app.core.universal.world_generation import scene_reservation
+        from app.db.models import CampaignSecret
+
+        engine, maker = await world_setup(tmp_path)
+        async with maker() as s:
+            secret = await s.get(CampaignSecret, "c")
+            secret.setting = {
+                **(secret.setting or {}),
+                "cast": [
+                    {"name": "Годвин Тарп", "role": "цеховой старшина", "place": "кабачок"},
+                    {"name": "Дорн Вельт", "role": "капитан стражи", "place": "гавань"},
+                ],
+            }
+            s.add(
+                Entity(
+                    id="en_tarp",
+                    campaign_id="c",
+                    kind="creature",
+                    location_id="gorge",
+                    name="Годвин Тарп, цеховой старшина",
+                    description="Грузный.",
+                    state={},
+                )
+            )
+            await s.flush()
+            campaign = await s.get(Campaign, "c")
+            context = (await scene_reservation(s, campaign, await s.get(Entity, "gorge")))["context"]
+            assert [(p["name"], p["introduced"]) for p in context["cast"]] == [
+                ("Годвин Тарп", True),
+                ("Дорн Вельт", False),
+            ]
+            assert context["cast"][1]["place"] == "гавань"
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_person_of_the_plot_already_in_the_world_is_not_made_again_elsewhere(tmp_path):
+    """Found in play: the innkeeper stood in the inn and, made again by the next scene, in the street too."""
+
+    async def run():
+        from app.agents.master.world import prepare_scene
+        from app.db.models import CampaignSecret
+
+        engine, maker = await world_setup(tmp_path)
+        async with maker() as s:
+            secret = await s.get(CampaignSecret, "c")
+            secret.setting = {
+                **(secret.setting or {}),
+                "cast": [{"name": "Годвин Тарп", "role": "цеховой старшина", "place": "кабачок"}],
+            }
+            s.add(
+                Entity(
+                    id="en_tarp",
+                    campaign_id="c",
+                    kind="creature",
+                    location_id="elsewhere",
+                    name="Годвин Тарп, цеховой старшина",
+                    description="Грузный.",
+                    state={},
+                )
+            )
+            campaign = await s.get(Campaign, "c")
+            await s.commit()
+        plan = scene_plan(
+            objects=[
+                {"ref": "tarp", "kind": "npc", "name": "Годвин Тарп", "description": "Опять он."},
+                {"ref": "porter", "kind": "npc", "name": "Носильщик", "description": "С тачкой."},
+            ]
+        )
+        await prepare_scene(MasterService(maker, Bus(), Provider([plan, {"verdict": "pass"}])), campaign, None, "gorge")
+        async with maker() as s:
+            names = [row.name for row in await s.scalars(select(Entity).where(Entity.kind == "creature"))]
+            assert sum("Годвин Тарп" in name for name in names) == 1  # still only the one, where he was
+            assert "Носильщик" in names  # an ordinary person of the scene is made as usual
+        await engine.dispose()
+
+    asyncio.run(run())

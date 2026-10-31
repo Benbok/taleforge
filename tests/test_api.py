@@ -172,3 +172,12 @@ def test_session_control(client, admin):
     assert client.post(f"/api/campaigns/{c['id']}/session/start", headers=admin).status_code == 409
     assert client.post(f"/api/campaigns/{c['id']}/session/pause", headers=admin).json()["status"] == "paused"
     assert client.post(f"/api/campaigns/{c['id']}/session/end", headers=admin).json()["status"] == "ended"
+
+
+def test_the_master_sees_which_people_of_the_plot_are_already_in_the_world(client, admin):
+    own = make_campaign(client, admin, master={"type": "owner"})
+    cast = [{"name": "Годвин Тарп", "role": "цеховой старшина", "place": "кабачок"}]
+    r = client.put(f"/api/campaigns/{own['id']}/secrets", json={"setting": {"cast": cast}}, headers=admin)
+    assert r.status_code == 200
+    got = client.get(f"/api/campaigns/{own['id']}/secrets", headers=admin).json()
+    assert got["cast"] == [{**cast[0], "introduced": False}]

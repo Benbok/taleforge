@@ -38,6 +38,16 @@ PLAN_SYSTEM = (
     "Текущие condition/expired/material и established_public_evidence важнее старого описания: "
     "погибшие не оживают, израсходованный материал не восстанавливается. present_heroes — только контекст, "
     "не создавай их повторно и не назначай им действия. "
+    "Место, где живут или бывают люди (кабак, улица, двор, порт, контора), не бывает пустым: создай в objects "
+    "хотя бы одно живое лицо kind=npc с именем и занятием. Лицо, которое в context.world (start, premise, "
+    "public_text) названо присутствующим в этом месте, например наниматель героев, создай обязательно, под его "
+    "именем или должностью. Участников тайного плана из secret_text вводи под их именами лишь когда по плану они "
+    "здесь; их роль в открытом описании не раскрывай, hostile=true ставь только тому, кто нападает сразу. "
+    "В description лица пиши внешность, видимое занятие и манеру, но не тайную роль из плана: не «вербовщик» и "
+    "не «шпион стражи», а «сутулый человек с сетью, первым заговаривает с приезжими». "
+    "context.cast — люди плана с их видимым занятием role и местом place; introduced=true значит, что такой уже есть "
+    "в мире. Если место сцены подходит кому-то из тех, у кого introduced=false, введи его существом kind=npc под "
+    "этим именем и с видимым занятием role; плохо, когда главные лица плана остаются только словами в тайне. "
     "name сцены — название самого места (провал, галерея, склеп), а не название мира или кампании. "
     "В context.loot_slots перечислены предметы, которые можно найти в этой сцене: верни items по одному на слот "
     "(ref, name, description, для оружия attribute str или dex). Числа, статус и количество не указывай. "
@@ -64,7 +74,8 @@ REVIEW_SYSTEM = (
     "Независимо проверь план новой сцены по контексту авторского мира. Верни pass или revise и объяснение. "
     "Разрешено создавать ранее неизвестную обстановку, NPC и проходы в пределах мира: это подготовка мира. "
     "revise — только за жёсткое нарушение: отмена установленного факта (в т.ч. гибель существа или расход материала); "
-    "открытая непроходимая стена; нарушение законов/исключённых тем мира; авторский секрет или скрытый объект в "
+    "открытая непроходимая стена; нарушение законов/исключённых тем мира; авторский секрет, тайная роль лица "
+    "(вербовщик, шпион, убийца) или скрытый объект в "
     "открытом description; действие, бросок, награда или ресурс, назначенные герою; дубль уже сохранённого объекта "
     "под другим именем; конкретный предмет/персонаж/выход из description "
     "без записи в objects/passages/items или existing; "
@@ -93,11 +104,23 @@ class ScenePreparationError(RuntimeError):
         super().__init__("world_preparation_" + status)
 
 
+AUTO_RETRY_LIMIT = 18  # model calls one scene may spend in all: three windows of six, then only the owner retries
+
+
 async def prepare_scene(service, campaign, turn_id, location_id, *, source_id=""):
     if not location_id:
         return
     async with service.maker() as session:
         row = await reserve_scene(session, campaign, location_id, turn_id, source_id)
+        if (
+            row.status == "blocked"
+            and row.last_error == "invalid_world_plan"
+            and row.llm_attempt_count < AUTO_RETRY_LIMIT
+        ):
+            # Malformed drafts are the model's slip, not the world's verdict: the next action opens a fresh window
+            # instead of leaving the game stuck on its opening scene until someone presses retry.
+            storage.retry(row)
+            await session.flush()
         ref, version = row.id, row.generator_version
         ready = row.status == "ready"
         await session.commit()

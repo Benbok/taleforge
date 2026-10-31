@@ -235,6 +235,7 @@ def test_failed_secret_invention_does_not_block_the_session_and_is_retried(tmp_p
         await _studio(maker)
         provider = Provider(
             [
+                RuntimeError("down"),  # the immediate second try fails too, so the session goes on without the plot
                 RuntimeError("down"),
                 "Добро пожаловать.",
                 "SECRET-2: тайна",
@@ -246,5 +247,221 @@ def test_failed_secret_invention_does_not_block_the_session_and_is_retried(tmp_p
         assert await open_universal_session(service, "c", "game")
         assert await _stored_secret(maker) == "SECRET-2: тайна"
         await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_the_opening_is_told_who_is_in_the_place_and_never_a_hidden_one(tmp_path):
+    """Found in play: the greeting brought in a guild elder who was not in the prepared scene, so the first question
+    to him was answered by the innkeeper."""
+
+    async def run():
+        from app.db.models import Character, Entity
+        from tests.test_universal_location_knowledge import place as put_hero_in_a_place
+
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        await put_hero_in_a_place(maker)
+        await _table(maker)
+        async with maker() as s:
+            place = (await s.get(Character, "hero")).location_id
+            s.add(
+                Entity(
+                    id="en_keeper",
+                    campaign_id="c",
+                    kind="creature",
+                    location_id=place,
+                    name="Хозяин Брен",
+                    description="Сухой жилистый трактирщик.",
+                    state={"hostile": False},
+                )
+            )
+            s.add(
+                Entity(
+                    id="en_spy",
+                    campaign_id="c",
+                    kind="creature",
+                    location_id=place,
+                    name="Скрытый соглядатай",
+                    description="Прячется.",
+                    state={"hostile": False, "hidden": True},
+                )
+            )
+            await s.commit()
+        provider = Provider(["Добро пожаловать."])
+        await open_universal_session(MasterService(maker, Bus(), provider), "c", "game")
+        prompt = str(provider.prompts[0])
+        assert "Хозяин Брен" in prompt and "Скрытый соглядатай" not in prompt
+        from app.agents.master.universal_lifecycle import OPENING_PROMPT
+
+        assert "present" in OPENING_PROMPT
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_the_plot_is_invented_before_the_opening_scene_is_prepared(tmp_path, monkeypatch):
+    """The scene's people should come from the plot, so the plot must exist when the scene is prepared."""
+
+    async def run():
+        import app.agents.master.universal_lifecycle as lifecycle
+        import app.agents.master.world as world
+        from tests.test_universal_location_knowledge import place as put_hero_in_a_place
+
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        await put_hero_in_a_place(maker)
+        async with maker() as s:
+            c = await s.get(Campaign, "c")
+            c.settings = {**c.settings, "universal_world_generation": True, "studio_entry_location_id": "gorge"}
+            await s.commit()
+        order = []
+
+        async def secrets(service, cid):
+            order.append("plot")
+
+        async def scene(service, campaign, turn_id, location_id, **kwargs):
+            order.append("scene")
+
+        monkeypatch.setattr(lifecycle, "_invent_secrets", secrets)
+        monkeypatch.setattr(world, "prepare_scene", scene)
+        await open_universal_session(MasterService(maker, Bus(), Provider(["Привет."])), "c", "game")
+        assert order[:2] == ["plot", "scene"]
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_the_plot_comes_with_a_cast_kept_beside_the_secret(tmp_path):
+    """The people of the plot (hirer, enemies, witnesses) become data, so they can be brought into the world."""
+
+    async def run():
+        import json
+
+        from app.agents.master.universal_lifecycle import _invent_secrets
+        from app.db.models import CampaignSecret
+
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        await _table(maker)
+        async with maker() as s:
+            secret = await s.get(CampaignSecret, "c")
+            secret.setting = {"studio": {**secret.setting["studio"], "secret_text": ""}}
+            await s.commit()
+        plot = {
+            "secrets": "Тайны мира.",
+            "cast": [
+                {"name": "Годвин Тарп", "role": "цеховой старшина", "place": "кабачок у канатных дворов"},
+                {"name": "", "role": "без имени не лицо", "place": "нигде"},
+            ]
+            + [{"name": f"Лицо {i}", "role": "горожанин", "place": "порт"} for i in range(12)],
+        }
+        await _invent_secrets(MasterService(maker, Bus(), Provider([json.dumps(plot, ensure_ascii=False)])), "c")
+        async with maker() as s:
+            setting = (await s.get(CampaignSecret, "c")).setting
+            assert setting["studio"]["secret_text"] == "Тайны мира."
+            cast = setting["cast"]
+            assert cast[0] == {"name": "Годвин Тарп", "role": "цеховой старшина", "place": "кабачок у канатных дворов"}
+            assert len(cast) == 8 and all(person["name"] for person in cast)  # nameless dropped, the cast is bounded
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_plot_written_as_plain_text_still_works_and_has_no_cast(tmp_path):
+    async def run():
+        from app.agents.master.universal_lifecycle import _invent_secrets
+        from app.db.models import CampaignSecret
+
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        await _table(maker)
+        async with maker() as s:
+            secret = await s.get(CampaignSecret, "c")
+            secret.setting = {"studio": {**secret.setting["studio"], "secret_text": ""}}
+            await s.commit()
+        await _invent_secrets(MasterService(maker, Bus(), Provider(["Просто тайны без списка."])), "c")
+        async with maker() as s:
+            setting = (await s.get(CampaignSecret, "c")).setting
+            assert setting["studio"]["secret_text"] == "Просто тайны без списка." and not setting.get("cast")
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_plot_reply_with_raw_line_breaks_inside_its_strings_is_still_read():
+    """Found in play: the model wrote its paragraphs with real line breaks inside the JSON string; the strict
+    reader gave up and the raw JSON became the text of the secrets."""
+    from app.agents.master.universal_lifecycle import parse_plot
+
+    person = '{"name": "Ольхер", "role": "старшина", "place": "кабачок"}'
+    reply = "```json\n" + '{"secrets": "Первая тайна.\n\nВторая тайна.", "cast": [' + person + "]}" + "\n```"
+    text, cast = parse_plot(reply)
+    assert text == "Первая тайна.\n\nВторая тайна." and cast[0]["name"] == "Ольхер"
+
+
+def test_one_failed_plot_call_is_tried_again_at_once_but_only_once(tmp_path):
+    """Found in play: one empty model reply left the whole game without a plot until the next session start."""
+
+    async def run():
+        from app.agents.master.universal_lifecycle import _invent_secrets
+        from app.db.models import CampaignSecret
+
+        for replies, expected in (
+            ([RuntimeError("empty"), "Тайны со второй попытки."], "Тайны со второй попытки."),
+            ([RuntimeError("empty"), RuntimeError("empty"), "Третья не нужна."], ""),
+        ):
+            folder = tmp_path / ("a" if expected else "b")
+            folder.mkdir()
+            engine, maker = await setup(folder)
+            await prepare(maker)
+            await _table(maker)
+            async with maker() as s:
+                secret = await s.get(CampaignSecret, "c")
+                secret.setting = {"studio": {**secret.setting["studio"], "secret_text": ""}}
+                await s.commit()
+            provider = Provider(replies)
+            await _invent_secrets(MasterService(maker, Bus(), provider), "c")
+            async with maker() as s:
+                got = ((await s.get(CampaignSecret, "c")).setting["studio"]).get("secret_text", "")
+                assert got == expected
+            await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_cut_off_plot_is_a_failed_try_not_the_text_of_the_secrets(tmp_path):
+    """Found in play: the model spent nearly all its budget thinking and the JSON stopped mid-word; the stump was
+    saved as the plot."""
+
+    async def run():
+        from app.agents.master.universal_lifecycle import _invent_secrets, parse_plot
+        from app.db.models import CampaignSecret
+
+        stump = (
+            '{"secrets": "Мастера живы. Старшина знала и молчала, она подписала бумаги, по которым уходили «на сторон'
+        )
+        try:
+            parse_plot(stump)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("a cut-off JSON must not be accepted as a plot")
+        good = '{"secrets": "Целые тайны.", "cast": [{"name": "Ольхер", "role": "старшина", "place": "кабачок"}]}'
+        for replies, expected in (([stump, good], "Целые тайны."), ([stump, stump], "")):
+            folder = tmp_path / ("ok" if expected else "bad")
+            folder.mkdir()
+            engine, maker = await setup(folder)
+            await prepare(maker)
+            await _table(maker)
+            async with maker() as s:
+                secret = await s.get(CampaignSecret, "c")
+                secret.setting = {"studio": {**secret.setting["studio"], "secret_text": ""}}
+                await s.commit()
+            await _invent_secrets(MasterService(maker, Bus(), Provider(replies)), "c")
+            async with maker() as s:
+                got = ((await s.get(CampaignSecret, "c")).setting["studio"]).get("secret_text", "")
+                assert got == expected
+            await engine.dispose()
 
     asyncio.run(run())
