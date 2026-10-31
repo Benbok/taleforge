@@ -79,6 +79,15 @@ async def visible_objects(session, campaign_id, actor_id):
         raise AccessDenied("Герой недоступен")
     result = []
     for row in await session.scalars(select(Entity).where(Entity.campaign_id == campaign_id, Entity.kind == "object")):
+        if "loot" in row.state:
+            from app.core.universal.loot import available_loot, loot_view
+
+            try:
+                available_loot(row, actor)
+            except ValueError:
+                continue
+            result.append(loot_view(row))
+            continue
         if "exploration" not in row.state:
             continue
         try:

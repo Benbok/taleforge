@@ -118,6 +118,11 @@ async def _objects(ctx, action, event):
                 continue
         if actual.kind == "take":
             item = await ctx.session.get(Entity, actual.object_id or "")
+            if item is not None and "loot" in item.state:
+                from app.core.universal.loot import pick_up
+
+                changes.append(await pick_up(ctx, item, event, index))
+                continue
             if item is not None and "universal_item" in item.state:
                 # Own gear is drawn, not picked up: it is the hero's already, so nothing is moved.
                 changes.append(

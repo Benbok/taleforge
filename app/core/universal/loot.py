@@ -45,3 +45,46 @@ def loot_profile(slot: LootSlot, name: str, description: str, attribute: str = "
         restore_pool="hp" if slot.kind == "consumable" else None,
         restore_amount=6,
     )
+
+
+def available_loot(row, actor) -> None:
+    if (
+        row.campaign_id != actor.campaign_id
+        or row.kind != "object"
+        or row.location_id != actor.location_id
+        or row.state.get("taken_by")
+        or row.state.get("hidden")
+        or row.state.get("secret")
+        or row.state.get("visibility") in {"hidden", "private"}
+    ):
+        raise ValueError("Предмет уже взят или лежит в другом месте")
+
+
+def loot_view(row) -> dict:
+    return dict(
+        id=row.id,
+        name=row.name,
+        description=row.description,
+        location_id=row.location_id,
+        template="loot",
+        loot_kind=ItemProfile.model_validate(row.state["loot"]).kind,
+    )
+
+
+async def pick_up(ctx, row, source_event, index):
+    from app.core.universal.inventory import create_item
+    from app.db.models import Character
+    from app.rules.universal.exploration import EffectChange
+
+    actor = await ctx.session.get(Character, ctx.actor_id)
+    available_loot(row, actor)
+    item = await create_item(
+        ctx.session,
+        ctx.campaign_id,
+        ctx.actor_id,
+        ItemProfile.model_validate(row.state["loot"]),
+        f"loot:{row.id}",
+    )
+    row.location_id = None
+    row.state = {**row.state, "taken_by": ctx.actor_id}
+    return EffectChange(kind="item_taken", subject_id=item.id, description=f"«{item.name}» теперь у героя.")

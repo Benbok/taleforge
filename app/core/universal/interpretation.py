@@ -289,7 +289,14 @@ async def validate_exploration(ctx, action):
                 continue
             if ref in refs:
                 continue
-            obj = await ctx.session.get(Entity, ref)
+            obj = await ctx.session.get(Entity, ref, populate_existing=True)
+            if obj is not None and "loot" in obj.state:
+                from app.core.universal.loot import available_loot
+
+                if op.kind != "take" or field != "object_id":
+                    raise ValueError("Предмет из сцены можно только взять")
+                available_loot(obj, actor)
+                continue
             if obj is not None and "universal_item" in obj.state:
                 from app.core.universal.inventory import _owned
 
