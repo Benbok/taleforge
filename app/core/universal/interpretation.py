@@ -270,7 +270,12 @@ async def validate_exploration(ctx, action):
         raise ValueError("Повтор ссылки на предмет")
     if sum(bool(op.destination_id) for op in a.operations) > 1:
         raise ValueError("За одно действие можно перейти только в одно соседнее место")
+    gifts = set()
     for index, op in enumerate(a.operations):
+        if op.kind == "give":
+            if not op.object_id or not op.recipient_id or op.object_id in gifts:
+                raise ValueError("Нужны предмет, получатель и отдельный предмет для каждого подарка")
+            gifts.add(op.object_id)
         if op.travel_scope == "between_locations" and not op.destination_id and not op.object_id:
             raise ValueError("Для перехода нужно известное место назначения")
         if op.destination_id:
@@ -290,6 +295,8 @@ async def validate_exploration(ctx, action):
             if ref in refs:
                 continue
             obj = await ctx.session.get(Entity, ref, populate_existing=True)
+            if op.kind == "give" and obj is None:
+                raise ValueError("Предмет недоступен")
             if obj is not None and "loot" in obj.state:
                 from app.core.universal.loot import available_loot
 
@@ -299,6 +306,14 @@ async def validate_exploration(ctx, action):
                 continue
             if obj is not None and "universal_item" in obj.state:
                 from app.core.universal.inventory import _owned
+
+                if op.kind == "give":
+                    from app.core.universal.gifts import validate_gift
+
+                    if field != "object_id":
+                        raise ValueError("Подарок требует object_id")
+                    await validate_gift(ctx, ref, op.recipient_id)
+                    continue
 
                 # A deed may be done with one's own gear (drawn, or named in what is done); only raw-material uses
                 # such as placing, giving or pouring it are refused.

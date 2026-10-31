@@ -3,6 +3,7 @@
 import asyncio
 import time
 from dataclasses import dataclass
+from types import SimpleNamespace
 from typing import Literal
 
 from app.core.chat import next_seq
@@ -25,7 +26,7 @@ class OfferTerms:
     available: int
 
 
-def evaluate_offer(action, sheet, resources, rolls) -> OfferTerms | None:
+def evaluate_offer(action, sheet, resources, rolls, bonus=0) -> OfferTerms | None:
     """The terms of an offer, or None when no pause is warranted; the server alone decides, from the stored roll."""
     if action.resolution != "check" or any(op.kind in COMBAT_KINDS for op in action.operations):
         return None
@@ -33,7 +34,7 @@ def evaluate_offer(action, sheet, resources, rolls) -> OfferTerms | None:
     if pool is None:  # constitution has no pool to invest
         return None
     check = resolve_check(
-        FixedDice(list(rolls)), getattr(sheet.abilities, action.attribute), False, action.difficulty, action.edge
+        FixedDice(list(rolls)), getattr(sheet.abilities, action.attribute), False, action.difficulty, action.edge, bonus
     )
     missed = shortfall(check.natural, check.total, action.difficulty)
     if not 1 <= missed <= INVEST_MAX_SHORTFALL:
@@ -54,7 +55,10 @@ def evaluate_offer(action, sheet, resources, rolls) -> OfferTerms | None:
 
 
 async def make_offer(session, campaign_id, session_id, turn_id, action, sheet, resources, rolls, audience, seat_id):
-    terms = evaluate_offer(action, sheet, resources, rolls)
+    from app.core.universal.gifts import gift_bonus
+
+    ctx = SimpleNamespace(session=session, campaign_id=campaign_id, actor_id=action.actor_id)
+    terms = evaluate_offer(action, sheet, resources, rolls, await gift_bonus(ctx, action))
     if terms is None:
         return None
     deadline = int(time.time()) + INVEST_TIMEOUT_SECONDS

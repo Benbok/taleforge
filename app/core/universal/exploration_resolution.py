@@ -101,6 +101,14 @@ async def _objects(ctx, action, event):
             for field in ("object_id", "source_id", "target_id", "recipient_id")
         }
         actual = op.model_copy(update=updates)
+        if actual.kind == "give":
+            item = await ctx.session.get(Entity, actual.object_id or "")
+            if item is not None and "universal_item" in item.state:
+                from app.core.universal.gifts import give_item_to_creature
+
+                recipient = await ctx.session.get(Entity, actual.recipient_id or "")
+                changes.append(await give_item_to_creature(ctx, item, recipient, event, index))
+                continue
         if actual.kind == "consume":
             item = await ctx.session.get(Entity, actual.object_id or "")
             if item is not None and "universal_item" in item.state:
@@ -199,11 +207,14 @@ async def _execute(ctx, action, key):
     now = int((await clock_view(s, ctx.campaign_id))["game_seconds"])
     result = ExplorationOutcome(success=True, cost=action.cost, elapsed_game_seconds=action.elapsed_game_seconds)
     score = getattr(state.sheet.abilities, action.attribute)
+    from app.core.universal.gifts import gift_bonus
+
+    bonus = await gift_bonus(ctx, action)
     bought, price = 0, 0
     if ctx.invest:
         if action.resolution != "check" or not ctx.preroll or action.attribute not in state.resources.energies:
             raise ValueError("Вложить энергию нельзя")
-        rolled = resolve_check(FixedDice(list(ctx.preroll)), score, False, action.difficulty, action.edge)
+        rolled = resolve_check(FixedDice(list(ctx.preroll)), score, False, action.difficulty, action.edge, bonus)
         bought = shortfall(rolled.natural, rolled.total, action.difficulty)
         price = invest_price(bought, state.sheet.level)
         if not 1 <= bought <= INVEST_MAX_SHORTFALL or state.resources.energies[action.attribute] < action.cost + price:
@@ -214,7 +225,7 @@ async def _execute(ctx, action, key):
         result.cost = action.cost + price
     if action.resolution == "check":
         dice = FixedDice(list(ctx.preroll)) if ctx.preroll else ctx.dice
-        check = resolve_check(dice, score, False, action.difficulty, action.edge, bought)
+        check = resolve_check(dice, score, False, action.difficulty, action.edge, bought + bonus)
         for field in ("success", "natural", "total", "rolls", "critical", "critical_failure"):
             setattr(result, field, getattr(check, field))
         result.draws = [DieProof(sides=20, value=v) for v in result.rolls]
