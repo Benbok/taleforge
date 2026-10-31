@@ -123,6 +123,7 @@ def review_context(context: dict, raw_intent: dict, extra_blocks=()) -> dict:
         "known_exits": sliced.get("known_exits", []),
         "world_rules": sliced["world_rules"],
         "objects": sliced.get("objects", []),
+        "inventory": sliced.get("inventory", []),
     }
 
 

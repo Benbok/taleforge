@@ -87,6 +87,8 @@ SYSTEM = ALL_SYSTEM  # Compatibility for consumers inspecting the full prompt.
 REVIEW = (
     "В world_rules.lore_index дан указатель законов мира, в world_rules.lore — выбранные подробности. "
     "Нормативные laws, powers и world переданы полностью в блоках; оценивай допустимость по их тексту. "
+    "Если игрок называет место, которого нет в known_exits, а в destination_id стоит другое место, это "
+    "mismatch: подмена цели. "
     "Проверяй цель перемещения: «иду в туннель/комнату/лес» — смена локации с destination_id из known_exits, "
     "а не шаг к устью. within_scene допустимо для явного подхода внутри места. Не подтверждай подмену входа "
     "успешным движением на месте. "
@@ -287,8 +289,9 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                 failures[mid] = action_failure("provider_error").model_dump()
                 await store(service, tid, trace)
                 raise ActionModelError() from exc
-        if isinstance(raw, dict) and raw.get("source") in {"supernatural", "mundane"}:
-            leaning = "supernatural" if "supernatural" in {leaning, raw["source"]} else "mundane"  # magic is sticky
+        if isinstance(raw, dict) and raw.get("source") in {"supernatural", "mundane", "item"}:
+            # Magic is sticky; a deed done with an item is an ordinary deed, not "nothing the model could shape".
+            leaning = "supernatural" if "supernatural" in {leaning, raw["source"]} else "mundane"
         if isinstance(raw, dict) and isinstance(raw.get("name"), str) and raw["name"].strip():
             named = raw["name"].strip()[:128]
         if isinstance(raw, dict):

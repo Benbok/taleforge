@@ -490,7 +490,6 @@ def test_an_unsupported_verdict_asks_the_model_to_use_a_free_effect(tmp_path):
 
 
 def test_a_reviewer_who_finds_the_scale_implausible_stops_the_spell_and_tells_the_model_why(tmp_path):
-
     async def run():
         engine, maker = await setup(tmp_path)
         await prepare(maker)
@@ -897,6 +896,28 @@ def test_the_floor_without_any_model_name_uses_a_generic_one(tmp_path):
         async with maker() as s:
             event = (await s.scalars(select(Event))).one()
             assert event.payload["proposal"]["definition"]["name"] == "Свободное заклинание"
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_weapon_deed_the_model_cannot_shape_is_a_rolled_deed_not_a_free_success(tmp_path):
+    """Found in play: "strike with the knife" (source=item) fell to the floor as an empty turn and was reported
+    as a success; the model's reading of the source as an item still means an ordinary deed."""
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        broken = {**unrealisable("item"), "player_request": "ordinary"}
+        provider = Provider(
+            [broken, {"verdict": "pass", "covered_requirements": ["r"]}, broken, "Нож.", {"verdict": "pass"}]
+        )
+        await MasterService(maker, Bus(), provider).run_turn("c")
+        async with maker() as s:
+            event = (await s.scalars(select(Event))).one()
+            proposal = event.payload["proposal"]
+            assert [op["kind"] for op in proposal["operations"]] == ["free_effect"]
+            assert proposal["resolution"] == "check"  # a deed with a die, not an automatic wait
         await engine.dispose()
 
     asyncio.run(run())

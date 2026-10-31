@@ -7,7 +7,7 @@ from app.core.universal.exploration_resolution import _outcome_hint
 
 
 def _action(resolution, outcomes=None):
-    return SimpleNamespace(resolution=resolution, check_outcomes=outcomes)
+    return SimpleNamespace(resolution=resolution, check_outcomes=outcomes, difficulty=12)
 
 
 def _result(success, critical_failure=False):
@@ -34,8 +34,9 @@ def test_floor_note_is_a_neutral_fact_not_a_validator_message():
     assert "req_" not in FLOOR_NOTE and "effects" not in FLOOR_NOTE
 
 
-def _talk(kinds, resolution="check"):
+def _talk(kinds, resolution="check", difficulty=12):
     return SimpleNamespace(
+        difficulty=difficulty,
         resolution=resolution,
         operations=[SimpleNamespace(kind=k) for k in kinds],
         check_outcomes=SimpleNamespace(
