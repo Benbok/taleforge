@@ -33,7 +33,7 @@ from app.core.positions import bearing_of_cell, zone_of_cell
 from app.core.preparation import container_rows, container_view
 from app.core.scene_view import visible_scene
 from app.core.topology import location_exits
-from app.core.universal.map import exit_details, route_is_known
+from app.core.universal.map import exit_details, map_entity_type, route_is_known
 from app.core.world import PLAYABLE, ZONE_NAMES
 from app.core.world_objects import is_nested
 from app.db.models import Character, Entity, Knowledge, Message, Scene
@@ -259,7 +259,7 @@ async def party_map(session: AsyncSession, viewer: Viewer) -> dict[str, Any]:
             item = {
                 "id": e.id,
                 "name": e.name,
-                "type": entity_type(e),
+                "type": map_entity_type(e) if universal else entity_type(e),
                 "visual_key": st.get("visual_key") if isinstance(st.get("visual_key"), str) else None,
                 "zone": e.zone,
                 "zone_name": ZONE_NAMES.get(e.zone, e.zone),
