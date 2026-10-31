@@ -9,6 +9,32 @@ from app.db.models import Character
 from app.rules.universal.contracts import ENERGY_KEYS
 from app.rules.universal.mechanics import STEP_SECONDS, derive, energy_regen, starting_defense_bonuses
 
+HEALTH_REGEN_SECONDS = 600
+
+
+async def regenerate_health(session, campaign_id, elapsed_seconds: int) -> None:
+    """Медленно восстановить здоровье, сохранив остаток времени между шагами."""
+    from app.core.universal.encounters import in_combat
+
+    if elapsed_seconds <= 0:
+        return
+    for hero in await session.scalars(
+        select(Character).where(Character.campaign_id == campaign_id, Character.status.in_(["active", "approved"]))
+    ):
+        if await in_combat(session, campaign_id, hero.location_id):
+            continue
+        try:
+            sheet, resources = await load_actor(session, campaign_id, hero.id)
+        except (NotFound, ValidationError, ValueError, KeyError):
+            continue
+        top = derive(sheet, starting_defense_bonuses(sheet)).hp_max
+        if resources.hp <= 0 or resources.hp >= top:
+            continue
+        seconds = int(hero.resources.get("hp_regen_carry", "0")) + elapsed_seconds
+        gain, carry = divmod(seconds, HEALTH_REGEN_SECONDS)
+        hp = min(top, resources.hp + gain)
+        hero.resources = {**hero.resources, "hp": str(hp), "hp_regen_carry": str(carry if hp < top else 0)}
+
 
 async def regenerate_energy(session, campaign_id, elapsed_seconds):
     """Give every hero's five pools back the energy of the steps that just passed, up to the pool.
