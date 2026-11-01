@@ -30,6 +30,7 @@ def test_build_decide_context_has_the_same_keys_as_before(tmp_path, monkeypatch)
                     "world_rules",
                     "hero",
                     "resources",
+                    "coins",
                     "scene",
                     "history",
                     "source",
