@@ -37,6 +37,17 @@ def test_rarity_is_rarer_the_higher_it_is():
     assert stock["common"] > stock["rare"] > stock["unique"] >= stock["epic"]
 
 
+def test_the_author_can_set_how_often_a_place_has_a_stall():
+    market = SimpleNamespace(id="c", difficulty="normal", settings={"shop_chance": 100})
+    closed = SimpleNamespace(id="c", difficulty="normal", settings={"shop_chance": 0})
+    assert all(shop_slots(market, str(i)) for i in range(40)) and not any(shop_slots(closed, str(i)) for i in range(40))
+
+
+def test_a_stall_shows_every_kind_of_goods():
+    market = SimpleNamespace(id="c", difficulty="normal", settings={"shop_chance": 100})
+    assert all({s.kind for s in shop_slots(market, str(i))} == {"weapon", "armor", "consumable"} for i in range(30))
+
+
 @pytest.mark.parametrize("rarity", ["common", "rare", "unique", "epic"])
 @pytest.mark.parametrize("kind", ["weapon", "armor", "consumable"])
 def test_every_rarity_makes_a_lawful_item_that_grows_with_it(kind, rarity):

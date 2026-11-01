@@ -56,12 +56,12 @@ def shop_slots(campaign, location_id: str) -> list[LootSlot]:
     if (campaign.settings or {}).get("loot_enabled") is False:
         return []
     digest = hashlib.sha256(f"shop:{campaign.id}:{location_id}".encode()).digest()
-    if int.from_bytes(digest[:4]) % 100 >= SHOP_CHANCE:
+    chance = (campaign.settings or {}).get("shop_chance", SHOP_CHANCE)  # a world of markets may ask for more stalls
+    if int.from_bytes(digest[:4]) % 100 >= chance:
         return []
     result = []
     for i in range(SHOP_ITEMS):
-        kind_roll = digest[8 + i]
-        kind = "consumable" if kind_roll < 110 else "weapon" if kind_roll < 190 else "armor"
+        kind = ("consumable", "weapon", "armor")[(digest[8] + i) % 3]  # a stall shows a bit of everything
         rarity = _rarity(int.from_bytes(digest[16 + 2 * i : 18 + 2 * i]) % 100, SHOP_RARITY)
         result.append(LootSlot(f"shop_{i + 1}", kind, rarity))
     return result
