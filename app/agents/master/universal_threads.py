@@ -7,6 +7,7 @@ import logging
 
 from sqlalchemy import select
 
+from app.core.universal.gender import hero_gender
 from app.core.universal.threads import clean, due, note_action, renewed
 from app.db.models import Campaign, CampaignSecret, Character, Message
 
@@ -63,7 +64,7 @@ async def _facts(session, cid):
         campaign=campaign.name if campaign else "",
         secrets=str(studio.get("secret_text") or "")[:3000],
         cast=setting.get("cast") or [],
-        heroes=[dict(name=h.name, about=(h.public_bio or "")[:400]) for h in heroes],
+        heroes=[dict(name=h.name, gender=hero_gender(h.name), about=(h.public_bio or "")[:400]) for h in heroes],
         current_threads=setting.get("threads") or [],
         recent_hero_actions=list(reversed([m.content[:200] for m in actions])),
         recently_told=list(reversed(told)),

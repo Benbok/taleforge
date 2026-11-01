@@ -7,6 +7,7 @@ from sqlalchemy import select
 from app.agents.master.prompting.slicers import slice_narration_context
 from app.agents.master.universal_narration import recent_history
 from app.core.knowledge import Index, Section
+from app.core.universal.gender import hero_gender
 from app.core.universal.threads import threads_of
 from app.core.universal.visibility import shared_observations, visible_entity
 from app.db.models import CampaignSecret, Character, Entity, KnownFact
@@ -69,7 +70,7 @@ async def public_context(session, campaign, upto_seq, audience, scene, outcomes)
         location=location,
         entities=entities,
         mode=scene.get("mode", "free"),
-        heroes=[dict(id=h.id, name=h.name) for h in heroes if h.location_id == place],
+        heroes=[dict(id=h.id, name=h.name, gender=hero_gender(h.name)) for h in heroes if h.location_id == place],
     )
     facts = deepcopy(outcomes)
     for outcome in facts.values():

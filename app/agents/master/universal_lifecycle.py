@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from app.core.campaigns import Viewer, master_seat
 from app.core.chat import next_seq
+from app.core.universal.gender import hero_gender
 from app.core.universal.places import public_location_name
 from app.core.universal.references import link_scene_text, location_reference
 from app.core.universal.scene import universal_scene
@@ -17,7 +18,8 @@ log = logging.getLogger(__name__)
 
 OPENING_PROMPT = """Ты ИИ-мастер. Игра только начинается. Тепло поприветствуй игроков за столом
 (если герой в списке один, обращайся к одному игроку, не к «странникам») и свяжи их героев
-с обстановкой первой сцены: каждому герою дай одну короткую личную связку с местом и ситуацией
+с обстановкой первой сцены. У каждого героя указан gender (female или male): пиши о нём в этом роде и не
+меняй его. Каждому герою дай одну короткую личную связку с местом и ситуацией
 (знакомый, поручение, слух, привычка, старая привязанность), опираясь на его публичное описание.
 Оставайся в рамках законов и стиля мира, придерживайся стартовой обстановки, не меняй законы и факты.
 В present перечислены люди и существа, которые сейчас в этом месте: других действующих лиц не вводи. Если в тексте
@@ -105,7 +107,7 @@ async def _invent_secrets(service, cid):
         facts = {
             "campaign": c.name,
             **{k: studio[k] for k in SECRET_FACTS if studio.get(k)},
-            "heroes": [{"name": h.name, "about": h.public_bio} for h in heroes],
+            "heroes": [{"name": h.name, "gender": hero_gender(h.name), "about": h.public_bio} for h in heroes],
         }
     text, plot = "", ("", [])
     for attempt in range(SECRET_ATTEMPTS):  # one empty or failed reply must not leave the game without a plot
@@ -184,7 +186,7 @@ async def _post_opening(service, cid, session_id):
             "intro": c.public_intro,
             "start_place": public_location_name(c, entry) if entry else None,
             **{k: studio[k] for k in OPENING_FACTS if studio.get(k)},
-            "heroes": [{"name": h.name, "about": h.public_bio} for h in heroes],
+            "heroes": [{"name": h.name, "gender": hero_gender(h.name), "about": h.public_bio} for h in heroes],
             "present": await _present(s, cid, heroes[0].location_id),
         }
     try:
