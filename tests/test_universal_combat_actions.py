@@ -175,3 +175,18 @@ def test_first_attack_can_bind_a_visible_foe_from_established_scene_evidence(tmp
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_a_blow_without_a_weapon_is_a_light_strike(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            before = int((await s.get(Character, "target")).resources["hp"])
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([15, 4]))
+            action = await attack(s, ctx, [EffectIntentV2(kind="weapon_attack")], source="mundane")
+            result = await resolve_exploration(ctx, action, "attack")
+            assert result.status == "applied" and result.success
+            assert int((await s.get(Character, "target")).resources["hp"]) < before  # fists do hurt, a little
+        await engine.dispose()
+
+    asyncio.run(run())

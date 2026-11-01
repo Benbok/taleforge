@@ -1,5 +1,5 @@
 """Ordinary deeds on any ability score go through one generic path: the model names the ability, the difficulty and
-the outcome words; the code rolls, never special-cases a kind of feat and never charges energy."""
+the outcome words; the code rolls, never special-cases a kind of feat and charges energy only by the difficulty."""
 
 import asyncio
 
@@ -257,5 +257,22 @@ def test_an_ordinary_failure_or_a_success_leaves_health_alone(tmp_path):
                 )
                 assert (await s.get(Character, "hero")).resources["hp"] == hp
             await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_tired_hero_still_tries_a_hard_deed_at_a_disadvantage_for_what_is_left(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            hero = await s.get(Character, "hero")
+            hero.resources = {**hero.resources, "energies": {**hero.resources["energies"], "cha": "1"}}
+            await s.flush()
+            keep = []
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([15]))
+            await attempt(s, ctx, "cha", "убеждаю стражника пропустить нас", EffectIntentV2(kind="speak"), 18, keep)
+            action = keep[0]
+            assert action.edge == "disadvantage" and action.cost == 1  # eight was needed, one was left
+        await engine.dispose()
 
     asyncio.run(run())

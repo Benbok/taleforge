@@ -146,8 +146,11 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
         from app.core.universal.inventory import _owned
 
         weapon = next(op for op in intent.effects if op.kind == "weapon_attack")
-        _, _, state = await _owned(ctx.session, ctx.campaign_id, ctx.actor_id, weapon.object_id or "")
-        intent.attribute = state.profile.attribute
+        if weapon.object_id:
+            _, _, state = await _owned(ctx.session, ctx.campaign_id, ctx.actor_id, weapon.object_id)
+            intent.attribute = state.profile.attribute
+        else:
+            intent.attribute = "str"  # a blow with the fists is the body's strength
     definition = AbilityDefinitionV2(
         name=intent.name or ("Магия" if intent.source == "supernatural" else "Действие"),
         source=intent.source,
@@ -177,7 +180,13 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
             raise ValueError("Изученное определение изменено: оставь known_profile_id пустым для нового заклинания")
         # Keep this use's bindings, retain the original ability's name and revision.
         definition.name, definition.revision = saved.name, saved.revision
-    sheet, _ = await load_actor(ctx.session, ctx.campaign_id, ctx.actor_id)
+    sheet, resources = await load_actor(ctx.session, ctx.campaign_id, ctx.actor_id)
+    cost = exploration_cost(definition, sheet.level, intent.difficulty, intent.resolution)
+    edge = intent.edge
+    have = resources.energies.get(energy_attribute(definition), 0)
+    if definition.source != "supernatural" and intent.resolution == "check" and cost > have:
+        # An ordinary try is never refused for tiredness: the hero spends what is left and tries at a disadvantage.
+        cost, edge = have, "disadvantage"
     action = ExplorationAction(
         actor_id=ctx.actor_id,
         source_message_id=public_context["source_message_id"],
@@ -186,11 +195,11 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
         resolution=intent.resolution,
         attribute=intent.attribute,
         difficulty=intent.difficulty,
-        edge=intent.edge,
+        edge=edge,
         targets=targets,
         operations=intent.effects,
         introductions=intent.introductions,
-        cost=exploration_cost(definition, sheet.level, intent.difficulty, intent.resolution),
+        cost=cost,
         elapsed_game_seconds=intent.elapsed_game_seconds,
         check_outcomes=intent.check_outcomes,
         public_reason=intent.public_reason,
@@ -198,6 +207,18 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
     )
     await validate_exploration(ctx, action)
     return action
+
+
+def _fair_cost(action, price):
+    """The full price, or for a tired hero's ordinary try what was left, which the server marks by a disadvantage."""
+    if action.cost == price:
+        return True
+    return (
+        action.definition.source != "supernatural"
+        and action.resolution == "check"
+        and action.edge == "disadvantage"
+        and 0 <= action.cost < price
+    )
 
 
 async def validate_exploration(ctx, action):
@@ -209,7 +230,7 @@ async def validate_exploration(ctx, action):
         or a.operations != a.definition.effects
         or a.attribute != a.definition.attribute
         or a.definition.target_count != len(a.targets)
-        or a.cost != exploration_cost(a.definition, sheet.level, a.difficulty, a.resolution)
+        or not _fair_cost(a, exploration_cost(a.definition, sheet.level, a.difficulty, a.resolution))
     ):
         raise ValueError("Несогласованное определение действия")
     from app.core.universal.combat_actions import COMBAT_KINDS, effective_actor, scoped_targets

@@ -157,9 +157,11 @@ async def combat_action(ctx, action, event, result, now):
         profile = ProfileSpec(
             id="numeric", kind="damage", attribute=action.attribute, intensity=action.definition.intensity
         )
-        if weapon:
-            _, row, item = await _owned(s, ctx.campaign_id, action.actor_id, weapon.object_id or "")
+        if weapon and weapon.object_id:
+            _, row, item = await _owned(s, ctx.campaign_id, action.actor_id, weapon.object_id)
             profile = item_attack_profile(item.profile, row.id)
+        elif weapon:  # no weapon named: fists, a light blow
+            profile = ProfileSpec(id="numeric", kind="damage", attribute=action.attribute, intensity="light")
         if damaging and action.resolution == "attack":
             if isinstance(target, Entity):
                 target.state = {**target.state, "hostile": True}

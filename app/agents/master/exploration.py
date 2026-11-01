@@ -3,6 +3,7 @@
 import hashlib
 import json
 import logging
+import re
 from typing import Literal
 
 from pydantic import Field
@@ -47,6 +48,13 @@ class NarrationReview(ClosedModel):
     message: str = Field(default="", max_length=1000)
 
 
+def latin_words(text: str) -> list[str]:
+    """Slips of the prose: Latin words outside the [[id|text]] links (whose ids are Latin by nature) and leftover
+    placeholders such as <...>."""
+    prose = re.sub(r"\[\[[^\]|]*\|", "", text)
+    return re.findall(r"[A-Za-z]{3,}|<[^<>\n]{0,40}>", prose)
+
+
 def shortfall_fact(need, have):
     """A fact for the writer to tell in the story, never a message to the player as it stands."""
     return ActionFailure(
@@ -54,7 +62,8 @@ def shortfall_fact(need, have):
         code="insufficient_energy",
         message=(
             f"Герою не хватило энергии: нужно {need}, есть {have}, не хватает {need - have}. "
-            "Ничего не создано и не потрачено."
+            "Ничего не создано и не потрачено. Расскажи это как усталость или нехватку сил, без цифр и слов о "
+            "«форме» или «частях силы»; если игрок делал обычное дело, он просто не смог напрячься так сильно."
         ),
     )
 
@@ -461,6 +470,11 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                 shortfall = exc
             last_failure = shortfall_fact(shortfall.need, shortfall.have) if shortfall else not_realised_fact()
             hint = str(exc)[:500]
+            if isinstance(exc, InsufficientEnergy):
+                hint += (
+                    f". Обычное дело стоит по очку энергии за каждое очко difficulty выше 10: выбери способ попроще "
+                    f"(difficulty не выше {10 + exc.have}) или разбей дело на шаги и оформи только первый"
+                )
         except Exception as exc:
             log.exception("exploration review or compilation failed")
             failures[mid] = action_failure("provider_error").model_dump()
@@ -538,6 +552,13 @@ async def reviewed_narration(
                 },
             ],
         )
+        stray = latin_words(text)
+        if (
+            stray
+        ):  # no need to ask a reviewer: the story is written in Russian, and the writer is told which words slipped
+            state["feedback"] = f"В тексте латиница ({', '.join(stray[:5])}): перепиши эти места по-русски"
+            await store(service, tid, trace)
+            continue
         review = NarrationReview.model_validate(
             json.loads(
                 await ask(

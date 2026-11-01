@@ -169,7 +169,8 @@ async def resolve_exploration(ctx, action, request_key):
     except (ValueError, AccessDenied, NotFound) as exc:
         # The player sees one stable line; the real cause stays in the log, or no denial could ever be diagnosed.
         log.warning("exploration denied for %s: %s: %s", request_key, type(exc).__name__, exc)
-        return ExplorationOutcome(status="denied", failure=action_failure("invalid_proposal"))
+        code = "item_unreachable" if isinstance(exc, AccessDenied) else "invalid_proposal"
+        return ExplorationOutcome(status="denied", failure=action_failure(code))
 
 
 async def _execute(ctx, action, key):
