@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 from app.core.universal.clock import lock_campaign
 from app.core.universal.foes import FALLBACK_FOES, FoeSlot, foe_slots
-from app.core.universal.loot import FALLBACK_NAMES, LootSlot, loot_profile, loot_slots
+from app.core.universal.loot import FALLBACK_NAMES, LootSlot, loot_profile, loot_slots, loot_state, shop_slots
 from app.core.universal.threads import threads_of
 from app.core.world_generation import storage
 from app.core.world_generation.contracts import Blocked
@@ -54,6 +54,48 @@ async def recent_actions(session, campaign_id, limit=5):
         .limit(limit)
     )
     return [m.content[:200] for m in reversed(list(rows))]
+
+
+async def known_people(session, campaign_id, location_id, limit=12):
+    """People the story already has elsewhere, so a scene reuses a name instead of inventing a second one for the
+    same person; a person who follows the heroes is told by the name they already carry."""
+    rows = await session.scalars(
+        select(Entity).where(
+            Entity.campaign_id == campaign_id,
+            Entity.kind == "creature",
+            Entity.location_id.is_not(None),
+            Entity.location_id != location_id,
+        )
+    )
+    result = []
+    for row in rows:
+        state = row.state or {}
+        if state.get("hostile") or int(state.get("resources", {}).get("hp", "1")) <= 0 or state.get("hidden"):
+            continue
+        result.append(dict(name=row.name, about=(row.description or "")[:160]))
+        if len(result) == limit:
+            break
+    return result
+
+
+async def find_known_person(session, campaign_id, name, location_id):
+    """A peaceful, living person of the story already standing in another place under this very name."""
+    wanted = name.casefold().strip()
+    rows = await session.scalars(
+        select(Entity).where(
+            Entity.campaign_id == campaign_id, Entity.kind == "creature", Entity.location_id != location_id
+        )
+    )
+    for row in rows:
+        state = row.state or {}
+        if (
+            row.name.casefold().strip() == wanted
+            and row.location_id
+            and not state.get("hostile")
+            and int(state.get("resources", {}).get("hp", "1")) > 0
+        ):
+            return row
+    return None
 
 
 def _given_name(location):
@@ -158,7 +200,13 @@ async def scene_reservation(session, campaign, location, turn_id=None, source_id
         world=(secret.setting or {}).get("studio", {}) if secret else {},
         public_intro=campaign.public_intro,
         difficulty=campaign.difficulty,
-        loot_slots=[dict(ref=slot.ref, kind=slot.kind) for slot in loot_slots(campaign, location.id)],
+        loot_slots=[
+            dict(ref=slot.ref, kind=slot.kind, rarity=slot.rarity) for slot in loot_slots(campaign, location.id)
+        ],
+        shop_slots=[
+            dict(ref=slot.ref, kind=slot.kind, rarity=slot.rarity) for slot in shop_slots(campaign, location.id)
+        ],
+        known_people=await known_people(session, campaign.id, location.id),
         foe_slots=[
             dict(ref=slot.ref, power=slot.power)
             for slot in foe_slots(campaign, location.id, entry=bool((location.state or {}).get("studio_entry")))
@@ -225,11 +273,18 @@ async def publish_scene(session, row, plan: WorldScenePlan):
     placed = [p["name"].casefold() for p in reservation["context"].get("cast", []) if p.get("introduced")]
     foes = {raw["ref"]: FoeSlot(**raw) for raw in reservation["context"].get("foe_slots", [])}
     met = set()
+    merchant_id = None
     for spec in plan.objects:
         if spec.name.casefold() in names:
             continue
         if spec.kind != "object" and any(person in spec.name.casefold() for person in placed):
             continue
+        if spec.kind == "npc":
+            known = await find_known_person(session, cid, spec.name, location.id)
+            if known is not None:  # the same person met again, not a second one: they come along, under their name
+                known.location_id = location.id
+                merchant_id = known.id if spec.merchant else merchant_id
+                continue
         key = entity_id(cid, location.id, "object:" + spec.ref)
         if await session.get(Entity, key) is not None:
             raise Blocked("identity_conflict", "Объект уже существует")
@@ -259,6 +314,8 @@ async def publish_scene(session, row, plan: WorldScenePlan):
             description=spec.description,
             state=state,
         )
+        if spec.merchant:
+            merchant_id = key
         session.add(entity)
         await session.flush()
         if entity.kind == "creature":
@@ -305,7 +362,33 @@ async def publish_scene(session, row, plan: WorldScenePlan):
                 kind="object",
                 name=profile.name,
                 description=profile.description,
-                state=dict(universal_scene_ref=row.id, loot=profile.model_dump(mode="json")),
+                state=dict(universal_scene_ref=row.id, **loot_state(slot, profile)),
+            )
+        )
+        made.append(key)
+    for raw in reservation["context"].get("shop_slots", []):
+        if merchant_id is None:  # nobody stands behind the stall: there is no shop here
+            break
+        slot = LootSlot(**raw)
+        spec = items.get(slot.ref)
+        profile = loot_profile(
+            slot,
+            spec.name if spec else FALLBACK_NAMES[slot.kind],
+            spec.description if spec else "Товар на прилавке.",
+            spec.attribute if spec else "str",
+        )
+        key = entity_id(cid, location.id, "shop:" + slot.ref)
+        if await session.get(Entity, key) is not None:
+            raise Blocked("identity_conflict", "Товар уже существует")
+        session.add(
+            Entity(
+                id=key,
+                campaign_id=cid,
+                location_id=location.id,
+                kind="object",
+                name=profile.name,
+                description=profile.description,
+                state=dict(universal_scene_ref=row.id, **loot_state(slot, profile, seller_id=merchant_id)),
             )
         )
         made.append(key)

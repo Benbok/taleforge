@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from app.agents.master.universal_narration import recent_history
 from app.core.campaigns import Viewer
 from app.core.universal.profiles import load_actor
+from app.core.universal.purse import coins_of
 from app.db.models import CampaignSecret, HeroAbility, Message, User
 
 
@@ -61,6 +62,7 @@ async def build_decide_context(session, campaign, hero, seat, msg_text, *, upto_
         world_rules=world_rules(secret),
         hero=sh.model_dump(mode="json"),
         resources=resources.model_dump(mode="json"),
+        coins=coins_of(hero),
         scene=public_scene,
         history=history,
         source=msg_text,

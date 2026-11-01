@@ -4,16 +4,34 @@ import hashlib
 from dataclasses import dataclass
 from typing import Literal
 
-from app.rules.universal.items import ItemProfile
+from app.rules.universal.items import BONUS_BUDGET, PRICE, TAKE_DIFFICULTY, ItemProfile
 
 LOOT_COUNTS = {"easy": (20, 50, 30), "normal": (30, 60, 10), "hard": (60, 40, 0), "deadly": (100, 0, 0)}
 FALLBACK_NAMES = {"consumable": "Фляга с настойкой", "weapon": "Потёртый нож", "armor": "Кожаная куртка"}
+RARITIES = ("common", "rare", "unique", "epic")
+# Share of finds by rarity, in hundredths, and of the stock in a shop, which is better than what lies on the road.
+LOOT_RARITY = (70, 22, 7, 1)
+SHOP_RARITY = (50, 35, 12, 3)
+SHOP_CHANCE = 30  # hundredths of scenes that have a merchant's stall
+SHOP_ITEMS = 3
+RESTORE = (6, 10, 16, 24)  # what a draught restores, by rarity
 
 
 @dataclass(frozen=True)
 class LootSlot:
     ref: str
     kind: Literal["consumable", "weapon", "armor"]
+    rarity: Literal["common", "rare", "unique", "epic"] = "common"
+
+
+def _rarity(roll: int, weights) -> str:
+    """The rarity a hundredths roll falls in; the rarer the kind, the narrower its share."""
+    edge = 0
+    for name, weight in zip(RARITIES, weights, strict=True):
+        edge += weight
+        if roll < edge:
+            return name
+    return RARITIES[0]
 
 
 def loot_slots(campaign, location_id: str) -> list[LootSlot]:
@@ -27,24 +45,53 @@ def loot_slots(campaign, location_id: str) -> list[LootSlot]:
     for i in range(count):
         kind_roll = digest[8 + i]
         kind = "consumable" if kind_roll < 128 else "weapon" if kind_roll < 192 else "armor"
-        result.append(LootSlot(f"loot_{i + 1}", kind))
+        rarity = _rarity(int.from_bytes(digest[16 + 2 * i : 18 + 2 * i]) % 100, LOOT_RARITY)
+        result.append(LootSlot(f"loot_{i + 1}", kind, rarity))
+    return result
+
+
+def shop_slots(campaign, location_id: str) -> list[LootSlot]:
+    """The goods of a merchant, if this place has one: decided by the server, so the stall's worth is not the
+    model's to inflate; the model only names and describes them."""
+    if (campaign.settings or {}).get("loot_enabled") is False:
+        return []
+    digest = hashlib.sha256(f"shop:{campaign.id}:{location_id}".encode()).digest()
+    if int.from_bytes(digest[:4]) % 100 >= SHOP_CHANCE:
+        return []
+    result = []
+    for i in range(SHOP_ITEMS):
+        kind_roll = digest[8 + i]
+        kind = "consumable" if kind_roll < 110 else "weapon" if kind_roll < 190 else "armor"
+        rarity = _rarity(int.from_bytes(digest[16 + 2 * i : 18 + 2 * i]) % 100, SHOP_RARITY)
+        result.append(LootSlot(f"shop_{i + 1}", kind, rarity))
     return result
 
 
 def loot_profile(slot: LootSlot, name: str, description: str, attribute: str = "str") -> ItemProfile:
     if attribute not in {"str", "dex"}:
         raise ValueError("Оружию нужна сила или ловкость")
+    tier = BONUS_BUDGET[slot.rarity]  # the bonuses a rarity may carry are the budget the item rules allow
+    weapon = slot.kind == "weapon"
     return ItemProfile(
         name=name,
         description=description,
         kind=slot.kind,
-        status="common",
-        attribute=attribute if slot.kind == "weapon" else "str",
-        base_dice="1d4" if slot.kind == "weapon" and attribute == "dex" else "1d6",
-        defense_bonus=1 if slot.kind == "armor" else 0,
+        status=slot.rarity,
+        attribute=attribute if weapon else "str",
+        base_dice="1d4" if weapon and attribute == "dex" else "1d6",
+        attack_bonus=tier // 2 if weapon else 0,
+        damage_bonus=tier - tier // 2 if weapon else 0,
+        defense_bonus=1 + tier if slot.kind == "armor" else 0,
         restore_pool="hp" if slot.kind == "consumable" else None,
-        restore_amount=6,
+        restore_amount=RESTORE[tier],
     )
+
+
+def loot_state(slot: LootSlot, profile: ItemProfile, *, seller_id: str | None = None) -> dict:
+    """What a find or a piece of stock keeps beside its profile: how hard it is to take, or what it costs."""
+    if seller_id:
+        return dict(loot=profile.model_dump(mode="json"), price=PRICE[slot.rarity], seller_id=seller_id)
+    return dict(loot=profile.model_dump(mode="json"), take_difficulty=TAKE_DIFFICULTY[slot.rarity])
 
 
 def available_loot(row, actor) -> None:
@@ -68,6 +115,9 @@ def loot_view(row) -> dict:
         location_id=row.location_id,
         template="loot",
         loot_kind=ItemProfile.model_validate(row.state["loot"]).kind,
+        rarity=ItemProfile.model_validate(row.state["loot"]).status,
+        **({"take_difficulty": row.state["take_difficulty"]} if row.state.get("take_difficulty") else {}),
+        **({"price": row.state["price"], "seller_id": row.state["seller_id"]} if row.state.get("price") else {}),
     )
 
 
@@ -103,13 +153,33 @@ async def take_finds_first(ctx, action, source_event):
     return changes
 
 
+def check_purchase(row, actor) -> int:
+    """The price of a piece of stock, and a refusal if the hero cannot pay it or the seller is out of the picture."""
+    price = int(row.state.get("price") or 0)
+    if not price:
+        return 0
+    from app.core.universal.purse import coins_of
+    from app.rules.universal.failures import ActionValidationError
+
+    if coins_of(actor) < price:
+        raise ActionValidationError("not_enough_coins")
+    return price
+
+
 async def pick_up(ctx, row, source_event, index):
     from app.core.universal.inventory import create_item
-    from app.db.models import Character
+    from app.core.universal.purse import coins_of, set_coins
+    from app.db.models import Character, Entity
     from app.rules.universal.exploration import EffectChange
 
     actor = await ctx.session.get(Character, ctx.actor_id)
     available_loot(row, actor)
+    price = check_purchase(row, actor)
+    if price:
+        seller = await ctx.session.get(Entity, row.state.get("seller_id"))
+        if seller is None or seller.location_id != actor.location_id or seller.state.get("hostile"):
+            raise ValueError("Торговца нет рядом")
+        set_coins(actor, coins_of(actor) - price)
     item = await create_item(
         ctx.session,
         ctx.campaign_id,
@@ -119,4 +189,5 @@ async def pick_up(ctx, row, source_event, index):
     )
     row.location_id = None
     row.state = {**row.state, "taken_by": ctx.actor_id}
-    return EffectChange(kind="item_taken", subject_id=item.id, description=f"«{item.name}» теперь у героя.")
+    bought = f" Куплено за {price} монет." if price else ""
+    return EffectChange(kind="item_taken", subject_id=item.id, description=f"«{item.name}» теперь у героя.{bought}")

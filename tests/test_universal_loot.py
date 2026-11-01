@@ -59,7 +59,7 @@ def test_published_loot_is_bounded_filled_and_not_built_twice(tmp_path, count, i
             for e in rows:
                 assert e.kind == "object" and e.location_id == row.target_entity_id
                 profile = ItemProfile.model_validate(e.state["loot"])
-                assert profile.status == "common"
+                assert profile.status in {"common", "rare", "unique", "epic"}
                 if items:
                     assert profile.name.startswith("Находка")
                 else:
@@ -158,7 +158,7 @@ async def loot_action(s, ctx, operations, mid="take", **kwargs):
         )
     )
     await s.flush()
-    intent = IntentV2(source="mundane", resolution="automatic", effects=operations, **kwargs)
+    intent = IntentV2(source="mundane", effects=operations, **{"resolution": "automatic", **kwargs})
     return await compile_exploration(
         ctx, intent, IntentReview(verdict="pass"), dict(source_message_id=mid, source_text="Действую", evidence="")
     )
@@ -206,6 +206,7 @@ def test_loot_is_visible_taken_once_and_replayed_without_duplication(tmp_path):
                     location_id="hall",
                     template="loot",
                     loot_kind="weapon",
+                    rarity="common",
                 )
             ]
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))

@@ -19,8 +19,14 @@ def test_saved_victory_awards_all_local_participants_once(tmp_path):
             action = await attack(s, ctx, [EffectIntentV2(kind="damage")], targets=["foe"])
             await run_exchange(ctx, action, request_key="attack")
             assert (await load_actor(s, "c", "hero"))[0].xp == 150
+            from app.core.universal.purse import START_COINS, coins_of, foe_purse
+            from app.db.models import Character
+
+            purse = foe_purse("normal", "foe")  # a foe with no recorded strength counts as an ordinary one
+            assert coins_of(await s.get(Character, "hero")) == START_COINS + purse
             await run_exchange(ctx, action, request_key="attack")
             assert (await load_actor(s, "c", "hero"))[0].xp == 150
+            assert coins_of(await s.get(Character, "hero")) == START_COINS + purse  # once, not twice
         await engine.dispose()
 
     asyncio.run(run())

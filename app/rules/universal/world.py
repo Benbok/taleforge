@@ -22,9 +22,9 @@ def fix_mixed_script(value):
         return value
     return re.sub(
         r"\w+",
-        lambda m: m.group().translate(_LOOKALIKES)
-        if _CYRILLIC.search(m.group()) and _LATIN.search(m.group())
-        else m.group(),
+        lambda m: (
+            m.group().translate(_LOOKALIKES) if _CYRILLIC.search(m.group()) and _LATIN.search(m.group()) else m.group()
+        ),
         value,
     )
 
@@ -46,6 +46,8 @@ class WorldObject(ClosedModel):
     hostile: bool = False
     # How a creature behaves when it is beaten: a fanatic never yields, a coward gives up soonest.
     temper: Literal["fanatic", "brave", "wary", "cowardly"] = "brave"
+    # A person who sells: the server decides what the stall holds, the model only says who stands behind it.
+    merchant: bool = False
 
     _clean_text = field_validator("name", "description", mode="before")(fix_mixed_script)
 
@@ -68,6 +70,8 @@ class WorldObject(ClosedModel):
     def living_hostile(self):
         if self.hostile and self.kind == "object":
             raise ValueError("An ordinary object cannot be a hostile creature")
+        if self.merchant and (self.kind != "npc" or self.hostile):
+            self.merchant = False  # only a peaceful person sells; a slip of the draft is not worth a whole scene
         return self
 
 
@@ -108,7 +112,7 @@ class WorldPassage(ClosedModel):
 
 
 class WorldLoot(ClosedModel):
-    ref: str = Field(pattern=r"^loot_[12]$")
+    ref: str = Field(pattern=r"^(loot_[12]|shop_[1-3])$")
     name: str = Field(min_length=1, max_length=100)
     description: str = Field(default="", max_length=600)
     attribute: Literal["str", "dex"] = "str"
@@ -129,7 +133,7 @@ class WorldScenePlan(ClosedModel):
     description: str = Field(min_length=1, max_length=6000)
     objects: list[WorldObject] = Field(default_factory=list, max_length=16)
     passages: list[WorldPassage] = Field(default_factory=list, max_length=8)
-    items: list[WorldLoot] = Field(default_factory=list, max_length=2)
+    items: list[WorldLoot] = Field(default_factory=list, max_length=5)
 
     _clean_text = field_validator("name", "description", mode="before")(fix_mixed_script)
 

@@ -333,6 +333,15 @@ async def validate_exploration(ctx, action):
                     )
                 if op.kind == "take":
                     available_loot(obj, actor)
+                    from app.core.universal.loot import check_purchase
+
+                    check_purchase(obj, actor)
+                    difficulty = obj.state.get("take_difficulty") or 0
+                    if difficulty and (a.resolution != "check" or a.difficulty < difficulty):
+                        raise ValueError(
+                            f"Находка редкая: взять её можно только проверкой (resolution=check) сложности "
+                            f"не ниже {difficulty}"
+                        )
                 continue
             if obj is not None and "universal_item" in obj.state:
                 from app.core.universal.inventory import _owned
@@ -350,10 +359,16 @@ async def validate_exploration(ctx, action):
                 if op.kind not in {"weapon_attack", "equip", "unequip", "consume", "free_effect", "take"}:
                     raise ValueError("Снаряжение не является обычным материалом")
                 _, _, item = await _owned(ctx.session, ctx.campaign_id, a.actor_id, ref)
+                drawn = any(e.kind == "equip" and e.object_id == ref for e in a.operations[:index])
                 if op.kind == "weapon_attack" and (
-                    item.profile.kind != "weapon" or not item.equipped or item.profile.attribute != a.attribute
+                    item.profile.kind != "weapon"
+                    or not (item.equipped or drawn)
+                    or item.profile.attribute != a.attribute
                 ):
-                    raise ValueError("Нужно надетое оружие и его характеристика")
+                    raise ValueError(
+                        "Нужно надетое оружие и его характеристика: оружие не в руках достань эффектом equip "
+                        "перед weapon_attack в этом же действии"
+                    )
             else:
                 accessible(obj, actor)
         if op.kind == "create_object":

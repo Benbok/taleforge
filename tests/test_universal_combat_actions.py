@@ -190,3 +190,44 @@ def test_a_blow_without_a_weapon_is_a_light_strike(tmp_path):
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_a_weapon_not_in_hand_is_drawn_and_used_in_one_action(tmp_path):
+    from app.core.universal.inventory import create_item
+    from app.rules.universal.items import ItemProfile
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            blade = await create_item(s, "c", "hero", ItemProfile(name="Тесак", kind="weapon"), "blade")
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([15, 4]))
+            action = await attack(
+                s,
+                ctx,
+                [
+                    EffectIntentV2(kind="equip", object_id=blade.id),
+                    EffectIntentV2(kind="weapon_attack", object_id=blade.id),
+                ],
+                source="item",
+            )
+            result = await resolve_exploration(ctx, action, "attack")
+            assert result.success and int((await s.get(Character, "target")).resources["hp"]) < 20
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_weapon_not_in_hand_and_not_drawn_is_refused(tmp_path):
+    from app.core.universal.inventory import create_item
+    from app.rules.universal.items import ItemProfile
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            blade = await create_item(s, "c", "hero", ItemProfile(name="Тесак", kind="weapon"), "blade")
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([15, 4]))
+            with pytest.raises(ValueError):
+                await attack(s, ctx, [EffectIntentV2(kind="weapon_attack", object_id=blade.id)], source="item")
+        await engine.dispose()
+
+    asyncio.run(run())

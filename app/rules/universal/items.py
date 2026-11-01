@@ -10,6 +10,10 @@ from app.rules.universal.profiles import ProfileSpec
 ItemStatus = Literal["common", "rare", "unique", "epic"]
 STATUS_NAMES = dict(common="Обычный", rare="Редкий", unique="Уникальный", epic="Эпический")
 BONUS_BUDGET = dict(common=0, rare=1, unique=2, epic=3)
+# The rarer a thing, the harder it comes: it turns up less often, a find must be won by a check of this difficulty,
+# and in a shop it costs this many coins.
+TAKE_DIFFICULTY = dict(common=0, rare=12, unique=15, epic=18)
+PRICE = dict(common=6, rare=25, unique=70, epic=180)
 
 
 class GameItemAction(ClosedModel):

@@ -91,7 +91,10 @@ def game_card_of(hero, *, learned=None) -> dict:
     from app.rules.universal.progression import level_threshold
 
     floor, ceiling = level_threshold(sheet.level), level_threshold(sheet.level + 1)
+    from app.core.universal.purse import coins_of
+
     progress = dict(
+        coins=str(coins_of(hero)),
         admission_pending=bool(hero.resources.get("admission_pending")),
         current_threshold=str(floor),
         next_threshold=str(ceiling),

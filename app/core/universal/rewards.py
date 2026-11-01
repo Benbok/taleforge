@@ -91,6 +91,19 @@ async def award_achievements(ctx, action, outcome, *, reward_level=None):
             continue
         amount = AWARD_BASE[reward.difficulty] * reward_level
         await award_xp(s, ctx.campaign_id, source, recipients, amount, reason=reward.reason)
+        if reward.category == "victory":
+            from app.core.universal.purse import coins_of, foe_purse, set_coins
+
+            purse = foe_purse(subject.state.get("power", "normal"), subject.id)
+            set_coins(hero, coins_of(hero) + purse)
+            changes.append(
+                EffectChange(
+                    kind="coins_gained",
+                    subject_id=hero.id,
+                    description=f"С побеждённого «{subject.name}» достаются монеты: {purse}.",
+                    data=dict(amount=str(purse)),
+                )
+            )
         changes.append(
             EffectChange(
                 kind="xp_awarded",
