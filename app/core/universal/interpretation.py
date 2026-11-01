@@ -240,7 +240,7 @@ async def validate_exploration(ctx, action):
         if (
             current["cannot_move"]
             and any(op.kind == "weapon_attack" for op in a.operations)
-            and any(target.zone == "far" for target in targets.values())
+            and any(getattr(target, "zone", None) == "far" for target in targets.values())  # a hero has no zone
         ):
             raise ValueError("Связанный герой не может приблизиться для удара оружием")
         if current["cannot_target"] and any(

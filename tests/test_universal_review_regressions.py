@@ -338,3 +338,26 @@ def test_a_stable_hero_comes_round_after_an_hour_of_game_time(tmp_path):
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_the_scene_says_which_creatures_are_dead_or_down(tmp_path):
+    """Found in play: a demon killed in two blows stayed in the scene as one more creature, and the writer went on
+    describing it turning round and crouching."""
+    from app.core.campaigns import Viewer
+    from app.core.universal.scene import universal_scene
+    from app.db.models import Campaign, Scene, Seat, User
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            foe = await enemy(s, hp="0")
+            foe.state = {**foe.state, "resources": {**foe.state["resources"], "vitality": dict(state="dead")}}
+            s.add(Scene(campaign_id="c", mode="combat"))
+            await s.flush()
+            viewer = Viewer(await s.get(User, "u"), await s.get(Campaign, "c"), await s.get(Seat, "seat"))
+            scene = await universal_scene(s, viewer.campaign, viewer)
+            by_id = {row["id"]: row for row in scene["entities"]}
+            assert by_id["foe"]["life_state"] == "dead"
+        await engine.dispose()
+
+    asyncio.run(run())

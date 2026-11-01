@@ -921,3 +921,61 @@ def test_a_weapon_deed_the_model_cannot_shape_is_a_rolled_deed_not_a_free_succes
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def _stun_attempt(**extra):
+    """A try the server will not take (its quote is not in the player's words) that still names the control."""
+    return {
+        **unrealisable("supernatural"),
+        "effects": [{"kind": "cannot_act", "target_id": "foe", "lifetime": "timed", "resistance_attribute": "con"}],
+        **extra,
+    }
+
+
+def test_salvage_control_keeps_the_stun_the_model_asked_for():
+    from app.agents.master.exploration import salvage_control
+
+    intent = salvage_control(_stun_attempt(attribute="wis", difficulty=14, name="Оглушающий удар"), "Оглушаю демона")
+    assert intent.source == "supernatural" and intent.resolution == "check"
+    assert intent.attribute == "wis" and intent.difficulty == 14 and intent.name == "Оглушающий удар"
+    [effect] = intent.effects
+    assert (effect.kind, effect.target_id, effect.resistance_attribute) == ("cannot_act", "foe", "con")
+    assert intent.requirements[0].quote == "Оглушаю демона" and effect.required_by == [intent.requirements[0].id]
+    assert intent.targets == ["foe"]
+    # without a control effect, or without whom it is aimed at, nothing is salvaged
+    assert salvage_control(unrealisable("supernatural"), "Оглушаю") is None
+    assert salvage_control({"effects": [{"kind": "cannot_act"}]}, "Оглушаю") is None
+    assert salvage_control(None, "Оглушаю") is None
+    # a binding resists with dexterity unless the model said otherwise
+    bind = {"effects": [{"kind": "cannot_move", "target_id": "foe"}]}
+    assert salvage_control(bind, "Связываю").effects[0].resistance_attribute == "dex"
+
+
+def test_a_stun_the_model_could_not_shape_is_still_a_real_effect_on_the_foe(tmp_path):
+    """Found in play: the stun fell to the floor as a free effect; the story said the demon could not move or strike
+    while the demon went on hitting the hero, because nothing had been stored."""
+    from tests.test_universal_exchange import enemy
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        async with maker() as s:
+            await enemy(s)
+            await s.commit()
+        provider = Provider(
+            [
+                _stun_attempt(),
+                {"verdict": "pass", "covered_requirements": ["r"]},
+                _stun_attempt(),
+                "Демон замер.",
+                {"verdict": "pass"},
+            ]
+        )
+        await MasterService(maker, Bus(), provider).run_turn("c")
+        async with maker() as s:
+            event = (await s.scalars(select(Event).where(Event.tool == "universal_action"))).first()
+            kinds = [(op["kind"], op.get("target_id")) for op in event.payload["proposal"]["operations"]]
+            assert ("cannot_act", "foe") in kinds
+        await engine.dispose()
+
+    asyncio.run(run())

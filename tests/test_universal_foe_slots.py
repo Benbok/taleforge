@@ -127,3 +127,28 @@ def test_published_foes_follow_the_slots_and_fill_the_missing_ones(tmp_path, giv
         await engine.dispose()
 
     asyncio.run(run())
+
+
+@pytest.mark.parametrize("effect,silent", [("cannot_act", True), ("cannot_target", True), ("cannot_move", False)])
+def test_a_stunned_foe_does_not_strike_back_and_a_bound_one_still_can(tmp_path, effect, silent):
+    """A foe made unable to act (or to choose a target) must not reply to a blow; held in place it may still hit
+    whoever is within its reach."""
+    from app.core.universal.effects import start_effect
+    from app.db.models import Event
+    from app.rules.universal.exploration import EffectIntentV2
+    from tests.test_universal_combat_actions import attack
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        async with maker() as s:
+            await enemy(s)
+            s.add(Event(id="stun", campaign_id="c", actor_id="hero", tool="universal_action", payload={}))
+            await s.flush()
+            await start_effect(s, "c", "hero", "foe", "stun", "stun", EffectIntentV2(kind=effect), 0, 600)
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([15, 4, 15, 4]))
+            action = await attack(s, ctx, [EffectIntentV2(kind="damage")], targets=["foe"])
+            results = await run_exchange(ctx, action, request_key="attack")
+            assert (len(results) == 1) == silent
+        await engine.dispose()
+
+    asyncio.run(run())

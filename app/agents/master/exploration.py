@@ -113,6 +113,9 @@ REVIEW = (
     "Рассказ прошлых ходов не закон: образные слова рассказчика («магия отзывается болезненной пульсацией», "
     "«не удалось») и прежний провал ничего не запрещают. Нельзя отклонять заклинание (mismatch, unsupported, "
     "forbidden) из-за evidence: допустимость решает только world_rules. "
+    "Если законы мира составлены как закрытый перечень возможного («ЧТО ВОЗМОЖНО…»), то способность вне перечня "
+    "и не вытекающая из него (остановка времени, превращение людей, телепортация, воскрешение, мгновенное "
+    "уничтожение многих) этим перечнем исключена: verdict=forbidden, в message объясни это в терминах мира. "
     "Допустимость решает текст мира world_rules (laws, powers, world): verdict=forbidden только если этот текст "
     "прямо исключает действие, в message объясни причину в терминах мира; если действие допустимо, но для него "
     "нет подходящего вида эффекта, это не запрет и не unsupported, а mismatch с подсказкой использовать "
@@ -150,12 +153,57 @@ async def journal(service, campaign, kind, mid, context, detail):
         log.exception("journal entry failed")
 
 
-async def fallback_action(service, campaign, mid, context, scope, leaning, name="", sized=None, talk_only=False):
+CONTROL_KINDS = ("cannot_act", "cannot_move", "cannot_target")
+
+
+def salvage_control(raw, text):
+    """The model's rejected try named a control (stun, bind, blind) on a concrete target: keep exactly that as the
+    deed, because a control that exists only in the story leaves the foe free to strike while the story says it
+    cannot. Returns the intent, or None when the try held no control aimed at someone."""
+    if not isinstance(raw, dict):
+        return None
+    for effect in raw.get("effects") or []:
+        if not (isinstance(effect, dict) and effect.get("kind") in CONTROL_KINDS and effect.get("target_id")):
+            continue
+        kind, target = effect["kind"], str(effect["target_id"])
+        resist = effect.get("resistance_attribute")
+        difficulty = raw.get("difficulty")
+        return IntentV2(
+            source="supernatural",
+            player_request="supernatural",
+            delivery="innate",
+            resolution="check",
+            attribute=raw["attribute"] if raw.get("attribute") in ABILITY_KEYS else "wis",
+            difficulty=difficulty if type(difficulty) is int and 1 <= difficulty <= 40 else 12,
+            name=(raw.get("name") or "").strip()[:128] if isinstance(raw.get("name"), str) else "",
+            targets=[target],
+            check_outcomes=plain_outcomes(text),
+            requirements=[RequirementV2(id="req_1", quote=text[:1000], effect=kind)],
+            effects=[
+                EffectIntentV2(
+                    kind=kind,
+                    target_id=target,
+                    lifetime="timed",
+                    resistance_attribute=resist
+                    if resist in ABILITY_KEYS
+                    else ("dex" if kind == "cannot_move" else "con"),
+                    required_by=["req_1"],
+                )
+            ],
+        )
+    return None
+
+
+async def fallback_action(
+    service, campaign, mid, context, scope, leaning, name="", sized=None, talk_only=False, salvage=None
+):
     """The floor under every request the world allows: when the model could not shape it, the player's own words
     become a free effect (magic) or a plain turn (ordinary), never a refusal the engine invented.
     Returns the action, a shortfall fact when the spell is unaffordable, or None when even this does not compile."""
     text = context["source"]
-    if leaning == "supernatural":
+    if salvage is not None:
+        intent = salvage
+    elif leaning == "supernatural":
         intent = IntentV2(
             source="supernatural",
             player_request="supernatural",
@@ -244,6 +292,7 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
         return result
     hint = "Запрошенные блоки лора добавлены; разбери исходные слова игрока." if pending_lore else None
     shortfall = None
+    rejected = None  # the last try the server turned down: a control in it is still worth keeping
     leaning = None  # what the model took the request for (magic on any attempt), so the floor matches it
     named = ""  # the last general name the model gave the ability
     sized = {}  # the ability and difficulty the model gave the deed: the floor still rolls on them
@@ -404,6 +453,7 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
             await store(service, tid, trace)
             return result
         except (ValueError, AccessDenied) as exc:
+            rejected = raw if isinstance(raw, dict) else rejected
             log.warning("exploration proposal rejected: %s | raw=%s", exc, json.dumps(raw, ensure_ascii=False)[:3000])
             # An unaffordable spell is the player's real answer, and a later slip of the model's repair attempt
             # does not take it back; other rejections stay the model's mistake.
@@ -430,7 +480,18 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
         )
     if last_failure.code == "not_realised":
         await journal(service, campaign, "exhausted", mid, context, {"hint": hint or "", "floor": leaning or "mundane"})
-        floor = await fallback_action(service, campaign, mid, context, scope, leaning, named, sized, talk_only)
+        floor = await fallback_action(
+            service,
+            campaign,
+            mid,
+            context,
+            scope,
+            leaning,
+            named,
+            sized,
+            talk_only,
+            salvage_control(rejected, context["source"]),
+        )
         if isinstance(floor, ExplorationAction):
             result = PreparedExploration(proposal=floor, scene_note=FLOOR_NOTE)
             prepared[mid] = result.model_dump(mode="json")

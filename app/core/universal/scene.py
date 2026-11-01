@@ -37,6 +37,13 @@ async def universal_scene(session, campaign, viewer):
     found = await revealed_to(session, hero_id)
     view = visible_scene(scene, entities, characters, hero_id=hero_id, is_master=viewer.is_master, revealed=found)
     payload = scene_payload(scene, entities, characters, view)
+    from app.core.universal.vitality import public_vitality
+
+    for shown in payload.get("entities", []):
+        row = entities.get(shown.get("id"))
+        if row is not None and row.kind == "creature" and (row.state or {}).get("resources"):
+            # a creature that has fallen is a body in the scene, not one more creature to act: the writer must know
+            shown["life_state"] = public_vitality(row)
     location = entities.get(view.current_location_id or "")
     if location is not None:
         payload["location"]["name"] = public_location_name(campaign, location)
