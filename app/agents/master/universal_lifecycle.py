@@ -46,6 +46,9 @@ async def open_universal_session(service, cid, session_id):
     async with service.intro_lock(cid):
         # The plot first: the first scene is made with it in view, so the people it names can be there.
         await _invent_secrets(service, cid)
+        from app.agents.master.universal_threads import after_turn
+
+        await after_turn(service, cid, counted=False)  # the first threads grow in the background from plot and heroes
         if not await _post_intro(service, cid, session_id):
             return False
         await _post_opening(service, cid, session_id)

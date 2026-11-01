@@ -12,6 +12,7 @@ async def hostile_locations(session, campaign_id):
             select(Entity).where(Entity.campaign_id == campaign_id, Entity.kind == "creature")
         )
         if row.state.get("hostile")
+        and not row.state.get("yielded")
         and int(row.state.get("resources", {}).get("hp", "1")) > 0
         and row.state.get("resources", {}).get("vitality", {}).get("state") != "dead"
     }

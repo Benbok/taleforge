@@ -26,6 +26,14 @@ def _no_live_llm(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _no_story_director(monkeypatch):
+    """The story director makes a background model call; tests with a scripted model switch it on when they need it."""
+    from app.agents.master import universal_threads
+
+    monkeypatch.setattr(universal_threads, "ENABLED", False)
+
+
+@pytest.fixture(autouse=True)
 def _contract():
     protocol.VIOLATIONS.clear()
     yield

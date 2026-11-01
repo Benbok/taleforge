@@ -7,8 +7,9 @@ from sqlalchemy import select
 from app.agents.master.prompting.slicers import slice_narration_context
 from app.agents.master.universal_narration import recent_history
 from app.core.knowledge import Index, Section
+from app.core.universal.threads import threads_of
 from app.core.universal.visibility import shared_observations, visible_entity
-from app.db.models import Character, Entity, KnownFact
+from app.db.models import CampaignSecret, Character, Entity, KnownFact
 
 
 async def scene_audience(session, campaign_id, original, scene):
@@ -97,8 +98,10 @@ async def public_context(session, campaign, upto_seq, audience, scene, outcomes)
     ]
     query = " ".join([str(safe_scene), str(facts)])
     memory = Index(sections).search(query, 6, visible=("common",))
+    secret = await session.get(CampaignSecret, campaign.id)
     return slice_narration_context(
         dict(
+            story_threads=threads_of(secret),
             outcomes=facts,
             scene=safe_scene,
             recent_history=await recent_history(session, campaign, upto_seq, audience, safe_scene),

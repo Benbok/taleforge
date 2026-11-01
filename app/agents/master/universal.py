@@ -465,6 +465,9 @@ async def run_universal_turn(service, cid, place=None):
         from app.agents.master.universal_story import describe_turn
 
         await describe_turn(service, c, game, tid, trace)
+        from app.agents.master.universal_threads import after_turn
+
+        await after_turn(service, cid)
         async with service.maker() as s:
             t = await s.get(MasterTurn, tid)
             t.status, t.finished_at = "done", now()

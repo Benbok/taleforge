@@ -50,6 +50,8 @@ async def universal_scene(session, campaign, viewer):
             held = sorted({e["kind"] for e in await active_effects(session, campaign.id, row.id)} & CONTROL_KINDS)
             if held:
                 shown["held"] = held  # cannot_act, cannot_move, cannot_target: what the creature is held from
+            if row.state.get("yielded"):
+                shown["yielded"] = True  # beaten and pleading: it no longer attacks unless struck again
     location = entities.get(view.current_location_id or "")
     if location is not None:
         payload["location"]["name"] = public_location_name(campaign, location)

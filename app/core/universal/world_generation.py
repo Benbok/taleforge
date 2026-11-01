@@ -7,6 +7,7 @@ from sqlalchemy import select
 from app.core.universal.clock import lock_campaign
 from app.core.universal.foes import FALLBACK_FOES, FoeSlot, foe_slots
 from app.core.universal.loot import FALLBACK_NAMES, LootSlot, loot_profile, loot_slots
+from app.core.universal.threads import threads_of
 from app.core.world_generation import storage
 from app.core.world_generation.contracts import Blocked
 from app.db.models import CampaignSecret, Character, Entity, Message, WorldGenerationState
@@ -42,6 +43,17 @@ async def cast_view(session, campaign_id, secret):
         for person in cast
         if isinstance(person, dict) and person.get("name")
     ]
+
+
+async def recent_actions(session, campaign_id, limit=5):
+    """What the heroes said and did lately, oldest first: the scene maker leans the new place towards it."""
+    rows = await session.scalars(
+        select(Message)
+        .where(Message.campaign_id == campaign_id, Message.kind.in_(("action", "speech")))
+        .order_by(Message.seq.desc())
+        .limit(limit)
+    )
+    return [m.content[:200] for m in reversed(list(rows))]
 
 
 def _given_name(location):
@@ -152,6 +164,8 @@ async def scene_reservation(session, campaign, location, turn_id=None, source_id
             for slot in foe_slots(campaign, location.id, entry=bool((location.state or {}).get("studio_entry")))
         ],
         cast=await cast_view(session, campaign.id, secret),
+        threads=threads_of(secret),
+        recent_actions=await recent_actions(session, campaign.id),
         location=dict(id=location.id, name=_given_name(location), description=location.description),
         existing_objects=present,
         existing_neighbors=neighbors,
@@ -232,9 +246,10 @@ async def publish_scene(session, row, plan: WorldScenePlan):
             slot = foes.get(spec.ref)
             if slot is not None:  # a place of the server's encounter: always hostile, as strong as the server says
                 met.add(slot.ref)
-                state.update(hostile=True, attitude="hostile", power=slot.power)
+                state.update(hostile=True, attitude="hostile", power=slot.power, temper=spec.temper)
             else:
-                state.update(hostile=spec.hostile, attitude="hostile" if spec.hostile else "neutral")
+                attitude = "hostile" if spec.hostile else "neutral"
+                state.update(hostile=spec.hostile, attitude=attitude, temper=spec.temper)
         entity = Entity(
             id=key,
             campaign_id=cid,

@@ -44,6 +44,8 @@ class WorldObject(ClosedModel):
     amount: int = Field(default=1, ge=1, le=10000, strict=True)
     hidden: bool = False
     hostile: bool = False
+    # How a creature behaves when it is beaten: a fanatic never yields, a coward gives up soonest.
+    temper: Literal["fanatic", "brave", "wary", "cowardly"] = "brave"
 
     _clean_text = field_validator("name", "description", mode="before")(fix_mixed_script)
 
@@ -58,6 +60,8 @@ class WorldObject(ClosedModel):
                 data["template"] = "prop"
             if data.get("material") not in {None, "wood", "plant", "stone"}:
                 data["material"] = "stone"
+            if data.get("temper") not in {None, "fanatic", "brave", "wary", "cowardly"}:
+                data["temper"] = "brave"
         return data
 
     @model_validator(mode="after")

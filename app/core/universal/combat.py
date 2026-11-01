@@ -70,7 +70,11 @@ async def eligible_enemies(ctx, exchange):
     ):
         from app.core.universal.visibility import visible_entity
 
-        if not foe.state.get("hostile") or not await visible_entity(s, ctx.campaign_id, hero.id, foe):
+        if (
+            not foe.state.get("hostile")
+            or foe.state.get("yielded")
+            or not await visible_entity(s, ctx.campaign_id, hero.id, foe)
+        ):
             continue
         if quiet and not _restless(foe, exchange) and not foe.state.get("aggressive"):
             continue  # it has not made up its mind yet
@@ -225,6 +229,16 @@ async def run_exchange(ctx, action, choose_reply=None, request_key=None):
             )
         else:
             choices = await eligible_enemies(ctx, exchange)
+            from app.core.universal.surrender import take_pleas
+
+            pleas, choices = await take_pleas(ctx, choices)
+            if pleas:  # told with the hero's own outcome, so the writer sees it among the changes of this turn
+                hero_outcome = dict(exchange.hero_outcome or {})
+                hero_outcome["changes"] = [
+                    *hero_outcome.get("changes", []),
+                    *(p.model_dump(mode="json") for p in pleas),
+                ]
+                exchange.hero_outcome = hero_outcome
             exchange.selection_attempted = True
             if choose_reply is None:
                 choice = (

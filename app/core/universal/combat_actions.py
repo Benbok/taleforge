@@ -164,7 +164,7 @@ async def combat_action(ctx, action, event, result, now):
             profile = ProfileSpec(id="numeric", kind="damage", attribute=action.attribute, intensity="light")
         if damaging and action.resolution == "attack":
             if isinstance(target, Entity):
-                target.state = {**target.state, "hostile": True}
+                target.state = {**target.state, "hostile": True, "yielded": False}
             target_state = await effective_actor(s, ctx.campaign_id, target_id, pending_event_id=ctx.pending_event_id)
             difficulty = target_state["derived"].ac
             check = resolve_check(

@@ -107,7 +107,7 @@ def test_periodic_victory_awards_even_when_current_check_failed(tmp_path):
         engine, maker = await setup(tmp_path)
         async with maker() as s:
             await enemy(s, hp="1")
-            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([]))
+            ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([20]))  # a foe at 1 HP is asked to yield
             action = await attack(
                 s, ctx, [EffectIntentV2(kind="damage_over_time")], targets=["foe"], resolution="automatic"
             )
@@ -119,7 +119,7 @@ def test_periodic_victory_awards_even_when_current_check_failed(tmp_path):
             (await s.get(Message, "attack")).seq = 0
             await s.flush()
             wait = await prepare(s, ctx, "wait", source="mundane", resolution="check", mid="wait")
-            ctx.dice = FixedDice([1, 4])
+            ctx.dice = FixedDice([1, 4, 20])
             results = await run_exchange(ctx, wait, choose_reply=pass_reply, request_key="wait")
             assert not results[0].success
             assert (await load_actor(s, "c", "hero"))[0].xp == 150
