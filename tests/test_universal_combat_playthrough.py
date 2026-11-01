@@ -128,9 +128,11 @@ def test_equipment_vine_reply_binding_expiry_consumable_rescue_and_reconnect(tmp
             foe.zone = "far"
             results, _ = await act("bind", "cannot_move", [1], source="supernatural", targets=["foe"])
             assert len(results) == 1 and results[0].effect_outcomes[0].applied
-            await act("wait", "wait", [], elapsed=18)
             from app.core.universal.effects import active_effects
 
+            assert [e["kind"] for e in await active_effects(s, "c", "foe")] == ["cannot_move"]
+            # the binding has no timer: it holds until the foe breaks free, and this turn it rolls a twenty
+            await act("wait", "wait", [20], elapsed=18)
             assert not await active_effects(s, "c", "foe")
             results, _ = await act(
                 "tonic", "consume", [5], source="item", effects=[EffectIntentV2(kind="consume", object_id=tonic.id)]

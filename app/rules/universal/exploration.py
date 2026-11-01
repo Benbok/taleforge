@@ -123,8 +123,9 @@ MAGIC_KINDS = frozenset(
     }
 )
 # An ordinary deed may leave a remembered note (a torch made of a board): it is a fact for the writer, costs no
-# energy, and is not magic. The review still reads it, because it is never a plain action.
-FREE_FOR_ORDINARY = frozenset({"free_effect"})
+# energy, and is not magic. The review still reads it, because it is never a plain action. It may also hold someone:
+# tying with a rope, a trip, a blow to the nape are checks of the hero's body, not spells; the held one resists.
+FREE_FOR_ORDINARY = frozenset({"free_effect", "cannot_move", "cannot_act", "cannot_target"})
 MATERIALS = Literal["wood", "plant", "stone"]
 
 

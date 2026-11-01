@@ -268,7 +268,9 @@ async def combat_action(ctx, action, event, result, now):
                 if op.kind in CONTROL_KINDS:
                     target_sheet, _ = await load_actor(s, ctx.campaign_id, target_id)
                     attribute = op.resistance_attribute or ("dex" if op.kind == "cannot_move" else "wis")
-                    difficulty = 10 + (getattr(sheet.abilities, action.attribute) - 10) // 2
+                    from app.core.universal.control import break_dc
+
+                    difficulty = break_dc(getattr(sheet.abilities, action.attribute), action.definition.intensity)
                     check = resolve_check(dice, getattr(target_sheet.abilities, attribute), False, difficulty)
                     applied = not check.success
                     result.effect_outcomes.append(
@@ -301,6 +303,19 @@ async def combat_action(ctx, action, event, result, now):
                         2 if op.kind == "guard" else {"light": 1, "normal": 2, "strong": 3}[action.definition.intensity]
                     )
                     duration = action.definition.duration_seconds if op.kind != "guard" else 6
+                    holding = {}
+                    if op.kind in CONTROL_KINDS:
+                        # no timer: the held one tries to break free on that ability every turn from the next on
+                        from app.core.universal.clock import clock_view
+                        from app.core.universal.control import HOLD_SECONDS
+
+                        duration = HOLD_SECONDS
+                        holding = dict(
+                            held=True,
+                            resist=attribute,
+                            break_dc=difficulty,
+                            from_sequence=int((await clock_view(s, ctx.campaign_id))["step_index"]) + 1,
+                        )
                     await start_effect(
                         s,
                         ctx.campaign_id,
@@ -317,6 +332,7 @@ async def combat_action(ctx, action, event, result, now):
                             intensity=action.definition.intensity,
                             attribute=action.attribute,
                             source_sheet=sheet.model_dump(mode="json"),
+                            **holding,
                         ),
                     )
                     result.changes.append(

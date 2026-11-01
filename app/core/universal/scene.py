@@ -44,6 +44,12 @@ async def universal_scene(session, campaign, viewer):
         if row is not None and row.kind == "creature" and (row.state or {}).get("resources"):
             # a creature that has fallen is a body in the scene, not one more creature to act: the writer must know
             shown["life_state"] = public_vitality(row)
+            from app.core.universal.control import CONTROL_KINDS
+            from app.core.universal.effects import active_effects
+
+            held = sorted({e["kind"] for e in await active_effects(session, campaign.id, row.id)} & CONTROL_KINDS)
+            if held:
+                shown["held"] = held  # cannot_act, cannot_move, cannot_target: what the creature is held from
     location = entities.get(view.current_location_id or "")
     if location is not None:
         payload["location"]["name"] = public_location_name(campaign, location)

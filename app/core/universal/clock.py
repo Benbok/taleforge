@@ -42,12 +42,14 @@ async def _complete_step(session, campaign_id, source_key, elapsed_seconds, *, d
     start, sequence = int(clock.game_seconds), int(clock.step_index) + 1
     end = start + elapsed_seconds
     clock.game_seconds, clock.step_index = str(end), str(sequence)
+    from app.core.universal.control import advance_control
     from app.core.universal.effects import expire_effects
     from app.core.universal.periodic import advance_periodic
     from app.core.universal.regeneration import regenerate_energy, regenerate_health
     from app.core.universal.vitality import advance_vitality
 
     changes = await advance_periodic(session, campaign_id, start, end, sequence, dice)
+    changes.extend(await advance_control(session, campaign_id, sequence, dice))
     # Время без сознания не становится отдыхом после пробуждения в конце шага.
     await regenerate_health(session, campaign_id, elapsed_seconds)
     changes.extend(await advance_vitality(session, campaign_id, sequence, dice, now=end))
