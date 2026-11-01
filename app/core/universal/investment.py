@@ -10,6 +10,7 @@ from app.core.chat import next_seq
 from app.core.universal.combat_actions import COMBAT_KINDS
 from app.db.models import Message
 from app.rules.dice import FixedDice
+from app.rules.universal.exploration import energy_attribute
 from app.rules.universal.investment import INVEST_MAX_SHORTFALL, INVEST_TIMEOUT_SECONDS, invest_price, shortfall
 from app.rules.universal.profiles import resolve_check
 
@@ -30,7 +31,9 @@ def evaluate_offer(action, sheet, resources, rolls, bonus=0) -> OfferTerms | Non
     """The terms of an offer, or None when no pause is warranted; the server alone decides, from the stored roll."""
     if action.resolution != "check" or any(op.kind in COMBAT_KINDS for op in action.operations):
         return None
-    pool = resources.energies.get(action.attribute)
+    pool = (
+        resources.energies.get(energy_attribute(action.definition)) if action.attribute in resources.energies else None
+    )
     if pool is None:  # constitution has no pool to invest
         return None
     check = resolve_check(

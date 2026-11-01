@@ -105,7 +105,7 @@ def test_free_listening_does_not_learn_and_rejection_creates_nothing(tmp_path):
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([20]))
             action = await prepare(s, ctx, "observe", source="mundane", resolution="check")
             result = await resolve_exploration(ctx, action, "m")
-            assert result.success and result.cost == 0 and not result.ability_ref
+            assert result.success and result.cost == 2 and not result.ability_ref  # difficulty 12: two over ten
             assert await s.scalar(select(func.count()).select_from(HeroAbility)) == 0
             before = await s.scalar(select(func.count()).select_from(Event))
             denied = await resolve_exploration(ctx, action.model_copy(update={"cost": 50}), "other")

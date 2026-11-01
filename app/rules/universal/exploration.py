@@ -53,6 +53,7 @@ Sturdiness = Literal["fragile", "ordinary", "sturdy"]
 # Energy per hero level and per six-second unit for something of this size; the model judges the size.
 SCALE_PRICE = {"tiny": 1, "small": 2, "medium": 4, "large": 8, "huge": 16}
 LEADS_SCALES = frozenset({"large", "huge"})
+ORDINARY_DIFFICULTY = 10
 DEFAULT_EFFECT_SECONDS = 18
 MAX_EFFECT_SECONDS = 604800  # a week: only keeps the whole numbers sane, the price is the real limit
 
@@ -125,7 +126,9 @@ MAGIC_KINDS = frozenset(
 # An ordinary deed may leave a remembered note (a torch made of a board): it is a fact for the writer, costs no
 # energy, and is not magic. The review still reads it, because it is never a plain action. It may also hold someone:
 # tying with a rope, a trip, a blow to the nape are checks of the hero's body, not spells; the held one resists.
-FREE_FOR_ORDINARY = frozenset({"free_effect", "cannot_move", "cannot_act", "cannot_target"})
+# Making a thing from improvised means (a torch from a board, a sled of branches) is not magic either, but it is paid
+# for in Intelligence at the price of its size.
+FREE_FOR_ORDINARY = frozenset({"free_effect", "cannot_move", "cannot_act", "cannot_target", "create_object"})
 MATERIALS = Literal["wood", "plant", "stone"]
 
 
@@ -346,11 +349,36 @@ def effect_price(effect: EffectIntentV2, definition: AbilityDefinitionV2, level:
     return {"light": 1, "normal": 3, "strong": 12}[definition.intensity] * level
 
 
-def exploration_cost(definition: AbilityDefinitionV2, level: int) -> int:
+def energy_attribute(definition: AbilityDefinitionV2) -> str:
+    """Whose energy pays: magic always draws Wisdom, a made thing from improvised means draws Intelligence, and any
+    other deed draws the energy of the ability it tests."""
+    if definition.source == "supernatural":
+        return "wis"
+    if any(effect.kind == "create_object" for effect in definition.effects):
+        return "int"
+    return definition.attribute
+
+
+def check_price(difficulty: int) -> int:
+    """What a hard ordinary try costs in its ability's energy: nothing up to ten, then a point each."""
+    return max(0, difficulty - ORDINARY_DIFFICULTY)
+
+
+def exploration_cost(
+    definition: AbilityDefinitionV2, level: int, difficulty: int = ORDINARY_DIFFICULTY, resolution: str = "automatic"
+) -> int:
     if type(level) is not int or level < 1:
         raise ValueError("Level must be a positive exact integer")
     if definition.source != "supernatural":
-        return 0
+        # Making something costs the full price of its size, as magic does, in Intelligence; every other deed that is
+        # tested pays by how hard the test is. Constitution has no pool, so a test of the body is free.
+        made = sum(
+            effect_price(effect, definition, level) * ((definition.duration_seconds + 5) // 6) * effect.quantity
+            for effect in definition.effects
+            if effect.kind == "create_object"
+        )
+        tried = check_price(difficulty) if resolution == "check" and definition.attribute != "con" else 0
+        return made + tried
     total = 0
     has_form = any(effect.kind == "change_form" for effect in definition.effects)
     for effect in definition.effects:
@@ -486,9 +514,10 @@ def clean_model_intent(raw):
         cleaned["source"] = "mundane"  # pretending to cast is acting, whatever the model labelled it
     if cleaned.get("source") == "mundane" and claim in {"pretend", "ordinary"}:
         # Pretending or an ordinary act is not magic; a claimed spell keeps its magic for the review to weigh.
-        effects = [
-            e for e in effects if not (isinstance(e, dict) and e.get("kind") in MAGIC_KINDS - FREE_FOR_ORDINARY)
-        ] or ([{"kind": "wait"}] if effects else [])
+        banned = MAGIC_KINDS - FREE_FOR_ORDINARY | ({"create_object"} if claim == "pretend" else set())
+        effects = [e for e in effects if not (isinstance(e, dict) and e.get("kind") in banned)] or (
+            [{"kind": "wait"}] if effects else []
+        )
     if not effects and cleaned.get("source") == "mundane":
         effects = [{"kind": "wait"}]
     if (

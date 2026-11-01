@@ -47,10 +47,10 @@ def test_investment_buys_the_miss_once_and_pays_the_price(tmp_path):
             result = await resolve_exploration(ctx, action, "m")
             assert result.success and not result.critical
             assert result.checks[0].invested == 2 and result.checks[0].total == DC
-            assert result.cost == 6
-            assert await energy(s) == 20 - 6 + 2  # price, plus the two the six game seconds give back
+            assert result.cost == 8  # six for the miss, two for the difficulty
+            assert await energy(s) == 20 - 8 + 2  # price, plus the two the six game seconds give back
             assert (await resolve_exploration(ctx, action, "m")).status == "repeated"
-            assert await energy(s) == 20 - 6 + 2
+            assert await energy(s) == 20 - 8 + 2
             assert await s.scalar(select(func.count()).select_from(Event)) == 1
         await engine.dispose()
 

@@ -67,10 +67,11 @@ def test_a_feat_is_rolled_on_the_ability_the_model_named_against_its_difficulty(
             won = await attempt(
                 s, ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([15])), ability, said, effect, 15 + modifier
             )
-            assert won.success and won.cost == 0
+            assert won.success and won.cost == 5 + modifier  # a hard deed costs its ability a point each over ten
             proof = won.checks[0]
             assert proof.attribute == ability and proof.modifier == modifier and proof.difficulty == 15 + modifier
-            assert (await s.get(Character, "hero")).resources["energies"] == before["energies"]  # no energy for a deed
+            after = (await s.get(Character, "hero")).resources["energies"][ability]
+            assert int(after) <= int(before["energies"][ability])
         await engine.dispose()
 
     asyncio.run(run())

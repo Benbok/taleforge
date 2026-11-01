@@ -25,7 +25,7 @@ async def ensure_roll_message(session, campaign_id, session_id, turn_id, source_
         return existing
     v2 = event.payload.get("schema_version") == 2
     if v2:
-        from app.rules.universal.exploration import ExplorationAction, ExplorationOutcome
+        from app.rules.universal.exploration import ExplorationAction, ExplorationOutcome, energy_attribute
 
         proposal = ExplorationAction.model_validate(event.payload["proposal"])
         result = ExplorationOutcome.model_validate(event.payload["outcome"])
@@ -50,7 +50,9 @@ async def ensure_roll_message(session, campaign_id, session_id, turn_id, source_
         draws=[draw.model_dump() for draw in result.draws],
         cost=str(result.cost),
         damage=str(result.damage),
-        resource_key=(proposal.attribute if proposal.cost else None) if v2 else proposal.profile.resource_key,
+        resource_key=(energy_attribute(proposal.definition) if proposal.cost else None)
+        if v2
+        else proposal.profile.resource_key,
         legacy=not bool(result.draws) and not v2,
         description=result.description,
     )

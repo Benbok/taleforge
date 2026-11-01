@@ -172,7 +172,7 @@ def test_investment_offer_and_execution_both_include_the_gift(tmp_path, roll):
             else:
                 assert card.data["price"] == 3 and card.data["shortfall"] == 1 and card.data["total"] == 11
                 result = await resolve_exploration(ctx, a, "offer")
-                assert result.success and result.total == 12 and result.cost == 3
+                assert result.success and result.total == 12 and result.cost == 5  # 3 invested + 2 for the difficulty
                 assert result.checks[0].invested == 1
         await engine.dispose()
 

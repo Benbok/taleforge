@@ -21,6 +21,7 @@ from app.rules.universal.exploration import (
     IntentReview,
     IntentV2,
     definition_key,
+    energy_attribute,
     exploration_cost,
 )
 from app.rules.universal.failures import ActionValidationError
@@ -189,7 +190,7 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
         targets=targets,
         operations=intent.effects,
         introductions=intent.introductions,
-        cost=exploration_cost(definition, sheet.level),
+        cost=exploration_cost(definition, sheet.level, intent.difficulty, intent.resolution),
         elapsed_game_seconds=intent.elapsed_game_seconds,
         check_outcomes=intent.check_outcomes,
         public_reason=intent.public_reason,
@@ -208,7 +209,7 @@ async def validate_exploration(ctx, action):
         or a.operations != a.definition.effects
         or a.attribute != a.definition.attribute
         or a.definition.target_count != len(a.targets)
-        or a.cost != exploration_cost(a.definition, sheet.level)
+        or a.cost != exploration_cost(a.definition, sheet.level, a.difficulty, a.resolution)
     ):
         raise ValueError("Несогласованное определение действия")
     from app.core.universal.combat_actions import COMBAT_KINDS, effective_actor, scoped_targets
@@ -255,13 +256,13 @@ async def validate_exploration(ctx, action):
         a.check_outcomes is None or any(not value for value in a.check_outcomes.model_dump().values())
     ):
         raise ValueError("Нужны четыре подсказки исходов проверки")
-    if a.definition.source == "supernatural":
-        have = resources.energies.get(a.attribute, 0)
-        if a.cost < 1:
-            raise ValueError("Сверхъестественное действие должно иметь положительную цену")
+    if a.definition.source == "supernatural" and a.cost < 1:
+        raise ValueError("Сверхъестественное действие должно иметь положительную цену")
+    if a.cost:
+        have = resources.energies.get(energy_attribute(a.definition), 0)
         if have < a.cost:
             raise InsufficientEnergy(a.cost, have)
-    elif any(op.kind in MAGIC_KINDS - FREE_FOR_ORDINARY for op in a.operations):
+    if a.definition.source != "supernatural" and any(op.kind in MAGIC_KINDS - FREE_FOR_ORDINARY for op in a.operations):
         raise ValueError("Сверхъестественное действие не может быть бесплатным")
     if a.elapsed_game_seconds > 3600 or a.elapsed_game_seconds < 1:
         raise ValueError("Игровое действие требует положительного времени")

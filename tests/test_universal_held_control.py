@@ -130,7 +130,7 @@ def test_an_ordinary_deed_may_hold_a_foe_too(tmp_path, kind):
                 IntentReview(verdict="pass", covered_requirements=["r"]),
                 dict(source_message_id="m", source_text="Вяжу", evidence=""),
             )
-            assert action.definition.source == "mundane" and action.cost == 0
+            assert action.definition.source == "mundane" and action.cost == 2  # the difficulty of 12 costs two
         await engine.dispose()
 
     asyncio.run(run())

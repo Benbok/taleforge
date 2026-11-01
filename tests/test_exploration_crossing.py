@@ -159,10 +159,10 @@ def test_a_hero_grows_a_bridge_and_walks_to_the_far_side(tmp_path):
             row = await the_object(s)
             ctx.dice = FixedDice([15])  # 15 + 2 beats the difficulty of 12
             _, crossed = await build(ctx, s, walk(row.id, "check"), "m2", 2)
-            assert crossed.success and crossed.cost == 0
+            assert crossed.success and crossed.cost == 2  # the difficulty of 12 costs two
             assert await location_of(s) != "loc_origin"
-            # the price once, then only the six seconds of each of the two steps give energy back
-            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "4"
+            # the price once, the two for the crossing check, then the six seconds of each step give energy back
+            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "2"
         await engine.dispose()
 
     asyncio.run(run())

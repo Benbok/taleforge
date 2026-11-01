@@ -17,7 +17,13 @@ from app.core.universal.profiles import load_actor, save_actor
 from app.core.universal.validation import authorize_actor
 from app.db.models import Entity, Event, HeroAbility, Message
 from app.rules.dice import FixedDice
-from app.rules.universal.exploration import TIMED_KINDS, EffectChange, ExplorationAction, ExplorationOutcome
+from app.rules.universal.exploration import (
+    TIMED_KINDS,
+    EffectChange,
+    ExplorationAction,
+    ExplorationOutcome,
+    energy_attribute,
+)
 from app.rules.universal.failures import ActionValidationError, action_failure
 from app.rules.universal.investment import INVEST_MAX_SHORTFALL, invest_price, shortfall
 from app.rules.universal.profiles import CheckProof, DieProof, resolve_check
@@ -215,16 +221,17 @@ async def _execute(ctx, action, key):
 
     bonus = await gift_bonus(ctx, action)
     bought, price = 0, 0
+    pool_key = energy_attribute(action.definition)
     if ctx.invest:
-        if action.resolution != "check" or not ctx.preroll or action.attribute not in state.resources.energies:
+        if action.resolution != "check" or not ctx.preroll or pool_key not in state.resources.energies:
             raise ValueError("Вложить энергию нельзя")
         rolled = resolve_check(FixedDice(list(ctx.preroll)), score, False, action.difficulty, action.edge, bonus)
         bought = shortfall(rolled.natural, rolled.total, action.difficulty)
         price = invest_price(bought, state.sheet.level)
-        if not 1 <= bought <= INVEST_MAX_SHORTFALL or state.resources.energies[action.attribute] < action.cost + price:
+        if not 1 <= bought <= INVEST_MAX_SHORTFALL or state.resources.energies[pool_key] < action.cost + price:
             raise ValueError("Вложение недоступно")
     if action.cost or price:
-        state.resources.energies[action.attribute] -= action.cost + price
+        state.resources.energies[pool_key] -= action.cost + price
         await save_actor(s, ctx.campaign_id, action.actor_id, state.sheet, state.resources)
         result.cost = action.cost + price
     if action.resolution == "check":
