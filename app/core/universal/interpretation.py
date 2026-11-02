@@ -26,6 +26,8 @@ from app.rules.universal.exploration import (
 )
 from app.rules.universal.failures import ActionValidationError
 
+IMPOSSIBLE_MARGIN = 5
+
 
 def needs_intent_review(source, intent, known=False):
     # Keywords only flag risk; independent semantic review interprets negation/pretence.
@@ -277,6 +279,12 @@ async def validate_exploration(ctx, action):
         a.check_outcomes is None or any(not value for value in a.check_outcomes.model_dump().values())
     ):
         raise ValueError("Нужны четыре подсказки исходов проверки")
+    if a.resolution == "check":
+        modifier = (getattr(sheet.abilities, a.attribute) - 10) // 2
+        # Beyond even a lucky roll (a natural 20 and five points to spare): refused before anything is rolled or spent,
+        # or a natural 20 would carry a hero across a city.
+        if a.difficulty > 20 + modifier + IMPOSSIBLE_MARGIN:
+            raise ActionValidationError("impossible_deed")
     if a.definition.source == "supernatural" and a.cost < 1:
         raise ValueError("Сверхъестественное действие должно иметь положительную цену")
     if a.cost:
