@@ -101,9 +101,14 @@ async def scoped_targets(ctx, action):
             raise ValueError("Герой ещё не завершил вступление в группу")
         if isinstance(target, Character) or target.state.get("universal_sheet"):
             _, target_resources = await load_actor(ctx.session, ctx.campaign_id, target_id)
-            if target_resources.hp <= 0 and any(
-                op.kind in {"damage", "weapon_attack", "cannot_move", "cannot_act", "cannot_target"}
-                for op in action.operations
+            fallen_foe_of_the_party = getattr(ctx, "npc_reply", False) and isinstance(target, Character)
+            if (
+                target_resources.hp <= 0
+                and not fallen_foe_of_the_party
+                and any(
+                    op.kind in {"damage", "weapon_attack", "cannot_move", "cannot_act", "cannot_target"}
+                    for op in action.operations
+                )
             ):
                 raise ValueError("Недействующая цель не может быть атакована этим действием")
         elif target.kind != "creature":

@@ -9,6 +9,34 @@ from app.rules.base import DeathSaves, HitPoints
 from app.rules.death import apply_death_roll
 from app.rules.universal.exploration import EffectChange
 
+SOLO_RESCUE_DC = 10  # a hero alone at the table has one throw: this much or more and they rise, otherwise they die
+DOWNED = {"unconscious", "stable"}
+
+
+def _seated(actor):
+    return isinstance(actor, Character) and actor.seat_id is not None and actor.status in {"active", "approved"}
+
+
+async def is_solo(session, campaign_id, actor):
+    """A lone hero has nobody to lift them: one throw, and any blow that lands on them while they lie is death."""
+    if not _seated(actor):
+        return False
+    seats = await session.scalars(
+        select(Character.id).where(
+            Character.campaign_id == campaign_id,
+            Character.seat_id.is_not(None),
+            Character.status.in_(["active", "approved"]),
+        )
+    )
+    return len(list(seats)) == 1
+
+
+def downed_reason(hero):
+    """Why a fallen hero cannot speak or act: their player waits, and the world rolls for them."""
+    if hero is not None and public_vitality(hero) in DOWNED:
+        return "Герой без сознания: он не может ни говорить, ни действовать, пока его не поднимут."
+    return None
+
 
 def public_vitality(actor):
     stored = resources_of(actor)
@@ -79,6 +107,7 @@ async def advance_vitality(session, campaign_id, sequence, dice, now=None):
     actors += list(
         await session.scalars(select(Entity).where(Entity.campaign_id == campaign_id, Entity.kind == "creature"))
     )
+    solo = sum(1 for actor in actors if _seated(actor)) == 1
     changes = []
     for actor in actors:
         stored = resources_of(actor)
@@ -97,6 +126,9 @@ async def advance_vitality(session, campaign_id, sequence, dice, now=None):
         sheet, resources = await load_actor(session, campaign_id, actor.id)
         if resources.hp > 0:
             await enter_zero_hp(session, campaign_id, actor.id, "healed", sequence)
+            continue
+        if solo and _seated(actor):
+            changes.extend(_solo_throw(actor, stored, state, dice.d20(), sequence))
             continue
         hp = HitPoints(
             current=0,
@@ -151,6 +183,29 @@ async def advance_vitality(session, campaign_id, sequence, dice, now=None):
     return changes
 
 
+def _solo_throw(actor, stored, state, natural, sequence):
+    """The one throw of a lone hero: success wakes them at one hit point, failure is death."""
+    rose = natural >= SOLO_RESCUE_DC
+    status = "conscious" if rose else "dead"
+    state = {**state, "state": status, "successes": "0", "failures": "0", "last_sequence": str(sequence)}
+    set_resources(actor, {**stored, "hp": "1" if rose else "0", "vitality": state})
+    return [
+        EffectChange(
+            kind="rescue_roll",
+            subject_id=actor.id,
+            description="Скрытая проверка состояния.",
+            private=True,
+            data=dict(natural=natural, successes=state["successes"], failures=state["failures"]),
+        ),
+        EffectChange(
+            kind="vitality",
+            subject_id=actor.id,
+            description=f"{actor.name}: {'приходит в сознание' if rose else 'жизнь угасла'}.",
+            data=dict(state=status),
+        ),
+    ]
+
+
 async def harm_unconscious(session, campaign_id, actor_id, source_key, sequence, *, critical=False):
     actor = await actor_row(session, campaign_id, actor_id)
     data = resources_of(actor)
@@ -158,6 +213,8 @@ async def harm_unconscious(session, campaign_id, actor_id, source_key, sequence,
     if state.get("state") not in {"unconscious", "stable"}:
         return
     failures = int(state.get("failures", "0")) + (2 if critical else 1)
+    if await is_solo(session, campaign_id, actor):
+        failures = 3  # nobody stands over a lone hero: the first blow that lands finishes them
     next_state = {**state, "state": "dead" if failures >= 3 else "unconscious", "failures": str(failures)}
     if state["state"] == "stable":
         next_state.update(successes="0", eligible_sequence=str(sequence + 1), source_key=source_key)

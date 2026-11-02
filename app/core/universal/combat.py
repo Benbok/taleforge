@@ -13,6 +13,7 @@ from app.core.universal.inventory import create_item, ensure_inventory, equipped
 from app.core.universal.profiles import load_actor
 from app.core.universal.provocation import provokes
 from app.core.universal.validation import authorize_actor
+from app.core.universal.vitality import DOWNED, public_vitality
 from app.db.models import Character, CombatExchange, Entity, Event, now
 from app.rules.universal.exploration import (
     AbilityDefinitionV2,
@@ -44,7 +45,7 @@ async def eligible_enemies(ctx, exchange):
     quiet = not provokes(ExplorationAction.model_validate(exchange.proposal))
     s = ctx.session
     hero = await s.get(Character, exchange.actor_id)
-    targets = []
+    targets, downed = [], []
     for player in await s.scalars(
         select(Character)
         .where(
@@ -55,11 +56,13 @@ async def eligible_enemies(ctx, exchange):
         )
         .execution_options(populate_existing=True)
     ):
-        if (
-            not player.resources.get("admission_pending")
-            and (await load_actor(s, ctx.campaign_id, player.id))[1].hp > 0
-        ):
+        if player.resources.get("admission_pending"):
+            continue
+        if (await load_actor(s, ctx.campaign_id, player.id))[1].hp > 0:
             targets.append(player.id)
+        elif public_vitality(player) in DOWNED:
+            downed.append(player.id)
+    targets = targets or downed  # the fallen are struck only when nobody is left standing
     if not targets:
         return []
     result = []

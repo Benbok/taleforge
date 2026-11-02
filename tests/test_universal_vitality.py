@@ -2,9 +2,17 @@ import asyncio
 
 from app.core.universal.clock import complete_step
 from app.core.universal.vitality import enter_zero_hp, public_vitality
-from app.db.models import Character
+from app.db.models import Character, Seat
 from app.rules.dice import FixedDice
 from tests.test_universal_resolution import setup
+
+
+async def join_ally(s):
+    """A second player at the table: the fallen hero is no longer alone."""
+    s.add(Seat(id="seat2", campaign_id="c", role="player", position=2, user_id="u", occupant_type="human"))
+    await s.flush()
+    (await s.get(Character, "target")).seat_id = "seat2"
+    await s.flush()
 
 
 def test_new_zero_hp_waits_until_next_step_and_twenty_rescues_once(tmp_path):
@@ -29,6 +37,7 @@ def test_two_natural_ones_die_and_public_state_excludes_counters(tmp_path):
     async def run():
         engine, maker = await setup(tmp_path)
         async with maker() as s:
+            await join_ally(s)
             hero = await s.get(Character, "hero")
             hero.resources = {**hero.resources, "hp": "0"}
             await enter_zero_hp(s, "c", "hero", "injury", 0)

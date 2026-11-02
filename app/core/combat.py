@@ -758,6 +758,12 @@ async def gate_message(session, viewer, kind: str, *, mark: bool = True) -> str 
         return None
     if (viewer.campaign.settings or {}).get("intro_generating") and kind != "ooc":
         return "Мастер готовит вступление к кампании…"
+    if kind != "ooc" and viewer.campaign.ruleset_id == "universal":
+        from app.core.universal.vitality import downed_reason
+
+        reason = downed_reason(await seat_hero(session, viewer.campaign.id, viewer.seat.id))
+        if reason:
+            return reason
     sc = await get_scene(session, viewer.campaign.id)
     in_combat = sc.mode == "combat" and bool(sc.turn_order)
     if in_combat:  # отряд разделён: герой не в очереди — бой идёт в другом месте, он играет свободно
