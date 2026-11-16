@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import asyncio
+import logging
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from sqlalchemy import event, inspect
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+
+log = logging.getLogger(__name__)
 
 _READS = {"SELECT", "PRAGMA", "EXPLAIN"}
 
@@ -39,8 +45,36 @@ async def verify_universal_schema(engine: AsyncEngine) -> None:
         if "universal_journal" not in tables:
             raise RuntimeError("Expected the universal journal; run alembic upgrade head")
 
-    async with engine.begin() as connection:
+    async with startup_connection(engine) as connection, connection.begin():
         await connection.run_sync(verify)
+
+
+# PostgreSQL ещё поднимается или перезапускается: такие ошибки проходят сами, остальные (пароль, схема) — нет
+_TRANSIENT_SQLSTATES = {"57P03", "08000", "08001", "08006"}
+
+
+def _transient_connect_error(error: BaseException) -> bool:
+    if isinstance(error, DBAPIError):
+        return getattr(error.orig, "sqlstate", None) in _TRANSIENT_SQLSTATES or isinstance(error.orig, OSError)
+    return isinstance(error, OSError)
+
+
+@asynccontextmanager
+async def startup_connection(engine: AsyncEngine, *, attempts: int = 30, delay: float = 1.0):
+    """Connect at startup, waiting out a database that is still starting; only connecting is retried."""
+    for attempt in range(1, attempts + 1):
+        try:
+            connection = await engine.connect()
+            break
+        except (DBAPIError, OSError) as error:
+            if attempt == attempts or not _transient_connect_error(error):
+                raise
+            log.warning("database not ready (attempt %d/%d): %s", attempt, attempts, error)
+            await asyncio.sleep(delay)
+    try:
+        yield connection
+    finally:
+        await connection.close()
 
 
 def make_engine(url: str) -> AsyncEngine:
