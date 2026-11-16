@@ -979,3 +979,32 @@ def test_a_stun_the_model_could_not_shape_is_still_a_real_effect_on_the_foe(tmp_
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_a_salvaged_hold_is_told_as_a_hold_not_as_a_timer_or_as_nothing(tmp_path):
+    """Found in play: a vine binding a dog read «действует 1000000000 с.» next to «Механикой не закреплено:
+    предметы и мир не менялись», though the dog was held."""
+    import json
+
+    from tests.test_universal_exchange import enemy
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        async with maker() as s:
+            await enemy(s)
+            await s.commit()
+        attempt = _stun_attempt()
+        provider = Provider(
+            [attempt, {"verdict": "pass", "covered_requirements": ["r"]}, attempt, "Демон замер.", {"verdict": "pass"}]
+        )
+        await MasterService(maker, Bus(), provider).run_turn("c")
+        async with maker() as s:
+            event = (await s.scalars(select(Event).where(Event.tool == "universal_action"))).first()
+            text = json.dumps(event.payload, ensure_ascii=False)
+            assert "1000000000" not in text and "Механикой не закреплено" not in text
+            held = any(c["kind"] == "cannot_act" for c in event.payload["outcome"].get("changes", []))
+            assert ("пока не вырвется" in text) is held  # the dice are live: the foe may have resisted
+        await engine.dispose()
+
+    asyncio.run(run())

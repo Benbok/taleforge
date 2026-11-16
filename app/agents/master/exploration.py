@@ -86,14 +86,16 @@ def not_realised_fact():
 FLOOR_NOTE = "Замысел героя оформлен проще, чем он был задуман: расскажи только то, что действительно произошло."
 
 
-def plain_outcomes(text):
+def plain_outcomes(text, unbound=True):
     """Neutral words that still name the deed: the writer is told not to retell the attempt, so a bare
-    "the attempt failed" leaves it to guess what was attempted (and it guessed a blow for a retreat)."""
+    "the attempt failed" leaves it to guess what was attempted (and it guessed a blow for a retreat).
+    unbound=False for a deed that does change the world (a salvaged hold): it must not be told as changing nothing."""
     deed = " ".join(text.split())[:300]
+    note = " Механикой не закреплено: предметы и мир не менялись." if unbound else ""
     return CheckNarration(
-        success=f"Задуманное в общих чертах удалось: «{deed}». Механикой не закреплено: предметы и мир не менялись.",
+        success=f"Задуманное в общих чертах удалось: «{deed}».{note}",
         failure=f"Задуманное не удалось: «{deed}».",
-        critical_success=f"Задуманное удалось блестяще: «{deed}». Механикой не закреплено: предметы и мир не менялись.",
+        critical_success=f"Задуманное удалось блестяще: «{deed}».{note}",
         critical_failure=f"Задуманное сорвалось неловко: «{deed}».",
     )
 
@@ -193,7 +195,7 @@ def salvage_control(raw, text):
             difficulty=difficulty if type(difficulty) is int and 1 <= difficulty <= 40 else 12,
             name=(raw.get("name") or "").strip()[:128] if isinstance(raw.get("name"), str) else "",
             targets=[target],
-            check_outcomes=plain_outcomes(text),
+            check_outcomes=plain_outcomes(text, unbound=False),
             requirements=[RequirementV2(id="req_1", quote=text[:1000], effect=kind)],
             effects=[
                 EffectIntentV2(
