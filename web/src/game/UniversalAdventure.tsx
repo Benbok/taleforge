@@ -5,6 +5,7 @@ import ConnectionBanner from '../components/ConnectionBanner';
 import BackButton from '../components/BackButton';
 import Header from '../components/Header';
 import UniversalHeroCard from '../builder/UniversalHeroCard';
+import HeroPortraitStudio from '../builder/HeroPortraitStudio';
 import { formatCount } from '../lib/counts';
 import { abilityKeys, abilityNames, energyThemes, universalCard } from '../lib/universal';
 import { useGame } from '../stores/game';
@@ -494,7 +495,9 @@ export default function UniversalAdventure({
               </button>
             </header>
             <div className='min-h-0 flex-1 overflow-y-auto p-4 md:p-6'>
-              <UniversalHeroCard card={card} />
+              <UniversalHeroCard card={card} portraitActions={
+                <HeroPortraitStudio card={card} endpoint={`/api/campaigns/${campaignId}/characters/${card.id}/portrait`}
+                  onSaved={updated => useGame.getState().setSheet(updated as unknown as HeroSheet)} />} />
             </div>
           </div>
         </div>

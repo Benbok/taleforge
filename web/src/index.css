@@ -93,6 +93,10 @@
   --tf-warn: #d99a2b;
   --tf-ok: #72c491;
   --tf-bad: #ed8b85;
+  --tf-diff-easy: #6da892;
+  --tf-diff-normal: #7aa3c8;
+  --tf-diff-hard: #d1a35d;
+  --tf-diff-deadly: #cf7676;
   --tf-map-floor: #272c30;
   --tf-map-stone: #2e3338;
   --tf-map-wood: #3a2e24;
@@ -142,6 +146,10 @@
   --tf-warn: #805000;
   --tf-ok: #23643f;
   --tf-bad: #a92e29;
+  --tf-diff-easy: #346e59;
+  --tf-diff-normal: #3b6a94;
+  --tf-diff-hard: #8a6422;
+  --tf-diff-deadly: #963f3f;
   --tf-map-floor: #e6ddd0;
   --tf-map-stone: #d8d4cc;
   --tf-map-wood: #d9c5ab;
@@ -196,6 +204,10 @@
   --color-ok: var(--tf-ok);
   --color-bad: var(--tf-bad);
   --color-warn: var(--tf-warn);
+  --color-diff-easy: var(--tf-diff-easy);
+  --color-diff-normal: var(--tf-diff-normal);
+  --color-diff-hard: var(--tf-diff-hard);
+  --color-diff-deadly: var(--tf-diff-deadly);
   --font-narration: var(--tf-font-narration);
   --font-ui: var(--tf-font-ui);
   --font-heading: var(--tf-font-heading);

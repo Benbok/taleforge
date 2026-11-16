@@ -13,7 +13,10 @@ export default function MenuMusicControl() {
   const retryable = sound.menuStatus === "error";
   const locked = !sound.unlocked || sound.menuStatus === "locked" || retryable;
   const loading = busy || sound.menuStatus === "loading";
-  const label = locked ? "Включить музыку" : prefs.enabled ? "Выключить музыку" : "Включить музыку";
+  // Музыка включена, но браузер ждёт первого действия: первое нажатие на странице её запустит.
+  const waiting = locked && !retryable && prefs.enabled;
+  const label = waiting ? "Музыка включена" : locked ? "Включить музыку" : prefs.enabled ? "Выключить музыку" : "Включить музыку";
+  const title = waiting ? "Браузер запустит музыку после первого нажатия на странице" : sound.menuError ?? sound.menuTheme.title;
 
   async function activate() {
     if (!locked) {
@@ -38,7 +41,7 @@ export default function MenuMusicControl() {
       disabled={loading}
       aria-busy={loading}
       aria-label={label}
-      title={sound.menuError ?? sound.menuTheme.title}
+      title={title}
     >
       <span aria-hidden="true">{loading ? "…" : "♪"}</span>
       <span className="hidden sm:inline">{label}</span>

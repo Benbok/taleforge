@@ -6,6 +6,43 @@ import CampaignCoverImage from "../components/CampaignCoverImage";
 import { newRequestKey } from "../lib/authoring";
 import type { CatalogEntryOut, LaunchReceipt } from "../lib/api.gen";
 
+interface DifficultyBadge {
+  label: string;
+  badgeClass: string;
+  dotClass: string;
+}
+
+const DIFFICULTY_MAP: Record<string, DifficultyBadge> = {
+  easy: {
+    label: "Лёгкая сложность",
+    badgeClass: "border-diff-easy/25 bg-diff-easy/10 text-diff-easy",
+    dotClass: "bg-diff-easy/80",
+  },
+  normal: {
+    label: "Обычная сложность",
+    badgeClass: "border-diff-normal/25 bg-diff-normal/10 text-diff-normal",
+    dotClass: "bg-diff-normal/80",
+  },
+  hard: {
+    label: "Высокая сложность",
+    badgeClass: "border-diff-hard/25 bg-diff-hard/10 text-diff-hard",
+    dotClass: "bg-diff-hard/80",
+  },
+  deadly: {
+    label: "Смертельная сложность",
+    badgeClass: "border-diff-deadly/25 bg-diff-deadly/10 text-diff-deadly",
+    dotClass: "bg-diff-deadly/80",
+  },
+};
+
+function getDifficultyBadge(raw?: unknown): DifficultyBadge {
+  const key = typeof raw === "string" ? raw.toLowerCase().trim() : "normal";
+  if (key === "easy" || key === "лёгкая") return DIFFICULTY_MAP.easy;
+  if (key === "hard" || key === "сложная" || key === "трудная" || key === "высокая") return DIFFICULTY_MAP.hard;
+  if (key === "deadly" || key === "смертельная") return DIFFICULTY_MAP.deadly;
+  return DIFFICULTY_MAP.normal;
+}
+
 /** Вкладка «Миры»: опубликованные миры всех авторов. Запуск создаёт новую сессию и открывает её кабинет. */
 export default function WorldsCatalog({ isAdmin }: { isAdmin: boolean }) {
   const navigate = useNavigate();
@@ -63,6 +100,7 @@ export default function WorldsCatalog({ isAdmin }: { isAdmin: boolean }) {
         <div className="grid gap-6 md:grid-cols-2">
           {catalog.data.map((w) => {
             const intro = String(w.public_summary.intro ?? "");
+            const diff = getDifficultyBadge(w.public_summary.difficulty);
             return (
               <article key={w.version_id} className="card flex flex-col justify-between overflow-hidden border-line bg-surface">
                 {w.cover_thumbnail_url && (
@@ -74,7 +112,17 @@ export default function WorldsCatalog({ isAdmin }: { isAdmin: boolean }) {
                 )}
                 <div className="flex flex-1 flex-col justify-between p-6">
                 <div className="flex flex-col gap-3">
-                  <div className="font-mono text-xs tracking-widest text-muted">Автор: {w.author_name}</div>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="font-mono text-xs tracking-widest text-muted">Автор: {w.author_name}</div>
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${diff.badgeClass}`}
+                      title={`Сложность кампании: ${diff.label}`}
+                      aria-label={`Сложность кампании: ${diff.label}`}
+                    >
+                      <span className={`inline-block h-1.5 w-1.5 rounded-full ${diff.dotClass}`} aria-hidden="true" />
+                      <span>{diff.label}</span>
+                    </span>
+                  </div>
                   <h3 className="font-heading text-3xl font-semibold text-ink">{w.title}</h3>
                   {intro && <p className="font-narration text-base leading-relaxed text-ink-2">{intro}</p>}
                 </div>

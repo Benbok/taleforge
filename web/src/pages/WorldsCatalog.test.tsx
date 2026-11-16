@@ -6,8 +6,8 @@ import WorldsCatalog from './WorldsCatalog';
 
 const calls: { path: string; body?: unknown }[] = [];
 const entries = [
-  { version_id: 'av1', project_id: 'p1', title: 'Стеклянные острова', author_name: 'Arty', version: 2, published_at: '2026-10-27T10:00:00Z', public_summary: { title: 'Стеклянные острова', intro: 'Гавань ждёт.' }, cover_thumbnail_url: '/api/adventures/catalog/p1/cover/aw1/thumbnail' },
-  { version_id: 'av2', project_id: 'p2', title: 'Туманный остров', author_name: 'root', version: 1, published_at: '2026-10-26T10:00:00Z', public_summary: { title: 'Туманный остров', intro: '' } },
+  { version_id: 'av1', project_id: 'p1', title: 'Стеклянные острова', author_name: 'Arty', version: 2, published_at: '2026-10-27T10:00:00Z', public_summary: { title: 'Стеклянные острова', intro: 'Гавань ждёт.', difficulty: 'hard' }, cover_thumbnail_url: '/api/adventures/catalog/p1/cover/aw1/thumbnail' },
+  { version_id: 'av2', project_id: 'p2', title: 'Туманный остров', author_name: 'root', version: 1, published_at: '2026-10-26T10:00:00Z', public_summary: { title: 'Туманный остров', intro: '', difficulty: 'normal' } },
 ];
 let release: (() => void) | null = null;
 let failFor: string | null = null;
@@ -50,6 +50,14 @@ it('показывает карточку каждого опубликован�
   expect(screen.getByText('Туманный остров')).toBeDefined();
   expect(screen.getByText('Гавань ждёт.')).toBeDefined();
   expect(screen.getByText(/Arty/)).toBeDefined();
+});
+
+it('отображает чип сложности кампании для каждого мира', async () => {
+  show(true);
+  expect(await screen.findByText('Высокая сложность')).toBeDefined();
+  expect(screen.getByText('Обычная сложность')).toBeDefined();
+  expect(screen.getByLabelText('Сложность кампании: Высокая сложность')).toBeDefined();
+  expect(screen.getByLabelText('Сложность кампании: Обычная сложность')).toBeDefined();
 });
 
 it('кнопка запуска есть только у администратора', async () => {

@@ -27,10 +27,16 @@ describe("компактный контрол темы меню", () => {
   });
   afterEach(() => cleanup());
 
-  it("разблокирует звук непосредственно нажатием", async () => {
+  it("до первого нажатия показывает, что музыка включена, и разблокирует звук нажатием", async () => {
     render(<MenuMusicControl />);
-    fireEvent.click(screen.getByRole("button", { name: "Включить музыку" }));
+    fireEvent.click(screen.getByRole("button", { name: "Музыка включена" }));
     expect(fakeSound.unlock).toHaveBeenCalledOnce();
+  });
+
+  it("выключенную владельцем музыку предлагает включить", () => {
+    useMenuMusicPreferences.setState({ prefs: { enabled: false, volume: 0.2 } });
+    render(<MenuMusicControl />);
+    expect(screen.getByRole("button", { name: "Включить музыку" })).toBeTruthy();
   });
 
   it("скрывается без метаданных темы", () => {
