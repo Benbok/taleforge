@@ -81,7 +81,12 @@ def test_creation_and_library_admission_catch_up_after_l1(client, root, from_lib
     hero_id = response.json()["hero_id"]
     card = client.get(f"/api/campaigns/{cid}/characters/{hero_id}", headers=root).json()
     assert card["sheet"]["level"] == "10" and card["sheet"]["unspent_points"] == "18"
-    assert client.get("/api/me/characters", headers=root).json() == original
+    library = client.get("/api/me/characters", headers=root).json()
+    assert [hero for hero in library if hero in original] == original
+    # новый герой кампании сохранён и в библиотеке, но уровень отряда туда не переносится
+    added = [hero for hero in library if hero not in original]
+    assert len(added) == (0 if from_library else 1)
+    assert all(hero["level"] == "1" for hero in added)
 
 
 def test_dead_and_foreign_party_do_not_inflate_catchup(tmp_path):

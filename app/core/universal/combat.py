@@ -87,8 +87,8 @@ async def eligible_enemies(ctx, exchange):
         if (await load_actor(s, ctx.campaign_id, foe.id))[1].hp <= 0:
             continue
         state = await effective_actor(s, ctx.campaign_id, foe.id, pending_event_id=exchange.hero_event_id)
-        if state["cannot_act"] or state["cannot_target"] or (state["cannot_move"] and foe.zone == "far"):
-            continue
+        if state["cannot_act"] or state["cannot_target"] or state["cannot_move"]:
+            continue  # stunned, blinded to targets or bound: a held foe does not strike back, in reach or not
         result.append(dict(actor_id=foe.id, name=foe.name, target_ids=targets, zone=foe.zone))
     return sorted(result, key=lambda row: ({"melee": 0, "near": 1, "far": 2}.get(row["zone"], 3), row["actor_id"]))
 

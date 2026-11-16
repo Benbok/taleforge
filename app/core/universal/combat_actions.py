@@ -2,6 +2,7 @@
 
 from sqlalchemy import select
 
+from app.core.rolls import ABILITY_RU
 from app.core.universal.effects import EFFECT_LABELS, active_effects, start_effect
 from app.core.universal.inventory import _owned, actor_derived, ensure_inventory, equip
 from app.core.universal.profiles import actor_row, load_actor, save_actor
@@ -342,13 +343,17 @@ async def combat_action(ctx, action, event, result, now):
                             **holding,
                         ),
                     )
+                    label = f"{target.name}: эффект «{op.label or EFFECT_LABELS.get(op.kind, 'Эффект')}»"
                     result.changes.append(
                         EffectChange(
                             kind=op.kind,
                             subject_id=target_id,
+                            # a hold has no timer: HOLD_SECONDS is a sentinel, not a duration to show
                             description=(
-                                f"{target.name}: эффект «{op.label or EFFECT_LABELS.get(op.kind, 'Эффект')}» "
-                                f"действует {duration} с."
+                                f"{label} держит, пока не вырвется ({ABILITY_RU.get(attribute, attribute)}, "
+                                f"сложность {difficulty})."
+                                if holding
+                                else f"{label} действует {duration} с."
                             ),
                         )
                     )

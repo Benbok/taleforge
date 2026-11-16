@@ -129,10 +129,10 @@ def test_published_foes_follow_the_slots_and_fill_the_missing_ones(tmp_path, giv
     asyncio.run(run())
 
 
-@pytest.mark.parametrize("effect,silent", [("cannot_act", True), ("cannot_target", True), ("cannot_move", False)])
-def test_a_stunned_foe_does_not_strike_back_and_a_bound_one_still_can(tmp_path, effect, silent):
-    """A foe made unable to act (or to choose a target) must not reply to a blow; held in place it may still hit
-    whoever is within its reach."""
+@pytest.mark.parametrize("effect", ["cannot_act", "cannot_target", "cannot_move"])
+def test_a_stunned_or_bound_foe_does_not_strike_back(tmp_path, effect):
+    """A foe made unable to act, to choose a target or to move must not reply to a blow. Found in play: a dog bound
+    by a vine bit the hero the same turn, within reach."""
     from app.core.universal.effects import start_effect
     from app.db.models import Event
     from app.rules.universal.exploration import EffectIntentV2
@@ -148,7 +148,7 @@ def test_a_stunned_foe_does_not_strike_back_and_a_bound_one_still_can(tmp_path, 
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([15, 4, 15, 4]))
             action = await attack(s, ctx, [EffectIntentV2(kind="damage")], targets=["foe"])
             results = await run_exchange(ctx, action, request_key="attack")
-            assert (len(results) == 1) == silent
+            assert len(results) == 1  # the hero's deed alone, no reply
         await engine.dispose()
 
     asyncio.run(run())
