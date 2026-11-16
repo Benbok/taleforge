@@ -27,6 +27,13 @@ from app.rules.universal.exploration import (
 from app.rules.universal.failures import ActionValidationError
 
 IMPOSSIBLE_MARGIN = 5
+_QUOTE_MARKS = str.maketrans({c: '"' for c in "«»„“”'"})
+
+
+def normalize_quote(text):
+    """Quotes are checked against the player's words by meaning of the letters, not by typography: case, ё/е,
+    quote marks and runs of whitespace never make a quote 'not verbatim'."""
+    return " ".join(text.casefold().replace("ё", "е").translate(_QUOTE_MARKS).split())
 
 
 def needs_intent_review(source, intent, known=False):
@@ -105,7 +112,7 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
         raise ValueError("Проверка не покрыла требования")
     for requirement in intent.requirements:
         # The text goes back to the model as its only hint: it names the cause and the player's own words.
-        if requirement.quote not in source:
+        if normalize_quote(requirement.quote) not in normalize_quote(source):
             raise ValueError(
                 f"Цитата требования {requirement.id} должна быть дословным фрагментом слов игрока «{source[:300]}»; "
                 "рассказ мастера и история не источник цитат. Переписывай замысел по этим словам."
@@ -124,7 +131,7 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
     if any(set(op.required_by) - ids for op in intent.effects):
         raise ValueError("Неизвестное требование")
     evidence = public_context.get("evidence", "")
-    if any(i.evidence_quote not in evidence for i in intent.introductions):
+    if any(normalize_quote(i.evidence_quote) not in normalize_quote(evidence) for i in intent.introductions):
         raise ValueError(
             "Предмет или наблюдатель не подтверждён известной обстановкой; "
             "возьми дословную evidence_quote из established_evidence или убери introduction"

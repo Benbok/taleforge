@@ -29,10 +29,11 @@ def test_no_sentence_of_the_old_prompt_is_lost():
 
 def test_modules_follow_the_state():
     context = empty_world()
-    assert select_modules(context) == []
-    assert compose_system(context) == CORE
+    # rewards are always shown: the server alone decides whether a reward is due
+    assert [module.name for module in select_modules(context)] == ["rewards"]
+    assert compose_system(context).startswith(CORE)
     context["known_exits"] = [{"id": "hall"}]
-    assert [module.name for module in select_modules(context)] == ["travel"]
+    assert [module.name for module in select_modules(context)] == ["travel", "rewards"]
 
 
 def test_ambiguous_state_includes_the_module():
@@ -66,3 +67,9 @@ def test_object_module_tells_loot_can_be_taken_and_gifts_given():
     context["objects"] = [dict(id="find", template="loot", loot_kind="weapon")]
     text = compose_system(context)
     assert "template=loot" in text and "take" in text and "give" in text and "recipient_id" in text
+
+
+def test_rewards_rules_reach_the_model_with_russian_history():
+    context = empty_world()
+    context["history"] = ["Герой вошёл в пещеру."]
+    assert "rewards" in {module.name for module in select_modules(context)}

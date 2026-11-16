@@ -1,6 +1,5 @@
 """Deterministic state gates. Missing or malformed state keeps relevant guidance enabled."""
 
-import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -65,7 +64,9 @@ def _combat(context):
 
 
 def _rewards(context):
-    return "history" not in context or "reward" in json.dumps(context["history"], ensure_ascii=False).lower()
+    # The story is Russian prose, so no keyword in it can say a reward is due. The server validates and
+    # deduplicates every reward (core/universal/rewards.py), so the rules are always safe to show.
+    return True
 
 
 CORE = (
