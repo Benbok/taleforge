@@ -1,11 +1,12 @@
 """Shared read-only compilation and validation. Semantic review is separate from dice."""
 
 import hashlib
+import logging
 from dataclasses import dataclass
 
 from sqlalchemy import select
 
-from app.core.campaigns import NotFound
+from app.core.campaigns import AccessDenied, NotFound
 from app.core.universal.attempts import approach_closed
 from app.core.universal.definitions import load_definition
 from app.core.universal.objects import accessible
@@ -27,7 +28,11 @@ from app.rules.universal.exploration import (
 )
 from app.rules.universal.failures import ActionValidationError
 
+log = logging.getLogger(__name__)
 IMPOSSIBLE_MARGIN = 5
+TOOL_DISCOUNT = 2  # a real tool in hand
+METHOD_DISCOUNT = 2  # a concrete way, as the review confirms
+MIN_DIFFICULTY = 5
 _QUOTE_MARKS = str.maketrans({c: '"' for c in "«»„“”'"})
 
 
@@ -53,6 +58,7 @@ def is_plain_action(intent, *, crossable=False):
     meant to cross it, and only the review can tell."""
     return (
         intent.player_request == "ordinary"
+        and not intent.concrete_method  # a discount for the way needs the independent review to confirm it
         and intent.source == "mundane"
         and not intent.introductions
         and all(effect.kind in ORDINARY_KINDS for effect in intent.effects)
@@ -67,6 +73,27 @@ def _leads_somewhere(row):
         return False  # a scene prop without exploration state cannot be crossed either
     state = object_state(row)
     return state.template == "structure" and bool(state.leads_to)
+
+
+async def usable_tool(ctx, item_id):
+    """The id of a tool the hero really has (their own item, or an object at hand), else None: a made-up or
+    foreign tool gives no discount and is no reason to refuse the deed."""
+    if not item_id:
+        return None
+    from app.core.universal.inventory import owned_items
+    from app.core.universal.profiles import actor_row
+
+    if any(row.id == item_id for row in await owned_items(ctx.session, ctx.campaign_id, ctx.actor_id)):
+        return item_id
+    row = await ctx.session.get(Entity, item_id)
+    if row is not None and "exploration" in (row.state or {}):
+        try:
+            accessible(row, await actor_row(ctx.session, ctx.campaign_id, ctx.actor_id))
+            return item_id
+        except AccessDenied:
+            pass
+    log.info("tool %s is not the hero's to use: no discount", item_id)
+    return None
 
 
 async def scene_targets(ctx):
@@ -235,6 +262,12 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
     ):
         # Looking at what is in plain sight has no obstacle and no stake: there is nothing to roll for.
         intent = intent.model_copy(update={"resolution": "automatic"})
+    tool_item_id = None
+    if intent.resolution == "check":
+        tool_item_id = await usable_tool(ctx, intent.tool_item_id)
+        discount = (TOOL_DISCOUNT if tool_item_id else 0) + (METHOD_DISCOUNT if intent.concrete_method else 0)
+        if discount:
+            intent = intent.model_copy(update={"difficulty": max(MIN_DIFFICULTY, intent.difficulty - discount)})
     check_target = None
     if intent.resolution == "check":
         here, known = await scene_targets(ctx)
@@ -261,6 +294,7 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
         edge=edge,
         targets=targets,
         check_target=check_target,
+        tool_item_id=tool_item_id,
         operations=intent.effects,
         introductions=intent.introductions,
         cost=cost,

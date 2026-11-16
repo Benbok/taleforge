@@ -222,3 +222,72 @@ def test_the_decision_sees_closed_approaches(tmp_path):
             await engine.dispose()
 
     assert asyncio.run(go()) == [{"target_id": "guard", "attribute": "dex"}]
+
+
+# --- tool and method discount ---
+
+
+def deed(**extra):
+    return IntentV2(
+        source="mundane",
+        player_request="ordinary",
+        resolution="check",
+        attribute="dex",
+        difficulty=extra.pop("difficulty", 14),
+        check_outcomes=CheckNarration(**OUTCOMES),
+        effects=[{"kind": "move", "travel_scope": "within_scene"}],
+        **extra,
+    )
+
+
+def discounted(tmp_path, intent, owner="hero", tool_id="pick"):
+    from app.core.universal.inventory import create_item
+    from app.rules.universal.items import ItemProfile
+
+    async def go():
+        engine, maker = await setup(tmp_path)
+        try:
+            await prepare(maker)
+            async with maker() as s:
+                row = await create_item(s, "c", owner, ItemProfile(name="Отмычка", kind="weapon"), "pick")
+                await s.commit()
+                tool = row.id if tool_id == "pick" else tool_id
+            async with maker() as s:
+                ctx = ResolutionContext(s, "c", **SCOPE, dice=None)
+                update = {"tool_item_id": tool} if tool_id else {}
+                review = IntentReview(verdict="pass", covered_requirements=[])
+                public = dict(source_message_id="source", source_text="Invent a vine sight")
+                return await compile_exploration(ctx, intent.model_copy(update=update), review, public)
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(go())
+
+
+def test_a_real_tool_and_a_concrete_method_lower_the_difficulty(tmp_path):
+    action = discounted(tmp_path, deed(concrete_method=True))
+    assert action.difficulty == 10 and action.tool_item_id
+
+
+def test_a_tool_alone_lowers_by_two(tmp_path):
+    assert discounted(tmp_path, deed()).difficulty == 12
+
+
+def test_the_difficulty_never_drops_below_five(tmp_path):
+    assert discounted(tmp_path, deed(difficulty=6, concrete_method=True)).difficulty == 5
+
+
+def test_a_foreign_or_unknown_tool_gives_no_discount(tmp_path):
+    for name in ("foreign", "ghost"):
+        (tmp_path / name).mkdir()
+    foreign = discounted(tmp_path / "foreign", deed(), owner="target")
+    assert foreign.difficulty == 14 and foreign.tool_item_id is None
+    ghost = discounted(tmp_path / "ghost", deed(), tool_id="ghost")
+    assert ghost.difficulty == 14 and ghost.tool_item_id is None
+
+
+def test_a_concrete_method_always_goes_to_the_meaning_review():
+    from app.core.universal.interpretation import is_plain_action
+
+    assert is_plain_action(deed())
+    assert not is_plain_action(deed(concrete_method=True))

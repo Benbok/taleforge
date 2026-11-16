@@ -234,6 +234,10 @@ class IntentV2(ClosedModel):
     # What the roll is aimed at (a being, an object, a passage; the place itself when nothing else): a failed
     # check closes that ability on that target.
     check_target: str | None = Field(default=None, max_length=64)
+    # What the hero acts with (an item of theirs or one at hand) and whether the player said how exactly: both
+    # make the deed easier, the server checks the tool and the independent review confirms the method.
+    tool_item_id: str | None = Field(default=None, max_length=64)
+    concrete_method: bool = False
     requirements: list[RequirementV2] = Field(default_factory=list, max_length=16)
     effects: list[EffectIntentV2] = Field(min_length=1, max_length=16)
     introductions: list[IntroductionV2] = Field(default_factory=list, max_length=8)
@@ -268,6 +272,7 @@ class ExplorationAction(ClosedModel):
     edge: Literal["normal", "advantage", "disadvantage"] = "normal"
     targets: list[str] = Field(min_length=1, max_length=100)
     check_target: str | None = Field(default=None, max_length=64)
+    tool_item_id: str | None = Field(default=None, max_length=64)
     operations: list[EffectIntentV2] = Field(min_length=1, max_length=16)
     introductions: list[IntroductionV2] = Field(default_factory=list, max_length=8)
     cost: Count
