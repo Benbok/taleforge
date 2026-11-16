@@ -11,23 +11,27 @@ from app.core.universal.objects import accessible, object_state
 from app.core.universal.resolution import ResolutionContext
 from app.db.models import Character, Entity, Event, HeroAbility, Message, RuntimeProfile
 from app.rules.dice import FixedDice
-from app.rules.universal.exploration import EffectIntentV2, InsufficientEnergy, IntentReview, IntentV2
+from app.rules.universal.exploration import EffectIntentV2, FumbleIntent, InsufficientEnergy, IntentReview, IntentV2
 from app.rules.universal.profiles import CheckNarration
 from tests.test_universal_resolution import setup
 
 
-async def prepare(s, ctx, kind="cosmetic", source="supernatural", resolution="automatic", mid="m"):
+async def prepare(s, ctx, kind="cosmetic", source="supernatural", resolution="automatic", mid="m", fumble=None):
     s.add(
         Message(
             id=mid, campaign_id="c", seq=1, seat_id="seat", author_user_id="u", kind="action", content="Пробую действие"
         )
     )
+    if kind == "observe" and resolution == "check" and await s.get(Entity, "hidden-lurker") is None:
+        # looking at plain sight is not rolled: something hidden makes a rolled look a real search
+        s.add(Entity(id="hidden-lurker", campaign_id="c", kind="creature", name="Тень", state={"hidden": True}))
     await s.flush()
     intent = IntentV2(
         name=kind,
         source=source,
         resolution=resolution,
         intensity="light",
+        fumble=fumble,
         effects=[EffectIntentV2(kind=kind, lifetime="timed" if kind == "create_object" else "instant")],
         check_outcomes=CheckNarration(
             success="Успех проверки.",
@@ -86,7 +90,7 @@ def test_failed_attempt_spends_but_does_not_apply_or_learn(tmp_path):
         await run_low(maker)
         async with maker() as s:
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([1]))
-            action = await prepare(s, ctx, resolution="check")
+            action = await prepare(s, ctx, resolution="check", fumble=FumbleIntent(kind="harm"))
             result = await resolve_exploration(ctx, action, "m")
             assert result.status == "applied" and not result.success and result.cost == 1
             assert result.critical_failure and not result.ability_ref

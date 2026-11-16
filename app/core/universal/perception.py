@@ -144,6 +144,8 @@ async def assess_detection(ctx, observer_id, actor_id, source_key, *, at_seconds
             direct_witness=witness,
         ),
     )
+    if observer.state.get("alerted"):
+        edge = "normal" if edge == "advantage" else "disadvantage"  # one on guard is harder to slip past
     sheet, _ = await load_actor(s, ctx.campaign_id, actor_id)
     difficulty = 10 + (int(state["wis"]) - 10) // 2
     cover = observer.state.get("cover_available", False) or any(e["kind"] == "change_form" for e in effects)

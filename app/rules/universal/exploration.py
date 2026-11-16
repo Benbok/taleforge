@@ -217,6 +217,14 @@ class AbilityDefinitionV2(ClosedModel):
         return self
 
 
+class FumbleIntent(ClosedModel):
+    """What goes wrong on a natural 1, from a closed list the server carries out: the master picks, never invents."""
+
+    kind: Literal["harm", "break_tool", "alert", "none"] = "none"
+    amount: int = Field(default=1, ge=1, le=3, strict=True)  # harm: HP lost, never below one
+    creature_id: str | None = Field(default=None, max_length=64)  # alert: who takes notice
+
+
 class IntentV2(ClosedModel):
     schema_version: Literal[2] = 2
     need_lore: list[str] = Field(default_factory=list, max_length=4)
@@ -238,6 +246,7 @@ class IntentV2(ClosedModel):
     # make the deed easier, the server checks the tool and the independent review confirms the method.
     tool_item_id: str | None = Field(default=None, max_length=64)
     concrete_method: bool = False
+    fumble: FumbleIntent | None = None
     requirements: list[RequirementV2] = Field(default_factory=list, max_length=16)
     effects: list[EffectIntentV2] = Field(min_length=1, max_length=16)
     introductions: list[IntroductionV2] = Field(default_factory=list, max_length=8)
@@ -273,6 +282,7 @@ class ExplorationAction(ClosedModel):
     targets: list[str] = Field(min_length=1, max_length=100)
     check_target: str | None = Field(default=None, max_length=64)
     tool_item_id: str | None = Field(default=None, max_length=64)
+    fumble: FumbleIntent | None = None
     operations: list[EffectIntentV2] = Field(min_length=1, max_length=16)
     introductions: list[IntroductionV2] = Field(default_factory=list, max_length=8)
     cost: Count

@@ -15,7 +15,7 @@ from app.core.universal.journal import record_journal
 from app.core.universal.objects import apply_object_operation, introduce_object
 from app.core.universal.profiles import load_actor, save_actor
 from app.core.universal.validation import authorize_actor
-from app.db.models import Entity, Event, HeroAbility, Message
+from app.db.models import Character, Entity, Event, HeroAbility, Message
 from app.rules.dice import FixedDice
 from app.rules.universal.exploration import (
     TIMED_KINDS,
@@ -358,8 +358,10 @@ async def _execute(ctx, action, key):
         from app.core.universal.attempts import close_approach
 
         await close_approach(s, ctx.campaign_id, action.check_target, action.attribute, action.actor_id, event.id)
-    if action.resolution == "check" and result.critical_failure and not is_talk_only(action):
-        result.changes.append(await _fumble(ctx, action, event))
+    if action.resolution == "check" and result.critical_failure:
+        mishap = await _fumble(ctx, action, event)
+        if mishap is not None:
+            result.changes.append(mishap)
     for observer in await s.scalars(
         select(Entity).where(
             Entity.campaign_id == ctx.campaign_id,
@@ -461,19 +463,56 @@ async def _journal_unusual(ctx, action):
 
 
 async def _fumble(ctx, action, event):
-    """A natural one on a check is a real mishap: fixed at one HP, bounded and saved with the same receipt, so a
-    replay cannot hurt twice. The model's critical_failure outcome tells how it happened."""
-    from app.core.universal.combat_actions import synchronize_vitality
+    """A natural one on a check brings the mishap the master chose from the closed list, bounded and saved with the
+    same receipt, so a replay cannot hurt twice. Words never wound or break anything; no choice means no mishap.
+    The model's critical_failure outcome tells how it happened."""
+    fumble = action.fumble
+    if fumble is None or fumble.kind == "none":
+        return None
+    if is_talk_only(action) and fumble.kind in {"harm", "break_tool"}:
+        return None
+    s = ctx.session
+    if fumble.kind == "harm":
+        from app.core.universal.combat_actions import synchronize_vitality
 
-    sheet, resources = await load_actor(ctx.session, ctx.campaign_id, action.actor_id)
-    resources.hp = max(0, resources.hp - 1)
-    await save_actor(ctx.session, ctx.campaign_id, action.actor_id, sheet, resources)
-    await synchronize_vitality(ctx, action.actor_id, event.id)
+        sheet, resources = await load_actor(s, ctx.campaign_id, action.actor_id)
+        lost = min(fumble.amount, max(resources.hp - 1, 0))  # a mishap on a check never kills
+        if not lost:
+            return None
+        resources.hp -= lost
+        await save_actor(s, ctx.campaign_id, action.actor_id, sheet, resources)
+        await synchronize_vitality(ctx, action.actor_id, event.id)
+        return EffectChange(
+            kind="damage",
+            subject_id=action.actor_id,
+            description=f"Неудача стоит здоровья: герой теряет {lost} HP.",
+            data={"amount": str(lost)},
+        )
+    if fumble.kind == "break_tool":
+        from app.core.universal.inventory import owned_items, state_of, store
+
+        owned = await owned_items(s, ctx.campaign_id, action.actor_id)
+        row = next((r for r in owned if r.id == action.tool_item_id), None)
+        if row is None:
+            return None  # nothing of the hero's was used, so nothing of the hero's breaks
+        store(row, state_of(row).model_copy(update={"quantity": 0, "equipped": False}))
+        return EffectChange(
+            kind="tool_broken",
+            subject_id=row.id,
+            description=f"«{state_of(row).profile.name}» ломается и больше не годится.",
+        )
+    actor = await s.get(Character, action.actor_id)
+    creature = await s.get(Entity, fumble.creature_id or "")
+    if (
+        creature is None
+        or creature.campaign_id != ctx.campaign_id
+        or creature.kind != "creature"
+        or creature.location_id != actor.location_id
+    ):
+        return None
+    creature.state = {**creature.state, "alerted": True}
     return EffectChange(
-        kind="damage",
-        subject_id=action.actor_id,
-        description="Неудача стоит здоровья: герой теряет 1 HP.",
-        data={"amount": "1"},
+        kind="alert", subject_id=creature.id, description=f"{creature.name} настораживается и теперь начеку."
     )
 
 

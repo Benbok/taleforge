@@ -50,7 +50,7 @@ def test_narration_prompt_carries_the_temper_and_the_turn_is_stepped_once(tmp_pa
                     player_request="ordinary",
                     resolution="check",
                     attribute="wis",
-                    effects=[dict(kind="observe")],
+                    effects=[dict(kind="move", travel_scope="within_scene")],  # a deed with a stake is rolled
                     check_outcomes=dict(
                         success="Видно.", failure="Темно.", critical_success="Ясно.", critical_failure="Слепота."
                     ),

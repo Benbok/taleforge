@@ -10,7 +10,7 @@ from app.core.universal.interpretation import compile_exploration
 from app.core.universal.resolution import ResolutionContext
 from app.db.models import Character, Message
 from app.rules.dice import FixedDice
-from app.rules.universal.exploration import EffectIntentV2, IntentReview, IntentV2, RequirementV2
+from app.rules.universal.exploration import EffectIntentV2, FumbleIntent, IntentReview, IntentV2, RequirementV2
 from app.rules.universal.profiles import CheckNarration
 from tests.test_universal_resolution import setup
 
@@ -28,7 +28,7 @@ FEATS = [
 ]
 
 
-async def attempt(s, ctx, ability, said, effect, difficulty, keep=None):
+async def attempt(s, ctx, ability, said, effect, difficulty, keep=None, fumble=None, tool=None):
     s.add(Message(id="m", campaign_id="c", seq=1, seat_id="seat", author_user_id="u", kind="action", content=said))
     await s.flush()
     effect = effect.model_copy(update={"required_by": ["req_1"]})
@@ -41,6 +41,8 @@ async def attempt(s, ctx, ability, said, effect, difficulty, keep=None):
         difficulty=difficulty,
         requirements=[RequirementV2(id="req_1", quote=said, effect=effect.kind)],
         effects=[effect],
+        fumble=fumble,
+        tool_item_id=tool,
         check_outcomes=CheckNarration(
             success="Получилось.", failure="Не вышло.", critical_success="Блестяще.", critical_failure="Катастрофа."
         ),
@@ -229,7 +231,9 @@ def test_a_natural_one_on_a_feat_costs_the_hero_health_once_and_the_story_is_the
             effect = EffectIntentV2(kind="move", travel_scope="within_scene")
             ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([1]))
             made = []
-            lost = await attempt(s, ctx, "dex", "перепрыгиваю через провал", effect, 5, made)
+            lost = await attempt(
+                s, ctx, "dex", "перепрыгиваю через провал", effect, 5, made, fumble=FumbleIntent(kind="harm", amount=1)
+            )
             assert lost.critical_failure and not lost.success  # even a trivial deed fails on a natural one
             assert lost.description.startswith("Катастрофа.")  # the models words lead
             harm = [c for c in lost.changes if c.kind == "damage"]

@@ -291,3 +291,90 @@ def test_a_concrete_method_always_goes_to_the_meaning_review():
 
     assert is_plain_action(deed())
     assert not is_plain_action(deed(concrete_method=True))
+
+
+# --- the mishap on a natural 1 ---
+
+from app.core.universal.inventory import create_item, owned_items  # noqa: E402
+from app.rules.universal.exploration import EffectIntentV2, FumbleIntent  # noqa: E402
+from app.rules.universal.items import ItemProfile  # noqa: E402
+from tests.test_universal_mundane_feats import attempt  # noqa: E402
+
+CLIMB = EffectIntentV2(kind="move", travel_scope="within_scene")
+
+
+def fumbled(tmp_path, fumble, *, effect=CLIMB, hp=None, tool=False, creature=False):
+    """A natural one on a feat; returns (hp before, outcome, session facts) after the mishap."""
+
+    async def go():
+        engine, maker = await setup(tmp_path)
+        try:
+            await place(maker)
+            async with maker() as s:
+                hero = await s.get(Character, "hero")
+                if hp is not None:
+                    hero.resources = {**hero.resources, "hp": str(hp)}
+                if creature:
+                    s.add(
+                        Entity(
+                            id="guard", campaign_id="c", kind="creature", name="Страж", location_id="gorge", state={}
+                        )
+                    )
+                item = (
+                    await create_item(s, "c", "hero", ItemProfile(name="Отмычка", kind="weapon"), "pick")
+                    if tool
+                    else None
+                )
+                await s.commit()
+                before = int(hero.resources["hp"])
+                ctx = ResolutionContext(s, "c", "u", "seat", "hero", FixedDice([1]))
+                told = await attempt(
+                    s, ctx, "dex", "лезу по стене", effect, 5, fumble=fumble, tool=item.id if item else None
+                )
+                after = int((await s.get(Character, "hero")).resources["hp"])
+                owned = [row.id for row in await owned_items(s, "c", "hero")]
+                guard = await s.get(Entity, "guard") if creature else None
+                return before, after, told, owned, (guard.state if guard else None)
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(go())
+
+
+def test_harm_costs_the_chosen_hp(tmp_path):
+    before, after, told, _, _ = fumbled(tmp_path, FumbleIntent(kind="harm", amount=2), hp=20)
+    assert (before, after) == (20, 18)
+    assert [c.data["amount"] for c in told.changes if c.kind == "damage"] == ["2"]
+
+
+def test_harm_never_drops_below_one_hp(tmp_path):
+    before, after, told, _, _ = fumbled(tmp_path, FumbleIntent(kind="harm", amount=3), hp=1)
+    assert (before, after) == (1, 1)
+    assert not [c for c in told.changes if c.kind == "damage"]
+
+
+def test_a_broken_tool_leaves_the_inventory(tmp_path):
+    _, _, told, owned, _ = fumbled(tmp_path, FumbleIntent(kind="break_tool"), tool=True)
+    assert owned == [] and any(c.kind == "tool_broken" for c in told.changes)
+
+
+def test_breaking_a_tool_that_was_not_used_breaks_nothing(tmp_path):
+    _, _, told, _, _ = fumbled(tmp_path, FumbleIntent(kind="break_tool"))
+    assert not any(c.kind == "tool_broken" for c in told.changes)
+
+
+def test_an_alerted_creature_is_marked_and_spots_a_sneaking_hero_more_easily(tmp_path):
+    _, _, told, _, state = fumbled(tmp_path, FumbleIntent(kind="alert", creature_id="guard"), creature=True)
+    assert state["alerted"] is True and any(c.kind == "alert" for c in told.changes)
+
+
+def test_words_never_wound(tmp_path):
+    before, after, _, _, _ = fumbled(
+        tmp_path, FumbleIntent(kind="harm", amount=3), effect=EffectIntentV2(kind="speak"), hp=20
+    )
+    assert before == after
+
+
+def test_no_fumble_given_means_no_mishap(tmp_path):
+    before, after, _, _, _ = fumbled(tmp_path, None, hp=20)
+    assert before == after

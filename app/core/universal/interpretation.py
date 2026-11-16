@@ -257,7 +257,8 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
     if (
         intent.resolution == "check"
         and intent.effects
-        and all(op.kind == "observe" for op in intent.effects)
+        and intent.attribute == "wis"  # perception; working a mechanism out (int) is an obstacle of its own
+        and all(op.kind == "observe" and not (op.object_id or op.target_id) for op in intent.effects)
         and await nothing_hidden_here(ctx)
     ):
         # Looking at what is in plain sight has no obstacle and no stake: there is nothing to roll for.
@@ -295,6 +296,7 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
         targets=targets,
         check_target=check_target,
         tool_item_id=tool_item_id,
+        fumble=intent.fumble,
         operations=intent.effects,
         introductions=intent.introductions,
         cost=cost,
