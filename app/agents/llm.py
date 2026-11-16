@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -79,6 +80,20 @@ def can_disable_thinking(model: str) -> bool:
     https://ai.google.dev/gemini-api/docs/generate-content/thinking#thinking-budget
     """
     return model in {"gemini/gemini-2.5-flash", "gemini/gemini-2.5-flash-lite"}
+
+
+def supports_temperature(model: str) -> bool:
+    """Claude and Gemini 3+ keep provider sampling defaults.
+
+    https://ai.google.dev/gemini-api/docs/gemini-3#temperature
+    """
+    if model.startswith("anthropic/"):
+        return False
+    provider, _, name = model.partition("/")
+    if provider in {"gemini", "vertex_ai"}:
+        version = re.match(r"gemini-(\d+)", name)
+        return not (version and int(version.group(1)) >= 3)
+    return True
 
 
 def reply_audit_error(reply: LLMReply, *, require_text: bool = False, reason: str | None = None) -> str | None:
@@ -187,7 +202,10 @@ def _get_provider() -> str:
 def _ensure_prefix(p: str, m: str) -> str:
     prefixes = {"claude": "anthropic/", "gemini": "gemini/", "local": "lm_studio/", "deepseek": "deepseek/"}
     prefix = prefixes.get(p, "")
-    if prefix and not m.startswith(prefix):
+    # Модель, явно выбранная у другого провайдера («gemini/…» при LLM_PROVIDER=deepseek), остаётся как есть
+    if m.startswith((*prefixes.values(), "vertex_ai/", "openai/")):
+        return m
+    if prefix:
         return prefix + m
     return m
 
@@ -364,8 +382,9 @@ class LiteLLMClient:
             kwargs["tools"] = tools
             # Адаптер LiteLLM переводит required в Gemini ANY; auto разрешил бы ответ без инструмента.
             kwargs["tool_choice"] = tool_choice if tool_choice is not None else "auto"
-        # У новых моделей Claude параметры сэмплирования убраны: температура уходит только другим провайдерам
-        if temperature is not None and not model.startswith("anthropic/"):
+        # У новых моделей Claude параметры сэмплирования убраны, а Gemini 3+ Google советует оставлять на
+        # температуре по умолчанию: температура уходит только остальным моделям
+        if temperature is not None and supports_temperature(model):
             kwargs["temperature"] = temperature
         if not thinking and can_disable_thinking(model):
             kwargs["reasoning_effort"] = "disable"
