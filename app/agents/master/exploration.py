@@ -74,6 +74,23 @@ def shortfall_fact(need, have):
     )
 
 
+REVIEW_UNAVAILABLE = "Проверка смысла не дала ответа; разбери слова игрока ещё раз."
+
+
+def parse_reply(raw, model):
+    """A helper model's reply as `model`, or None when it is neither JSON nor repairable into this schema:
+    a slip of a reviewer never costs the player a finished turn."""
+    try:
+        try:
+            data = json.loads(raw)
+        except ValueError:
+            data = repair_json(raw)
+        return model.model_validate(data)
+    except Exception:  # noqa: BLE001 — any unreadable reply is the same: no verdict
+        log.warning("unreadable %s reply: %s", model.__name__, str(raw)[:500])
+        return None
+
+
 def not_realised_fact():
     return ActionFailure(
         category="invalid_proposal",
@@ -408,7 +425,10 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                         },
                     ],
                 )
-                reviews[review_key] = IntentReview.model_validate(json.loads(review_raw)).model_dump(mode="json")
+                reviews[review_key] = (
+                    parse_reply(review_raw, IntentReview)
+                    or IntentReview(verdict="mismatch", message=REVIEW_UNAVAILABLE, covered_requirements=[])
+                ).model_dump(mode="json")
                 await store(service, tid, trace)
             review = IntentReview.model_validate(reviews[review_key])
             if review.verdict in {"forbidden", "clarify"}:
@@ -566,20 +586,22 @@ async def reviewed_narration(
             state["feedback"] = f"В тексте латиница ({', '.join(stray[:5])}): перепиши эти места по-русски"
             await store(service, tid, trace)
             continue
-        review = NarrationReview.model_validate(
-            json.loads(
-                await ask(
-                    "narration_review",
-                    [
-                        {"role": "system", "content": PROSE_REVIEW},
-                        {
-                            "role": "user",
-                            "content": json.dumps({**public, "text": text}, ensure_ascii=False),
-                        },
-                    ],
-                )
-            )
+        review = parse_reply(
+            await ask(
+                "narration_review",
+                [
+                    {"role": "system", "content": PROSE_REVIEW},
+                    {
+                        "role": "user",
+                        "content": json.dumps({**public, "text": text}, ensure_ascii=False),
+                    },
+                ],
+            ),
+            NarrationReview,
         )
+        if review is None:
+            # The Russian-only check has passed; a reviewer that cannot answer must not lose a finished scene.
+            return text
         state["feedback"] = review.message
         await store(service, tid, trace)
         if review.verdict == "pass":

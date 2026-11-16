@@ -1009,3 +1009,50 @@ def test_structured_calls_run_cold_and_narration_keeps_its_temperature(tmp_path)
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_unparsable_intent_review_is_a_mismatch_not_a_pass(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        provider = Provider(
+            [
+                proposal(),
+                '{"verdict": ',
+                dict(proposal(), name="Другие искры"),
+                {"verdict": "pass", "covered_requirements": []},
+                "Искры мягко мерцают над ладонью.",
+                {"verdict": "pass"},
+            ]
+        )
+        tid = await MasterService(maker, Bus(), provider).run_turn("c")
+        async with maker() as s:
+            turn = await s.get(MasterTurn, tid)
+            assert turn.status == "done", turn.trace
+            assert len(list(await s.scalars(select(HeroAbility)))) == 1
+        assert "Проверка смысла не дала ответа" in json.dumps(provider.prompts[2], ensure_ascii=False)
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_a_garbled_narration_review_keeps_the_written_scene(tmp_path):
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        provider = Provider(
+            [
+                proposal(),
+                {"verdict": "pass", "covered_requirements": []},
+                "Искры мягко мерцают над ладонью.",
+                "not json",
+            ]
+        )
+        tid = await MasterService(maker, Bus(), provider).run_turn("c")
+        async with maker() as s:
+            assert (await s.get(MasterTurn, tid)).status == "done"
+            texts = [m.content for m in await s.scalars(select(Message))]
+            assert any("Искры мягко мерцают над ладонью." in t for t in texts), texts
+        await engine.dispose()
+
+    asyncio.run(run())
