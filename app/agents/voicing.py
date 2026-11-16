@@ -19,12 +19,13 @@ INTRO = "intro"  # подготовка к игре: только облако
 CHANNELS = (LINE, TEXT)
 CLOUD = "gemini"
 PROVIDERS = ("gemini", "voicestudio")
-# новая кампания: реплики озвучивает локальный источник, текст выключен
+# новая кампания: все каналы выключены, озвучку владелец включает сам; включённые реплики звучат локально
 DEFAULTS = {
-    "tts_line_enabled": True,
+    "tts_line_enabled": False,
     "tts_line_provider": "voicestudio",
     "tts_text_enabled": False,
     "tts_text_provider": CLOUD,
+    "tts_intro_enabled": False,
 }
 KEYS = (
     *(f"tts_{kind}_{field}" for kind in CHANNELS for field in ("enabled", "provider", "voice")),

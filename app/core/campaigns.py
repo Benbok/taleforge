@@ -45,7 +45,7 @@ DEFAULT_SETTINGS = {
         "mode": "adaptive",
         "policy_version": "2026-10-12",
     },
-    **voicing.DEFAULTS,  # каналы озвучки: реплики локально, текст выключен
+    **voicing.DEFAULTS,  # каналы озвучки выключены, владелец включает их вручную
 }
 
 

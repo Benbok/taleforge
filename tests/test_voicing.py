@@ -5,9 +5,12 @@ from app.agents.voicing import Channel
 from app.core.campaigns import DEFAULT_SETTINGS
 
 
-def test_new_campaign_voices_line_locally_and_keeps_text_silent():
-    assert voicing.channel(DEFAULT_SETTINGS, voicing.LINE) == Channel("voicestudio", None)
+def test_new_campaign_starts_silent_and_line_voices_locally_once_enabled():
+    assert voicing.channel(DEFAULT_SETTINGS, voicing.LINE) is None
     assert voicing.channel(DEFAULT_SETTINGS, voicing.TEXT) is None
+    assert voicing.intro(DEFAULT_SETTINGS) is None
+    on = {**DEFAULT_SETTINGS, "tts_line_enabled": True}
+    assert voicing.channel(on, voicing.LINE) == Channel("voicestudio", None)
 
 
 def test_channels_have_own_provider_and_voice():
