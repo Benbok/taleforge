@@ -222,6 +222,7 @@ def test_unresolved_crossing_does_not_fall_back_to_a_successful_free_note(tmp_pa
             [
                 unresolved,
                 unresolved,
+                unresolved,
                 "Герой остаётся у повозок: направление перехода не определено.",
                 {"verdict": "pass"},
             ]

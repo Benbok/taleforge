@@ -74,6 +74,35 @@ def shortfall_fact(need, have):
     )
 
 
+# Why a retry is spent decides whose allowance it draws on, so a lore fetch cannot eat the repair of a slip of
+# format and a reviewer's disagreement cannot eat either; the cap keeps a turn's price bounded.
+RETRY_LIMITS = {"lore": 1, "format": 2, "meaning": 1}
+MAX_DECIDE_CALLS = 4
+
+
+def may_retry(trace, mid, reason):
+    attempts = trace.get("proposal_attempts", {}).get(mid, 0)
+    if attempts >= MAX_DECIDE_CALLS:
+        return False
+    spent = trace.get("proposal_budgets", {}).get(mid)
+    if spent is None:
+        return attempts < 2  # a turn begun before the budgets existed keeps the old shared allowance
+    return spent.get(reason, 0) < RETRY_LIMITS[reason]
+
+
+def spend_call(trace, mid, reason=None):
+    """Reserve one decide call (a retry draws on `reason`); the caller persists the trace before the call."""
+    attempts = trace.setdefault("proposal_attempts", {})
+    attempts[mid] = attempts.get(mid, 0) + 1
+    spent = trace.setdefault("proposal_budgets", {}).setdefault(mid, {})
+    if reason:
+        spent[reason] = spent.get(reason, 0) + 1
+
+
+def set_next_reason(trace, mid, reason):
+    trace.setdefault("proposal_next", {})[mid] = reason  # a restart must know what its first call is for
+
+
 REVIEW_UNAVAILABLE = "Проверка смысла не дала ответа; разбери слова игрока ещё раз."
 
 
@@ -316,7 +345,14 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
     last_failure = ActionFailure.model_validate(failures[mid]) if mid in failures else not_realised_fact()
     raw = trace.get("admissions", {}).get(mid)
     pending_lore = trace.get("requested_lore", {}).get(mid, [])
-    if raw is None and pending_lore and attempts.get(mid, 0) >= 2:
+    next_reason = trace.get("proposal_next", {}).get(mid, "format")
+    if (
+        raw is None
+        and pending_lore
+        and attempts.get(mid, 0) > 0
+        and not may_retry(trace, mid, "lore")
+        and (mid not in trace.get("proposal_budgets", {}) or next_reason == "lore")
+    ):
         # A reserved final retrieval slot is spent even if its call/persistence
         # was interrupted. Recovery must not turn unresolved lore into a deed.
         result = PreparedExploration(failure=not_realised_fact())
@@ -332,9 +368,12 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
     unresolved_travel = False
     talk_only = False  # the model's last reading was only talking or looking: nothing at stake to roll for
     # A budget slot is persisted before every external call. A crashed call cannot earn a free retry.
-    while raw is not None or attempts.get(mid, 0) < 2:
+    reason = next_reason
+    while True:
         if raw is None:
-            attempts[mid] = attempts.get(mid, 0) + 1
+            if attempts.get(mid, 0) > 0 and not may_retry(trace, mid, reason):
+                break
+            spend_call(trace, mid, reason if attempts.get(mid, 0) > 0 else None)
             await store(service, tid, trace)
             try:
                 reply = await ask(
@@ -353,9 +392,11 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                 if requested:
                     saved = trace.setdefault("requested_lore", {}).setdefault(mid, [])
                     saved[:] = list(dict.fromkeys([*saved, *requested]))
-                    if attempts[mid] < 2:
-                        # Fetching lore consumes the next existing slot; it never grants a third call.
+                    if may_retry(trace, mid, "lore"):
+                        # Fetching lore draws on its own allowance; it never takes a repair away.
                         raw = None
+                        reason = "lore"
+                        set_next_reason(trace, mid, reason)
                         hint = "Запрошенные блоки лора добавлены; разбери исходные слова игрока."
                         await store(service, tid, trace)
                         continue
@@ -384,6 +425,7 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                 sized["attribute"] = raw["attribute"]
             if type(raw.get("difficulty")) is int and 1 <= raw["difficulty"] <= 40:
                 sized["difficulty"] = raw["difficulty"]
+        fail_reason = "format"  # what the next call would be for, if this reading is turned down
         try:
             intent = IntentV2.model_validate(raw)
             if context.get("world_development") and any(
@@ -458,11 +500,13 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
                 return result
             if review.verdict == "unsupported":
                 # No engine kind for it is never a refusal: say it again as a free effect or a creation.
+                fail_reason = "meaning"
                 raise ValueError(
                     (f"{review.message}. " if review.message else "")
                     + "Если нужного вида эффекта нет, оформи это как free_effect или create_object"
                 )
             if review.verdict != "pass":
+                fail_reason = "meaning"
                 raise ValueError(review.message or "Смысл действия требует уточнения; ничего не применено.")
             async with service.maker() as s:
                 ctx = ResolutionContext(s, campaign.id, **scope, dice=None)
@@ -490,6 +534,8 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
             return result
         except (ValueError, AccessDenied) as exc:
             rejected = raw if isinstance(raw, dict) else rejected
+            reason = fail_reason
+            set_next_reason(trace, mid, reason)
             log.warning("exploration proposal rejected: %s | raw=%s", exc, json.dumps(raw, ensure_ascii=False)[:3000])
             # An unaffordable spell is the player's real answer, and a later slip of the model's repair attempt
             # does not take it back; other rejections stay the model's mistake.

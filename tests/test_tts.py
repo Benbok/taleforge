@@ -182,15 +182,9 @@ def test_master_turn_succeeds_when_tts_fails(settings, tmp_path):
         )  # реплики облаком
         client.portal.call(client.app.state.master.wait_idle, c["id"])  # the session greeting is done first
         llm.replies += [
-            {
-                "tool_calls": [
-                    (
-                        "roll_check",
-                        {"character_id": ch["id"], "stat": "athletics", "difficulty": "dc.medium", "reason": "мост"},
-                    )
-                ]
-            },
-            {"tool_calls": []},
+            {"text": "{}"},  # three readings the format never accepts: the floor turn then goes to the story
+            {"text": "{}"},
+            {"text": "{}"},
             {"text": "Эхо шагов разносится во тьме."},
         ]
 

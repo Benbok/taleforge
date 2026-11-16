@@ -189,13 +189,15 @@ def test_malformed_proposal_budget_survives_restart_without_infinite_calls(tmp_p
         await prepare(maker)
         first = MasterService(maker, Bus(), Provider(["not JSON", RuntimeError("offline")]))
         tid = await first.run_turn("c")
+        # a restart spends only what is left of the format allowance (the third call), nothing more
+        assert await MasterService(maker, Bus(), Provider([RuntimeError("offline")])).run_turn("c") == tid
         provider = Provider([])
         assert await MasterService(maker, Bus(), provider).run_turn("c") == tid
         assert not provider.prompts
         async with maker() as s:
             turn = await s.get(MasterTurn, tid)
             assert turn.status == "done"
-            assert turn.trace["proposal_attempts"]["source"] == 2
+            assert turn.trace["proposal_attempts"]["source"] == 3
             assert turn.trace["outcomes"]["source"]["failure"]["category"] == "internal_error"
             assert not list(await s.scalars(select(Event)))
         await engine.dispose()

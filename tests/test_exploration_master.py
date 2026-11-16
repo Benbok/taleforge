@@ -57,6 +57,7 @@ def test_fresh_legacy_proposal_cannot_bypass_review_or_spend(tmp_path):
             [
                 {"kind": "ability", "profile": {"id": "bad", "kind": "check", "attribute": "wis"}},
                 {"kind": "ordinary_check"},
+                {"kind": "ordinary_check"},
             ]
         )
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
@@ -66,7 +67,7 @@ def test_fresh_legacy_proposal_cannot_bypass_review_or_spend(tmp_path):
             assert [op["kind"] for e in events for op in e.payload["proposal"]["operations"]] == ["wait"]
             assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "24"
             turn = await s.get(MasterTurn, tid)
-            assert turn.trace["proposal_attempts"]["source"] == 2
+            assert turn.trace["proposal_attempts"]["source"] == 3  # the first reading and two repairs of the format
         await engine.dispose()
 
     asyncio.run(run())
@@ -212,7 +213,7 @@ def test_only_the_models_ordinary_declaration_with_ordinary_effects_skips_the_re
     assert not is_plain_action(intent(kind="change_form", player_request="ordinary"))
 
 
-def test_lack_of_energy_is_explained_to_the_player_after_one_repair_attempt(tmp_path):
+def test_lack_of_energy_is_explained_to_the_player_after_the_repair_attempts(tmp_path):
     from app.db.models import Character
 
     async def run():
@@ -231,7 +232,7 @@ def test_lack_of_energy_is_explained_to_the_player_after_one_repair_attempt(tmp_
             effects=[{"kind": "cosmetic"}],
         )
         review = {"verdict": "pass", "covered_requirements": []}
-        provider = Provider([costly, review, costly, "Сил не хватило.", {"verdict": "pass"}])
+        provider = Provider([costly, review, costly, costly, "Сил не хватило.", {"verdict": "pass"}])
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
         repair = json.loads(provider.prompts[2][-1]["content"])["repair"]
         assert "нужно 3" in repair and "есть 2" in repair  # the model is told the real numbers and may choose less
@@ -375,7 +376,7 @@ def test_the_energy_shortage_stays_the_answer_when_the_repair_attempt_fails_othe
         review = {"verdict": "pass", "covered_requirements": ["r"]}
         story = "Сил не хватило даже на малую долю замысла."
         provider = Provider(
-            [costly, {"verdict": "pass", "covered_requirements": []}, broken, review, story, {"verdict": "pass"}]
+            [costly, {"verdict": "pass", "covered_requirements": []}, broken, review, broken, story, {"verdict": "pass"}]
         )
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
         async with maker() as s:
@@ -603,7 +604,7 @@ def test_a_shortfall_is_told_in_the_story_with_how_much_was_missing(tmp_path):
         )
         story = "Ты тужишься, но сил не хватает: глина остаётся глиной."
         provider = Provider(
-            [costly, {"verdict": "pass", "covered_requirements": []}, costly, story, {"verdict": "pass"}]
+            [costly, {"verdict": "pass", "covered_requirements": []}, costly, costly, story, {"verdict": "pass"}]
         )
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
         assert "не хватает 1" in narrate_prompt(provider)
@@ -649,7 +650,7 @@ def test_exhausted_repairs_are_told_in_the_story_not_as_invalid_parameters(tmp_p
         )
         story = "Магия не слушается: замысел рассыпается, не успев начаться."
         provider = Provider(
-            [broken, {"verdict": "pass", "covered_requirements": ["r"]}, broken, story, {"verdict": "pass"}]
+            [broken, {"verdict": "pass", "covered_requirements": ["r"]}, broken, broken, story, {"verdict": "pass"}]
         )
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
         async with maker() as s:
@@ -702,7 +703,7 @@ def test_a_magic_request_the_model_cannot_shape_is_kept_as_a_free_effect(tmp_pat
         story = "Магия откликается, но по-своему: вокруг героя вспыхивают светлячки."
         broken = unrealisable("supernatural")
         provider = Provider(
-            [broken, {"verdict": "pass", "covered_requirements": ["r"]}, broken, story, {"verdict": "pass"}]
+            [broken, {"verdict": "pass", "covered_requirements": ["r"]}, broken, broken, story, {"verdict": "pass"}]
         )
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
         async with maker() as s:
@@ -966,6 +967,7 @@ def test_a_stun_the_model_could_not_shape_is_still_a_real_effect_on_the_foe(tmp_
             [
                 _stun_attempt(),
                 {"verdict": "pass", "covered_requirements": ["r"]},
+                _stun_attempt(),
                 _stun_attempt(),
                 "Демон замер.",
                 {"verdict": "pass"},

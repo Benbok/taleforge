@@ -52,10 +52,10 @@ def test_provider_failure_remains_technical_after_restart_budget_exhaustion(tmp_
         engine, maker = await setup(tmp_path)
         try:
             await prepare(maker)
-            provider = Provider([RuntimeError("offline"), RuntimeError("offline")])
+            provider = Provider([RuntimeError("offline")] * 4)
             tid = await MasterService(maker, Bus(), provider).run_turn("c")
-            # Independent service instances model restart; no more than two attempts.
-            for _ in range(2):
+            # Independent service instances model restart; no more than the cap of four calls.
+            for _ in range(4):
                 async with maker() as s:
                     turn = await s.get(MasterTurn, tid)
                     if turn.status == "done":
@@ -65,9 +65,9 @@ def test_provider_failure_remains_technical_after_restart_budget_exhaustion(tmp_
                 turn = await s.get(MasterTurn, tid)
                 source = await s.get(Message, "source")
                 assert turn.status == "done"
-                assert turn.trace["proposal_attempts"]["source"] <= 2
+                assert turn.trace["proposal_attempts"]["source"] <= 4
                 assert source.data["action_failure"]["category"] == "internal_error"
-            assert len(provider.prompts) <= 2
+            assert len(provider.prompts) <= 4
         finally:
             await engine.dispose()
 
