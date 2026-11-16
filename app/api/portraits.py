@@ -7,6 +7,7 @@ from app.core.campaigns import AccessDenied, Conflict, get_viewer
 from app.core.characters import get_character, public_view
 from app.core.universal.portraits import PortraitPending, generate, read_portrait
 from app.core.universal.state import card_of, game_card_of, load_library_hero
+from app.db.models import LibraryCharacter
 from app.gateway.events import envelope
 from app.rules.universal.contracts import ClosedModel, HeroCard, UniversalGameCard
 
@@ -42,6 +43,17 @@ async def library_portrait(hero_id: str, body: PortraitIn, request: Request, use
     return card_of(hero)
 
 
+async def _share_with_library(session, user_id, hero):
+    """Портрет, созданный игроком в игре, получает и его библиотечный герой, если своего портрета у того нет."""
+    library_id = (hero.sheet or {}).get("source_library_id")
+    if not library_id or not hero.portrait_id or hero.owner_user_id != user_id:
+        return
+    original = await session.get(LibraryCharacter, library_id)
+    if original is not None and original.owner_user_id == user_id and original.portrait_id is None:
+        original.portrait_id = hero.portrait_id
+        await session.commit()
+
+
 @router.post("/api/campaigns/{campaign_id}/characters/{hero_id}/portrait", response_model=UniversalGameCard)
 async def game_portrait(
     campaign_id: str, hero_id: str, body: PortraitIn, request: Request, user: UserDep, session: SessionDep
@@ -54,6 +66,7 @@ async def game_portrait(
         raise Conflict("Портрет доступен для универсального героя.")
     await _generate(request, session, user.id, hero, body)
     await session.refresh(hero)
+    await _share_with_library(session, user.id, hero)
     await request.app.state.bus.publish(
         campaign_id, envelope("character.updated", campaign_id, {"character": public_view(hero)}), None
     )

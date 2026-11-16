@@ -96,6 +96,33 @@ def test_copy_keeps_portrait_after_library_regeneration_and_deletion(client, roo
     assert generated.json()["sheet"] == copy["sheet"]
 
 
+def test_game_portrait_reaches_library_hero_only_without_its_own(client, root, tmp_path):
+    from tests.test_api import make_campaign
+    from tests.universal_helpers import DESCRIPTION, ready_reply, set_replies
+
+    setup_generator(client, tmp_path)
+    cid = make_campaign(client, root, owner_plays=True)["id"]
+    set_replies(client, [ready_reply()])
+    base = "/api/hero-creation/dialogues"
+    draft = client.post(base, headers=root, json=dict(description=DESCRIPTION, campaign_id=cid)).json()
+    hero_id = client.post(
+        f"{base}/{draft['id']}/confirm", headers=root, json={"expected_revision": draft["revision"]}
+    ).json()["hero_id"]
+    [library] = client.get("/api/me/characters", headers=root).json()
+    assert library["portrait_url"] is None
+    url = f"/api/campaigns/{cid}/characters/{hero_id}/portrait"
+    first = client.post(url, headers=root, json={"request_key": "game", "expected_revision": 1}).json()
+    assert (
+        client.get(f"/api/me/characters/{library['id']}", headers=root).json()["portrait_url"] == first["portrait_url"]
+    )
+    second = client.post(url, headers=root, json={"request_key": "again", "expected_revision": 1}).json()
+    assert second["portrait_url"] != first["portrait_url"]
+    # у библиотечного героя уже есть портрет: новый портрет в игре его не заменяет
+    assert (
+        client.get(f"/api/me/characters/{library['id']}", headers=root).json()["portrait_url"] == first["portrait_url"]
+    )
+
+
 def test_overlap_and_stale_description_do_not_replace_portrait(client, root, tmp_path):
     from app.agents.portraits import ImageReply
 

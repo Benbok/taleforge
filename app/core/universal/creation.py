@@ -216,6 +216,12 @@ async def confirm_hero(session, dialogue_id: str, owner_id: str, expected_revisi
             original = await session.get(LibraryCharacter, draft.target_id)
             data["portrait_id"] = original.portrait_id
             data["sheet"]["source_library_id"] = draft.target_id
+        elif draft.target_id != "premade":
+            # Новый герой игрока сразу попадает и в его библиотеку: в следующую кампанию его не нужно создавать
+            # заново. Копии независимы, как при входе из библиотеки; связь нужна для общих картинок снаряжения.
+            library = LibraryCharacter(**{**data, "id": new_id("lc"), "sheet": sheet.model_dump(mode="json")})
+            session.add(library)
+            data["sheet"]["source_library_id"] = library.id
         session.add(
             Character(
                 **data,

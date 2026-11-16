@@ -131,6 +131,40 @@ def test_invalid_proposal_logs_reason_without_description(client, root, caplog):
     asyncio.run(check())
 
 
+def test_campaign_hero_is_also_saved_to_players_library(client, root):
+    from app.db.models import Character
+    from tests.test_api import make_campaign
+
+    campaign = make_campaign(client, root, owner_plays=True)
+    set_replies(client, [ready_reply()])
+    draft = client.post(BASE, headers=root, json=dict(description=DESCRIPTION, campaign_id=campaign["id"])).json()
+    confirmation = {"expected_revision": draft["revision"]}
+    first = client.post(f"{BASE}/{draft['id']}/confirm", headers=root, json=confirmation)
+    again = client.post(f"{BASE}/{draft['id']}/confirm", headers=root, json=confirmation)
+    assert first.status_code == again.status_code == 200, first.text
+    library = client.get("/api/me/characters", headers=root).json()
+    assert len(library) == 1
+    assert library[0]["name"] == DESCRIPTION["name"]
+    assert library[0]["level"] == "1" and library[0]["sheet"]["xp"] == "0"
+    assert library[0]["sheet"]["abilities"] == PROPOSAL["abilities"]
+
+    async def check():
+        async with client.app.state.sessionmaker() as session:
+            hero = await session.get(Character, first.json()["hero_id"])
+            assert hero.sheet["source_library_id"] == library[0]["id"]
+
+    asyncio.run(check())
+
+    # заготовка владельца для стола — не герой игрока, в библиотеку она не попадает
+    set_replies(client, [ready_reply()])
+    premade = client.post(
+        BASE, headers=root, json=dict(description=DESCRIPTION, campaign_id=campaign["id"], target_id="premade")
+    ).json()
+    done = client.post(f"{BASE}/{premade['id']}/confirm", headers=root, json={"expected_revision": premade["revision"]})
+    assert done.status_code == 200, done.text
+    assert len(client.get("/api/me/characters", headers=root).json()) == 1
+
+
 def test_direct_campaign_and_admin_premade_start_at_level_one(client, root):
     from app.db.models import Character
     from tests.test_api import make_campaign

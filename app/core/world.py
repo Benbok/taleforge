@@ -189,7 +189,8 @@ def _universal_actor(row, entities=()):
     from app.rules.universal.contracts import UniversalSheet
     from app.rules.universal.mechanics import derive, starting_defense_bonuses
 
-    raw = row.sheet if isinstance(row, Character) else row.state.get("universal_sheet")
+    raw = dict(row.sheet if isinstance(row, Character) else row.state.get("universal_sheet") or {})
+    raw.pop("source_library_id", None)  # связь копии с библиотекой, не часть листа
     sheet = UniversalSheet.model_validate(raw)
     items = [
         state_of(e)
