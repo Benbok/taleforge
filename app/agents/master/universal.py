@@ -79,6 +79,11 @@ def _input_sizes(purpose, payload, options) -> dict | None:
         return None
 
 
+STRUCTURED_PURPOSES = frozenset(
+    {"decide", "exploration_decide", "intent_review", "narration_review", "world_prepare", "world_review"}
+)
+
+
 async def _call(service, campaign, turn, purpose, payload, *, generation_id=None):
     async with service.maker() as s:
         spent = await s.scalar(select(func.sum(LlmCall.cost)).where(LlmCall.campaign_id == campaign.id)) or 0
@@ -92,32 +97,14 @@ async def _call(service, campaign, turn, purpose, payload, *, generation_id=None
         )
         api_base = (cfg.settings or {}).get("api_base") if cfg else None
         if cfg is None or cfg.provider == "env" or cfg.model == "env":
-            model = (
-                decide_model_for()
-                if purpose
-                in {
-                    "decide",
-                    "exploration_decide",
-                    "intent_review",
-                    "narration_review",
-                    "world_prepare",
-                    "world_review",
-                }
-                else model_for()
-            )
+            model = decide_model_for() if purpose in STRUCTURED_PURPOSES else model_for()
         else:
             model = model_for(cfg.provider, cfg.model)
-        temperature = 0.2 if purpose == "decide" else cfg.temperature if cfg else 0.8
+        # structured decisions and reviews are read by code: they run cold, only the storyteller keeps its temperature
+        temperature = 0.2 if purpose in STRUCTURED_PURPOSES else cfg.temperature if cfg else 0.8
     # reasoning shares this budget with the text; a plot with its cast thinks longer than a narration does
     options = {"max_tokens": STRUCTURED_MAX_TOKENS if purpose == "world_secrets" else NARRATION_MAX_TOKENS}
-    if purpose in {
-        "decide",
-        "exploration_decide",
-        "intent_review",
-        "narration_review",
-        "world_prepare",
-        "world_review",
-    }:
+    if purpose in STRUCTURED_PURPOSES:
         from app.agents.master.exploration import NarrationReview
         from app.core.universal.action_intents import ActionIntent
         from app.rules.universal.exploration import IntentReview, IntentV2

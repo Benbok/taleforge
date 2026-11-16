@@ -979,3 +979,33 @@ def test_a_stun_the_model_could_not_shape_is_still_a_real_effect_on_the_foe(tmp_
         await engine.dispose()
 
     asyncio.run(run())
+
+
+def test_structured_calls_run_cold_and_narration_keeps_its_temperature(tmp_path):
+    class Recording(Provider):
+        def __init__(self, replies):
+            super().__init__(replies)
+            self.temps = []
+
+        async def complete(self, messages, **kwargs):
+            self.temps.append(kwargs.get("temperature"))
+            return await super().complete(messages, **kwargs)
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        await prepare(maker)
+        provider = Recording(
+            [
+                proposal(),
+                {"verdict": "pass", "covered_requirements": []},
+                "Искры мягко мерцают над ладонью.",
+                {"verdict": "pass"},
+            ]
+        )
+        await MasterService(maker, Bus(), provider).run_turn("c")
+        temps = provider.temps
+        assert temps[0] == temps[1] == temps[3] == 0.2, temps
+        assert temps[2] == 0.8, temps
+        await engine.dispose()
+
+    asyncio.run(run())
