@@ -786,6 +786,20 @@ class Artwork(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class AttemptLock(Base):
+    """A way that already failed: this ability on this target no longer works for the party (one attempt per way)."""
+
+    __tablename__ = "attempt_locks"
+    __table_args__ = (UniqueConstraint("campaign_id", "target_id", "attribute", name="uq_attempt_lock"),)
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: new_id("al"))
+    campaign_id: Mapped[str] = mapped_column(ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    target_id: Mapped[str] = mapped_column(String(64))
+    attribute: Mapped[str] = mapped_column(String(8))
+    actor_id: Mapped[str] = mapped_column(String(32))
+    event_id: Mapped[str] = mapped_column(String(32))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class WorldGenerationState(Base):
     """Состояние однократной материализации локации/контейнера; не запускает генерацию само по себе."""
 
