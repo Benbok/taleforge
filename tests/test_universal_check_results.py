@@ -6,7 +6,7 @@ from sqlalchemy import select
 from app.agents.master.service import MasterService
 from app.core.campaigns import Viewer
 from app.core.inspect import entity_card
-from app.db.models import Campaign, Event, MasterTurn, Message, User
+from app.db.models import Campaign, Entity, Event, MasterTurn, Message, User
 from app.rules.dice import FixedDice
 from tests.test_universal_location_knowledge import place
 from tests.test_universal_master import Bus, Provider, prepare, seed_legacy
@@ -58,6 +58,19 @@ def test_missing_concrete_result_is_repaired_before_rolling(tmp_path):
     async def run():
         engine, maker = await setup(tmp_path)
         await prepare(maker)
+        await place(maker)  # something is hidden here, so looking is a search with a stake and is rolled
+        async with maker() as s:
+            s.add(
+                Entity(
+                    id="lurker",
+                    campaign_id="c",
+                    kind="creature",
+                    name="Тень",
+                    location_id="gorge",
+                    state={"hidden": True},
+                )
+            )
+            await s.commit()
         provider = Provider(
             [
                 dict(

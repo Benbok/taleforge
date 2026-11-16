@@ -231,6 +231,9 @@ class IntentV2(ClosedModel):
     difficulty: int = Field(default=12, ge=1, le=40, strict=True)
     edge: Literal["normal", "advantage", "disadvantage"] = "normal"
     targets: list[str] = Field(default_factory=list, max_length=100)
+    # What the roll is aimed at (a being, an object, a passage; the place itself when nothing else): a failed
+    # check closes that ability on that target.
+    check_target: str | None = Field(default=None, max_length=64)
     requirements: list[RequirementV2] = Field(default_factory=list, max_length=16)
     effects: list[EffectIntentV2] = Field(min_length=1, max_length=16)
     introductions: list[IntroductionV2] = Field(default_factory=list, max_length=8)
@@ -264,6 +267,7 @@ class ExplorationAction(ClosedModel):
     difficulty: int = Field(ge=1, le=40, strict=True)
     edge: Literal["normal", "advantage", "disadvantage"] = "normal"
     targets: list[str] = Field(min_length=1, max_length=100)
+    check_target: str | None = Field(default=None, max_length=64)
     operations: list[EffectIntentV2] = Field(min_length=1, max_length=16)
     introductions: list[IntroductionV2] = Field(default_factory=list, max_length=8)
     cost: Count

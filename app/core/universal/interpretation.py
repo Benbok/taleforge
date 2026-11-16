@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from sqlalchemy import select
 
 from app.core.campaigns import NotFound
+from app.core.universal.attempts import approach_closed
 from app.core.universal.definitions import load_definition
 from app.core.universal.objects import accessible
 from app.core.universal.profiles import load_actor
@@ -66,6 +67,26 @@ def _leads_somewhere(row):
         return False  # a scene prop without exploration state cannot be crossed either
     state = object_state(row)
     return state.template == "structure" and bool(state.leads_to)
+
+
+async def scene_targets(ctx):
+    """The hero's place id and every id a check there may aim at: the place, beings and things in it, open ways."""
+    from app.core.universal.profiles import actor_row
+
+    actor = await actor_row(ctx.session, ctx.campaign_id, ctx.actor_id)
+    ids = {actor.location_id} if actor.location_id else set()
+    if actor.location_id:
+        ids.update(
+            await ctx.session.scalars(
+                select(Entity.id).where(Entity.campaign_id == ctx.campaign_id, Entity.location_id == actor.location_id)
+            )
+        )
+        place = await ctx.session.get(Entity, actor.location_id)
+        state = (place.state if place else None) or {}
+        for link in [*(state.get("links") or []), *((state.get("sketch") or {}).get("exits") or [])]:
+            if isinstance(link, dict) and link.get("universal_passage") and not link.get("hidden"):
+                ids.add(link["universal_passage"])
+    return actor.location_id, ids
 
 
 async def nothing_hidden_here(ctx):
@@ -214,6 +235,15 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
     ):
         # Looking at what is in plain sight has no obstacle and no stake: there is nothing to roll for.
         intent = intent.model_copy(update={"resolution": "automatic"})
+    check_target = None
+    if intent.resolution == "check":
+        here, known = await scene_targets(ctx)
+        check_target = intent.check_target or here
+        if check_target is not None and check_target not in known:
+            raise ValueError(
+                f"check_target «{check_target}» нет в этой сцене: укажи id существа, предмета или прохода отсюда "
+                "либо оставь поле пустым (тогда целью будет само место)"
+            )
     cost = exploration_cost(definition, sheet.level, intent.difficulty, intent.resolution)
     edge = intent.edge
     have = resources.energies.get(energy_attribute(definition), 0)
@@ -230,6 +260,7 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
         difficulty=intent.difficulty,
         edge=edge,
         targets=targets,
+        check_target=check_target,
         operations=intent.effects,
         introductions=intent.introductions,
         cost=cost,
@@ -316,6 +347,9 @@ async def validate_exploration(ctx, action):
         # or a natural 20 would carry a hero across a city.
         if a.difficulty > 20 + modifier + IMPOSSIBLE_MARGIN:
             raise ActionValidationError("impossible_deed")
+        # One attempt per way: this ability on this target already failed for the party, so nothing is rolled or spent.
+        if a.check_target and await approach_closed(ctx.session, ctx.campaign_id, a.check_target, a.attribute):
+            raise ActionValidationError("approach_closed")
     if a.definition.source == "supernatural" and a.cost < 1:
         raise ValueError("Сверхъестественное действие должно иметь положительную цену")
     if a.cost:

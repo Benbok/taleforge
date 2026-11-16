@@ -347,6 +347,17 @@ async def _execute(ctx, action, key):
                 result.changes.extend(await observe_known_scene(ctx, op.aspect, op.target_id or op.object_id))
             elif op.kind == "speak":
                 result.changes.extend(await _addressee(ctx, state.actor, op))
+    if (
+        action.resolution == "check"
+        and not result.success
+        and action.check_target
+        and not ctx.npc_reply
+        # the place itself is closed only to a search; a failed climb must not close every other feat in the room
+        and (action.check_target != state.actor.location_id or all(op.kind == "observe" for op in action.operations))
+    ):
+        from app.core.universal.attempts import close_approach
+
+        await close_approach(s, ctx.campaign_id, action.check_target, action.attribute, action.actor_id, event.id)
     if action.resolution == "check" and result.critical_failure and not is_talk_only(action):
         result.changes.append(await _fumble(ctx, action, event))
     for observer in await s.scalars(

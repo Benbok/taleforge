@@ -9,6 +9,11 @@ from app.core.universal.purse import coins_of
 from app.db.models import CampaignSecret, HeroAbility, Message, User
 
 
+def objects_for_ids(public_scene):
+    """Beings and things of the visible scene (each with an id): the targets a check may be aimed at."""
+    return [e for e in (public_scene or {}).get("entities") or [] if isinstance(e, dict) and e.get("id")]
+
+
 async def build_decide_context(session, campaign, hero, seat, msg_text, *, upto_seq=None, audience=None):
     from app.agents.master.universal import world_rules
     from app.core.universal.world_generation import enabled as world_enabled
@@ -29,6 +34,14 @@ async def build_decide_context(session, campaign, hero, seat, msg_text, *, upto_
     from app.core.map import party_map
 
     known_exits = (await party_map(s, Viewer(user, c, seat)))["exits"]
+    from app.core.universal.attempts import closed_approaches
+
+    aimable = {
+        hero.location_id,
+        *(o["id"] for o in objects_for_ids(public_scene)),
+        *(x.get("passage_id") for x in known_exits),
+    }
+    closed = await closed_approaches(s, cid, [i for i in aimable if i])
     known = list(await s.scalars(select(HeroAbility).where(HeroAbility.character_id == hero.id)))
     history = await recent_history(s, c, upto_seq, audience, public_scene)
     from app.core.universal.objects import visible_objects
@@ -71,6 +84,7 @@ async def build_decide_context(session, campaign, hero, seat, msg_text, *, upto_
         objects=objects,
         inventory=inventory,
         known_exits=known_exits,
+        closed_approaches=closed,
         constraints=constraints,
         active_effects=running,
         known_abilities=[
