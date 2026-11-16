@@ -61,7 +61,13 @@ async def catalog(session: SessionDep, user: UserDep) -> list[CatalogEntryOut]:
             title=project.title,
             author_name=author,
             version=v.version,
-            public_summary=v.public_summary,
+            public_summary={
+                **v.public_summary,
+                "difficulty": v.public_summary.get("difficulty")
+                or (v.bundle.get("meta") or {}).get("difficulty")
+                or (v.bundle.get("setting") or {}).get("studio", {}).get("difficulty")
+                or "normal",
+            },
             published_at=v.published_at.isoformat(),
             cover_thumbnail_url=(
                 f"/api/adventures/catalog/{v.project_id}/cover/{image}/thumbnail"

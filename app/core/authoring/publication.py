@@ -26,12 +26,18 @@ def _digest(payload: dict) -> str:
 
 
 def _summary(bundle) -> dict:
+    studio = (
+        (bundle.setting or {}).get("studio") or {}
+        if hasattr(bundle, "setting") and isinstance(bundle.setting, dict)
+        else {}
+    )
+    difficulty = bundle.meta.get("difficulty") or studio.get("difficulty") or "normal"
     if bundle.meta.get("ruleset_id") == "universal":
         return {
             "title": bundle.meta.get("name"),
             "intro": bundle.meta.get("public_intro") or "",
             "ruleset": "universal",
-            "difficulty": bundle.meta.get("difficulty"),
+            "difficulty": difficulty,
         }
     plot = bundle.plot
     return {
@@ -41,6 +47,7 @@ def _summary(bundle) -> dict:
         "intro": bundle.meta.get("public_intro") or plot.get("public_intro") or "",
         "locations": len(plot.get("locations") or []),
         "ruleset": bundle.meta.get("ruleset_id"),
+        "difficulty": difficulty,
     }
 
 
@@ -118,6 +125,7 @@ async def publish_project(
             ruleset_version="1",
             name=fields.title,
             public_intro=fields.public_text,
+            difficulty=fields.difficulty,
             pack_id=None,
             pack_version=None,
             content_chain=[],
