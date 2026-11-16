@@ -68,6 +68,22 @@ def _leads_somewhere(row):
     return state.template == "structure" and bool(state.leads_to)
 
 
+async def nothing_hidden_here(ctx):
+    """True when the hero's place holds nothing a search could find: no hidden being or object, no hidden way."""
+    from app.core.universal.profiles import actor_row
+
+    actor = await actor_row(ctx.session, ctx.campaign_id, ctx.actor_id)
+    place = await ctx.session.get(Entity, actor.location_id) if actor.location_id else None
+    for row in await ctx.session.scalars(
+        select(Entity).where(Entity.campaign_id == ctx.campaign_id, Entity.location_id == actor.location_id)
+    ):
+        if (row.state or {}).get("hidden"):
+            return False
+    state = (place.state if place else None) or {}
+    links = [*(state.get("links") or []), *((state.get("sketch") or {}).get("exits") or [])]
+    return not any(isinstance(link, dict) and link.get("hidden") for link in links)
+
+
 @dataclass
 class ValidatedExploration:
     actor: object
@@ -190,6 +206,14 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
         # Keep this use's bindings, retain the original ability's name and revision.
         definition.name, definition.revision = saved.name, saved.revision
     sheet, resources = await load_actor(ctx.session, ctx.campaign_id, ctx.actor_id)
+    if (
+        intent.resolution == "check"
+        and intent.effects
+        and all(op.kind == "observe" for op in intent.effects)
+        and await nothing_hidden_here(ctx)
+    ):
+        # Looking at what is in plain sight has no obstacle and no stake: there is nothing to roll for.
+        intent = intent.model_copy(update={"resolution": "automatic"})
     cost = exploration_cost(definition, sheet.level, intent.difficulty, intent.resolution)
     edge = intent.edge
     have = resources.energies.get(energy_attribute(definition), 0)
