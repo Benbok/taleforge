@@ -28,7 +28,7 @@ FEATS = [
 ]
 
 
-async def attempt(s, ctx, ability, said, effect, difficulty, keep=None, fumble=None, tool=None):
+async def attempt(s, ctx, ability, said, effect, difficulty, keep=None, fumble=None, tool=None, resolution="check"):
     s.add(Message(id="m", campaign_id="c", seq=1, seat_id="seat", author_user_id="u", kind="action", content=said))
     await s.flush()
     effect = effect.model_copy(update={"required_by": ["req_1"]})
@@ -36,7 +36,7 @@ async def attempt(s, ctx, ability, said, effect, difficulty, keep=None, fumble=N
         name="Подвиг",
         source="mundane",
         player_request="ordinary",
-        resolution="check",
+        resolution=resolution,
         attribute=ability,
         difficulty=difficulty,
         requirements=[RequirementV2(id="req_1", quote=said, effect=effect.kind)],

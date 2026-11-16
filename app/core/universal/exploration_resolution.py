@@ -293,6 +293,13 @@ async def _execute(ctx, action, key):
                     )
                 )
                 continue
+            if op.kind == "passage":
+                from app.core.universal.passages import set_passage_state
+
+                result.changes.append(
+                    await set_passage_state(s, ctx.campaign_id, state.actor.location_id, op.passage_id, op.to_state)
+                )
+                continue
             if op.kind == "create_object":
                 target = next(created).subject_id
             if op.kind in TIMED_KINDS or op.lifetime == "timed":

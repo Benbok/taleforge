@@ -38,7 +38,10 @@ def exit_details(place, destination_id):
         if isinstance(p, dict) and p.get("to") == destination_id and not p.get("hidden")
     ]
     candidate = next((p for p in candidates if p.get("state") == "open"), candidates[0] if candidates else {})
-    return {key: candidate[key] for key in ("kind", "state") if candidate.get(key) is not None}
+    details = {key: candidate[key] for key in ("kind", "state") if candidate.get(key) is not None}
+    if candidate.get("universal_passage"):
+        details["passage_id"] = candidate["universal_passage"]  # what a deed aims at to unlock or break the way
+    return details
 
 
 async def map_entities(session, campaign_id, hero_id, master, entities):

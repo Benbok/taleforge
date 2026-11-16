@@ -10,6 +10,7 @@ from app.core.campaigns import AccessDenied, NotFound
 from app.core.universal.attempts import approach_closed
 from app.core.universal.definitions import load_definition
 from app.core.universal.objects import accessible
+from app.core.universal.passages import check_passage, place_passages
 from app.core.universal.profiles import load_actor
 from app.core.universal.validation import authorize_actor
 from app.db.models import Entity, HeroAbility
@@ -108,11 +109,7 @@ async def scene_targets(ctx):
                 select(Entity.id).where(Entity.campaign_id == ctx.campaign_id, Entity.location_id == actor.location_id)
             )
         )
-        place = await ctx.session.get(Entity, actor.location_id)
-        state = (place.state if place else None) or {}
-        for link in [*(state.get("links") or []), *((state.get("sketch") or {}).get("exits") or [])]:
-            if isinstance(link, dict) and link.get("universal_passage") and not link.get("hidden"):
-                ids.add(link["universal_passage"])
+        ids.update(place_passages(await ctx.session.get(Entity, actor.location_id)))
     return actor.location_id, ids
 
 
@@ -269,9 +266,16 @@ async def compile_exploration(ctx, intent, requirements_review, public_context):
         discount = (TOOL_DISCOUNT if tool_item_id else 0) + (METHOD_DISCOUNT if intent.concrete_method else 0)
         if discount:
             intent = intent.model_copy(update={"difficulty": max(MIN_DIFFICULTY, intent.difficulty - discount)})
+    if intent.resolution != "check" and any(op.kind == "passage" for op in intent.effects):
+        raise ValueError("Проход меняет только удавшаяся проверка: оформи действие с resolution=check")
     check_target = None
     if intent.resolution == "check":
         here, known = await scene_targets(ctx)
+        for op in intent.effects:
+            if op.kind == "passage":
+                if not op.passage_id or not op.to_state:
+                    raise ValueError("passage требует passage_id и to_state")
+                await check_passage(ctx.session, here, op.passage_id, op.to_state)
         check_target = intent.check_target or here
         if check_target is not None and check_target not in known:
             raise ValueError(

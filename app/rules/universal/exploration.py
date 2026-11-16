@@ -46,6 +46,7 @@ EffectKind = Literal[
     "defense_bonus",
     "free_effect",
     "command",
+    "passage",
 ]
 ObjectTemplate = Literal["vessel", "wood_source", "water_source", "energy_tonic", "observer", "structure", "creature"]
 Scale = Literal["tiny", "small", "medium", "large", "huge"]
@@ -103,6 +104,7 @@ ORDINARY_KINDS = frozenset(
         "consume",
         "dismiss",
         "command",
+        "passage",
     }
 )
 MAGIC_KINDS = frozenset(
@@ -163,6 +165,8 @@ class EffectIntentV2(ClosedModel):
     leads_to: str = Field(default="", max_length=128)
     leads_view: str = Field(default="", max_length=300)
     abilities: str = Field(default="", max_length=500)
+    passage_id: str | None = Field(default=None, max_length=64)  # passage: the way that changes
+    to_state: Literal["closed", "open"] | None = None  # passage: unlocked (closed) or broken open (open)
 
     @model_validator(mode="before")
     @classmethod
@@ -338,6 +342,7 @@ def definition_key(definition: AbilityDefinitionV2) -> str:
         "free_effect": {"scale", "sturdiness", "label"},  # the words are all the meaning it has
         "change_form": {"label", "quantity"},  # the form named in the words is the whole meaning
         "observe": {"aspect"},
+        "passage": {"passage_id", "to_state"},
         "fill": {"amount"},
         "pour": {"amount"},
         "consume": {"amount"},
@@ -437,6 +442,7 @@ _RELEVANT = {
     "free_effect": {"scale", "sturdiness", "lifetime"},
     "change_form": {"lifetime", "quantity"},
     "observe": {"aspect", "lifetime"},
+    "passage": {"passage_id", "to_state"},
     "fill": {"amount"},
     "pour": {"amount"},
     "consume": {"amount"},
