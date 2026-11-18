@@ -8,7 +8,7 @@ from time import monotonic
 
 from sqlalchemy import func, select
 
-from app.agents.llm import decide_model_for, model_for
+from app.agents.llm import decide_model_for, model_for, review_model_for
 from app.agents.master.action_admission import obtain_prepared_action
 from app.agents.master.action_results import mark_source, prepared_outcome, public_outcome
 from app.agents.master.helpers import _batches
@@ -100,6 +100,11 @@ async def _call(service, campaign, turn, purpose, payload, *, generation_id=None
             model = decide_model_for() if purpose in STRUCTURED_PURPOSES else model_for()
         else:
             model = model_for(cfg.provider, cfg.model)
+        if purpose in {"intent_review", "narration_review"}:
+            review_model = review_model_for(model)
+            if review_model.partition("/")[0] != model.partition("/")[0]:
+                api_base = None
+            model = review_model
         # structured decisions and reviews are read by code: they run cold, only the storyteller keeps its temperature
         temperature = 0.2 if purpose in STRUCTURED_PURPOSES else cfg.temperature if cfg else 0.8
     # reasoning shares this budget with the text; a plot with its cast thinks longer than a narration does

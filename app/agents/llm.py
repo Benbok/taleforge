@@ -249,6 +249,13 @@ def decide_model_for() -> str:
     return model_for() if settings.decide_model == "main" else parser_model_for()
 
 
+def review_model_for(decision_model: str | None = None) -> str:
+    """Resolve the model for independent intent and narration reviews."""
+    if settings.review_model:
+        return model_for(model=settings.review_model)
+    return decision_model or decide_model_for()
+
+
 def repair_json(raw: str) -> dict[str, Any] | None:
     """Spare the fields a model wrote before it slipped: cut at the syntax error (or end) back to the last complete
     member and close what is still open. Anything that does not come out as an object stays invalid."""

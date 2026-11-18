@@ -263,30 +263,19 @@ def salvage_control(raw, text):
 async def fallback_action(
     service, campaign, mid, context, scope, leaning, name="", sized=None, talk_only=False, salvage=None
 ):
-    """The floor under every request the world allows: when the model could not shape it, the player's own words
-    become a free effect (magic) or a plain turn (ordinary), never a refusal the engine invented.
-    Returns the action, a shortfall fact when the spell is unaffordable, or None when even this does not compile."""
+    """Fallback for an unshaped request: compile salvageable control or a plain turn for ordinary deeds.
+    Return a failure fact for unshaped magic or insufficient energy, and None if the fallback fails compilation."""
     text = context["source"]
     if salvage is not None:
         intent = salvage
     elif leaning == "supernatural":
-        intent = IntentV2(
-            source="supernatural",
-            player_request="supernatural",
-            delivery="spell",
-            resolution="automatic",
-            intensity="light",
-            name=name or "Свободное заклинание",
-            requirements=[RequirementV2(id="req_1", quote=text[:1000], effect="free_effect")],
-            effects=[
-                EffectIntentV2(
-                    kind="free_effect", label=text[:128], appearance=text[:500], lifetime="timed", required_by=["req_1"]
-                )
-            ],
-        )
+        # Magic the model could not shape does not happen: no energy, no effect, no automatic success. The story
+        # tells it as an attempt that did not come together.
+        return not_realised_fact()
     elif leaning == "mundane" and not talk_only:
         # Keep the deed as a note, free of energy, even if the model could not shape it. It is still a deed with a
-        # roll, on the ability and difficulty the model named, so a slip of the model is not a free success.
+        # roll, on the ability and difficulty the model named, so a slip of the model is not a free success. Its
+        # effect is a plain wait: the player's raw words are never kept as a running effect.
         intent = IntentV2(
             source="mundane",
             player_request="ordinary",
@@ -295,12 +284,8 @@ async def fallback_action(
             difficulty=(sized or {}).get("difficulty", 10),
             name=name or " ".join(text.split())[:60],
             check_outcomes=plain_outcomes(text),
-            requirements=[RequirementV2(id="req_1", quote=text[:1000], effect="free_effect")],
-            effects=[
-                EffectIntentV2(
-                    kind="free_effect", label=text[:128], appearance=text[:500], lifetime="timed", required_by=["req_1"]
-                )
-            ],
+            requirements=[RequirementV2(id="req_1", quote=text[:1000], effect="wait")],
+            effects=[EffectIntentV2(kind="wait", required_by=["req_1"])],
         )
     else:
         # Words said to someone, or nothing the model could shape: a plain turn without a die, so a conversation
@@ -445,7 +430,7 @@ async def obtain_exploration_action(service, campaign, tid, mid, trace, context,
             crossable = any(
                 o.get("template") == "structure" and o.get("leads_to") for o in context.get("objects") or []
             ) or bool(context.get("world_development") and context.get("known_exits"))
-            if review_key not in reviews and is_plain_action(intent, crossable=crossable):
+            if review_key not in reviews and is_plain_action(intent, crossable=crossable, source=context["source"]):
                 reviews[review_key] = IntentReview(
                     verdict="pass", covered_requirements=[r.id for r in intent.requirements]
                 ).model_dump(mode="json")

@@ -81,7 +81,7 @@ def test_format_failures_get_two_repairs_then_the_floor(tmp_path):
 def test_the_total_cap_is_four_decide_calls(tmp_path):
     result, trace, decides = run(tmp_path, [LORE, proposal(), INVALID, INVALID], reviews=[MISMATCH])
     assert decides == MAX_DECIDE_CALLS == 4 and trace["proposal_attempts"]["m"] == 4
-    assert result.proposal is not None
+    assert result.proposal is None and result.failure.code == "not_realised"  # magic never shaped does not happen
 
 
 def test_recovery_after_a_crash_never_exceeds_the_cap(tmp_path):

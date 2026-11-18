@@ -134,7 +134,7 @@ def turn(tmp_path, replies, *, roll, seed=None, hidden=False):
             async with maker() as s:
                 before = dict((await s.get(Character, "hero")).resources["energies"])
             provider = Provider(replies)
-            tid = await MasterService(maker, Bus(), provider, dice_factory=lambda: FixedDice([roll])).run_turn("c")
+            await MasterService(maker, Bus(), provider, dice_factory=lambda: FixedDice([roll])).run_turn("c")
             async with maker() as s:
                 locks = [(x.target_id, x.attribute) for x in await s.scalars(select(AttemptLock))]
                 events = await s.scalar(select(func.count()).select_from(Event))
@@ -378,3 +378,40 @@ def test_words_never_wound(tmp_path):
 def test_no_fumble_given_means_no_mishap(tmp_path):
     before, after, _, _, _ = fumbled(tmp_path, None, hp=20)
     assert before == after
+
+
+def test_reviews_use_the_review_model_when_set(tmp_path, monkeypatch):
+    from dataclasses import replace
+
+    from app.agents import llm
+    from app.agents.master.universal import _call
+    from app.db.models import Campaign, LlmCall
+
+    settings = replace(llm.settings, llm_provider="gemini", review_model="review-test")
+    monkeypatch.setattr(llm, "settings", settings)
+
+    async def run():
+        engine, maker = await setup(tmp_path)
+        try:
+            await prepare(maker)
+            async with maker() as s:
+                campaign = await s.get(Campaign, "c")
+            provider = Provider(["{}"] * 4)
+            service = MasterService(maker, Bus(), provider)
+            messages = [{"role": "user", "content": "{}"}]
+            for purpose in ("exploration_decide", "intent_review", "narration_review"):
+                await _call(service, campaign, None, purpose, messages)
+
+            monkeypatch.setattr(llm, "settings", replace(settings, review_model=""))
+            await _call(service, campaign, None, "intent_review", messages)
+
+            async with maker() as s:
+                calls = list(await s.scalars(select(LlmCall)))
+            decision = next(call.model for call in calls if call.purpose == "exploration_decide")
+            assert decision != "gemini/review-test"
+            assert {call.model for call in calls if call.purpose == "intent_review"} == {decision, "gemini/review-test"}
+            assert [call.model for call in calls if call.purpose == "narration_review"] == ["gemini/review-test"]
+        finally:
+            await engine.dispose()
+
+    asyncio.run(run())

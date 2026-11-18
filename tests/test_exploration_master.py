@@ -198,19 +198,19 @@ def test_unavailable_object_reference_is_repaired_not_reported_as_provider_failu
     asyncio.run(run())
 
 
-def test_only_the_models_ordinary_declaration_with_ordinary_effects_skips_the_review(tmp_path):
+def test_the_server_not_the_models_self_report_decides_when_meaning_is_reviewed(tmp_path):
     from app.core.universal.interpretation import is_plain_action
     from app.rules.universal.exploration import EffectIntentV2, IntentV2
 
     def intent(kind="move", source="mundane", **extra):
         return IntentV2(source=source, resolution="automatic", effects=[EffectIntentV2(kind=kind)], **extra)
 
-    assert is_plain_action(intent(player_request="ordinary"))
-    assert not is_plain_action(intent())  # an undeclared request is reviewed
-    for declared in ("supernatural", "pretend", "unclear"):
-        assert not is_plain_action(intent(player_request=declared))
-    assert not is_plain_action(intent(source="supernatural", kind="cosmetic", player_request="ordinary"))
-    assert not is_plain_action(intent(kind="change_form", player_request="ordinary"))
+    assert is_plain_action(intent(), source="иду к двери")  # whatever the model called the request
+    assert is_plain_action(intent(player_request="supernatural"), source="иду к двери")
+    assert not is_plain_action(intent(player_request="ordinary"), source="колдую свет")
+    assert not is_plain_action(intent(source="supernatural", kind="cosmetic"), source="иду")
+    assert not is_plain_action(intent(kind="change_form"), source="иду")
+    assert not is_plain_action(intent(kind="passage"), source="вскрываю замок")  # a way that changes is reviewed
 
 
 def test_lack_of_energy_is_explained_to_the_player_after_the_repair_attempts(tmp_path):
@@ -515,9 +515,8 @@ def test_a_reviewer_who_finds_the_scale_implausible_stops_the_spell_and_tells_th
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
         assert why in json.loads(provider.prompts[2][-1]["content"])["repair"]
         async with maker() as s:
-            # The floor records the words as a free effect: it makes no bridge and opens no place beyond it.
-            events = list(await s.scalars(select(Event)))
-            assert [op["kind"] for e in events for op in e.payload["proposal"]["operations"]] == ["free_effect"]
+            # Magic that never took shape does not happen: no bridge, no place beyond it, nothing recorded.
+            assert list(await s.scalars(select(Event))) == []
             assert (await s.get(MasterTurn, tid)).status == "done"
         await engine.dispose()
 
@@ -702,27 +701,27 @@ def unrealisable(source):
     )
 
 
-def test_a_magic_request_the_model_cannot_shape_is_kept_as_a_free_effect(tmp_path):
+def test_magic_the_model_cannot_shape_does_not_happen(tmp_path):
     from app.db.models import Character
 
     async def run():
         engine, maker = await setup(tmp_path)
         await prepare(maker)
-        story = "Магия откликается, но по-своему: вокруг героя вспыхивают светлячки."
+        story = "Магия не складывается: замысел рассыпается, не успев начаться."
         broken = unrealisable("supernatural")
         provider = Provider(
             [broken, {"verdict": "pass", "covered_requirements": ["r"]}, broken, broken, story, {"verdict": "pass"}]
         )
         tid = await MasterService(maker, Bus(), provider).run_turn("c")
         async with maker() as s:
-            events = list(await s.scalars(select(Event)))
-            assert len(events) == 1  # the words are recorded, not refused
-            kinds = [op["kind"] for op in events[0].payload["proposal"]["operations"]]
-            assert kinds == ["free_effect"]
-            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "23"  # a tiny effect: one start
-            message = await s.get(Message, (await s.get(MasterTurn, tid)).narration_message_id)
+            assert list(await s.scalars(select(Event))) == []  # no effect, no automatic success
+            assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "24"  # and nothing spent
+            turn = await s.get(MasterTurn, tid)
+            prepared = turn.trace["prepared"]["source"]
+            assert prepared["failure"]["code"] == "not_realised"
+            assert prepared["proposal"] is None
+            message = await s.get(Message, turn.narration_message_id)
             assert message.content == story
-        assert "не слушается" not in json.dumps(provider.prompts, ensure_ascii=False)
         await engine.dispose()
 
     asyncio.run(run())
@@ -744,8 +743,9 @@ def test_an_ordinary_request_the_model_cannot_shape_is_a_plain_turn_that_costs_n
             events = list(await s.scalars(select(Event)))
             assert len(events) == 1
             assert events[0].payload["proposal"]["definition"]["source"] == "mundane"
-            # The deed leaves a remembered note, and costs nothing: it is not magic.
-            assert [op["kind"] for op in events[0].payload["proposal"]["operations"]] == ["free_effect"]
+            assert events[0].payload["proposal"]["resolution"] == "check"
+            # The deed is told and rolled, costs nothing, and the player's raw words are not kept as an effect.
+            assert [op["kind"] for op in events[0].payload["proposal"]["operations"]] == ["wait"]
             assert (await s.get(Character, "hero")).resources["energies"]["wis"] == "24"
         await engine.dispose()
 
@@ -828,8 +828,7 @@ def test_a_request_that_was_magic_on_any_attempt_stays_magic_when_the_model_back
         )
         await MasterService(maker, Bus(), provider).run_turn("c")
         async with maker() as s:
-            events = list(await s.scalars(select(Event)))
-            assert [op["kind"] for e in events for op in e.payload["proposal"]["operations"]] == ["free_effect"]
+            assert list(await s.scalars(select(Event))) == []  # still magic, still not shaped: it does not happen
         await engine.dispose()
 
     asyncio.run(run())
@@ -868,48 +867,6 @@ def test_the_decision_prompt_asks_for_a_short_general_ability_name():
     assert "name — короткое общее название способности" in SYSTEM
 
 
-def test_the_floor_names_the_ability_generally_not_with_the_whole_request(tmp_path):
-    async def run():
-        engine, maker = await setup(tmp_path)
-        await prepare(maker)
-        unnamed = unrealisable("supernatural")
-        named = dict(unrealisable("supernatural"), name="Светлячки (освещение)")
-        provider = Provider(
-            [
-                unnamed,
-                {"verdict": "pass", "covered_requirements": ["r"]},
-                named,
-                {"verdict": "pass", "covered_requirements": ["r"]},
-                "Светлячки.",
-                {"verdict": "pass"},
-            ]
-        )
-        await MasterService(maker, Bus(), provider).run_turn("c")
-        async with maker() as s:
-            event = (await s.scalars(select(Event))).one()
-            assert event.payload["proposal"]["definition"]["name"] == "Светлячки (освещение)"
-        await engine.dispose()
-
-    asyncio.run(run())
-
-
-def test_the_floor_without_any_model_name_uses_a_generic_one(tmp_path):
-    async def run():
-        engine, maker = await setup(tmp_path)
-        await prepare(maker)
-        broken = unrealisable("supernatural")
-        provider = Provider(
-            [broken, {"verdict": "pass", "covered_requirements": ["r"]}, broken, "Ок.", {"verdict": "pass"}]
-        )
-        await MasterService(maker, Bus(), provider).run_turn("c")
-        async with maker() as s:
-            event = (await s.scalars(select(Event))).one()
-            assert event.payload["proposal"]["definition"]["name"] == "Свободное заклинание"
-        await engine.dispose()
-
-    asyncio.run(run())
-
-
 def test_a_weapon_deed_the_model_cannot_shape_is_a_rolled_deed_not_a_free_success(tmp_path):
     """Found in play: "strike with the knife" (source=item) fell to the floor as an empty turn and was reported
     as a success; the model's reading of the source as an item still means an ordinary deed."""
@@ -925,8 +882,8 @@ def test_a_weapon_deed_the_model_cannot_shape_is_a_rolled_deed_not_a_free_succes
         async with maker() as s:
             event = (await s.scalars(select(Event))).one()
             proposal = event.payload["proposal"]
-            assert [op["kind"] for op in proposal["operations"]] == ["free_effect"]
-            assert proposal["resolution"] == "check"  # a deed with a die, not an automatic wait
+            assert [op["kind"] for op in proposal["operations"]] == ["wait"]  # no raw words kept as an effect
+            assert proposal["resolution"] == "check"  # a deed with a die, not an automatic success
         await engine.dispose()
 
     asyncio.run(run())

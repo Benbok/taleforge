@@ -112,6 +112,7 @@ class Settings:
     equipment_artwork_enabled: bool = False
     npc_portraits_enabled: bool = False
     decide_model: str = "technical"  # фаза решения хода (выбор инструментов и бросков): technical или main
+    review_model: str = ""  # независимые проверки смысла и рассказа: пусто — та же модель, что решает ход
     gemini_main_model: str = "gemini-2.5-flash"
     gemini_technical_model: str = "gemini-2.5-flash-lite"
     claude_main_model: str = "anthropic/claude-opus-5"
@@ -179,6 +180,7 @@ class Settings:
             voicestudio_voice=_env("VOICESTUDIO_VOICE", cls.voicestudio_voice),
             llm_provider=_env("LLM_PROVIDER", cls.llm_provider).lower(),
             decide_model=_env("DECIDE_MODEL", cls.decide_model).lower(),
+            review_model=_env("REVIEW_MODEL", cls.review_model),
             gemini_main_model=_env("GEMINI_MAIN_MODEL", cls.gemini_main_model),
             gemini_technical_model=_env("GEMINI_TECHNICAL_MODEL", cls.gemini_technical_model),
             claude_main_model=_env("CLAUDE_MAIN_MODEL", cls.claude_main_model),

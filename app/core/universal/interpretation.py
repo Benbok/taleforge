@@ -52,17 +52,18 @@ def needs_intent_review(source, intent, known=False):
     )
 
 
-def is_plain_action(intent, *, crossable=False):
-    """The model itself read the request as ordinary and every effect is ordinary: no meaning review is needed.
+def is_plain_action(intent, *, crossable=False, source=""):
+    """No meaning review is needed: the server sees nothing to doubt, whatever the model called the request.
 
-    Where a structure that leads somewhere stands, a walk that names none is not plain: the player may have
-    meant to cross it, and only the review can tell."""
+    The player's own words must carry no sign of magic, every effect must be ordinary and none may change the
+    world's ways (a passage is always reviewed). Where a structure that leads somewhere stands, a walk that
+    names none is not plain: the player may have meant to cross it, and only the review can tell."""
     return (
-        intent.player_request == "ordinary"
+        not needs_intent_review(source, intent, known=True)
         and not intent.concrete_method  # a discount for the way needs the independent review to confirm it
         and intent.source == "mundane"
         and not intent.introductions
-        and all(effect.kind in ORDINARY_KINDS for effect in intent.effects)
+        and all(effect.kind in ORDINARY_KINDS and effect.kind != "passage" for effect in intent.effects)
         and not (crossable and any(e.kind == "move" and not e.object_id for e in intent.effects))
     )
 
